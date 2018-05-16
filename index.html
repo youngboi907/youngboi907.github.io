@@ -27,55 +27,9 @@
                     <div class="ui container center align vertical stripe heading-container">
                         <h2>Be a part of the blockchain revolution</h2>
                         <br>
-                        <div class="ui container center aligned">
-                            <div class="ui stackable relaxed grid center aligned">
-                                <div class="ui eight wide column announcement-box center aligned">
-                                    Your referral link:<div id="quoteDisplay"></div><button onclick="CopyToClipboard('quoteDisplay')" class="ui button large primary">Copy referral link</button>
-
-                                    <script>
-                                        function whenAvailable(name, callback) {
-                                            var interval = 10;
-                                            window.setTimeout(function () {
-                                                if (window[name]) {
-                                                    callback(window[name]);
-                                                } else {
-                                                    window.setTimeout(arguments.callee, interval);
-                                                }
-                                            }, interval);
-                                        }
-                                        whenAvailable("web3js", function () {
-                                            if (web3js.eth.accounts[0] !== null) {
-                                                var element = "<a href='https://vishalgaurav.io/arw/?referral=" + currentAddress + "'>https://vishalgaurav.io/arw/?referral=" + currentAddress + "</a>";
-                                                $("#quoteDisplay").append(element);
-                                            }
-                                        });
-                                        function CopyToClipboard(containerid) {
-                                            if (document.selection) {
-                                                var range = document.body.createTextRange();
-                                                range.moveToElementText(document.getElementById(containerid));
-                                                range.select().createTextRange();
-                                                document.execCommand("copy");
-                                            } else if (window.getSelection) {
-                                                var range = document.createRange();
-                                                range.selectNode(document.getElementById(containerid));
-                                                window.getSelection().addRange(range);
-                                                document.execCommand("copy");
-                                                //alert("text copied") 
-                                            }
-                                        }
-                                    </script>
-                                    <div>Note that your referral does not become active until you have 1 Tokens.</div>
-
-                                </div
-                            </div>
-                        </div>
-                    </div>
+                       
 					
-					
-					
-					
-					
-                    <div class="ui container" >
+                      <div class="ui container" >
                         <div class="ui stackable grid">
                             <div class="ui sixteen wide column interface dimmable wallet-mm logged-in" id="meta-mask-ui">
                                 <div class="ui stackable grid">
@@ -428,6 +382,49 @@
 		</div>
       </div>
      </div>
+	           --<div class="ui container center aligned">
+                            <div class="ui stackable relaxed grid center aligned">
+                                <div class="ui eight wide column announcement-box center aligned">
+                                    Your referral link:<div id="quoteDisplay"></div><button onclick="CopyToClipboard('quoteDisplay')" class="ui button large primary">Copy referral link</button>
+
+                                    <script>
+                                        function whenAvailable(name, callback) {
+                                            var interval = 10;
+                                            window.setTimeout(function () {
+                                                if (window[name]) {
+                                                    callback(window[name]);
+                                                } else {
+                                                    window.setTimeout(arguments.callee, interval);
+                                                }
+                                            }, interval);
+                                        }
+                                        whenAvailable("web3js", function () {
+                                            if (web3js.eth.accounts[0] !== null) {
+                                                var element = "<a href='https://vishalgaurav.io/arw/?referral=" + currentAddress + "'>https://vishalgaurav.io/arw/?referral=" + currentAddress + "</a>";
+                                                $("#quoteDisplay").append(element);
+                                            }
+                                        });
+                                        function CopyToClipboard(containerid) {
+                                            if (document.selection) {
+                                                var range = document.body.createTextRange();
+                                                range.moveToElementText(document.getElementById(containerid));
+                                                range.select().createTextRange();
+                                                document.execCommand("copy");
+                                            } else if (window.getSelection) {
+                                                var range = document.createRange();
+                                                range.selectNode(document.getElementById(containerid));
+                                                window.getSelection().addRange(range);
+                                                document.execCommand("copy");
+                                                //alert("text copied") 
+                                            }
+                                        }
+                                    </script>
+                                    <div>Note that your referral does not become active until you have 1 Tokens.</div>
+
+                                </div
+                            </div>
+                        </div>
+                    </div>
 	 <!-- ----------------------------------------------------------------------------------------------------------------------------  -->
 <div style="background: #ffffff;">
     <div class="ui container center align vertical stripe heading-container">
@@ -444,7 +441,7 @@ the fee is split between all currently held tokens!
 	                                           <p>REALLY MAKES YOU THINK</p>
 
                                                  <p> 3D SPECULATION</p>
-        <div><img src="youngboi907.github.io/images (2).jpg" style="width: 5%;margin-top: 25px;"></div>												 
+        <div><img src="youngboi907.github.io/images (2).jpg" style="width: 5%;margin-middle: 50px;"></div>												 
 Instead of simply playing with price over time like most crypto, we've added volume to the mix. Hodl finally might be a good long-term idea. (Instead of why you're down 50%)
 
 
