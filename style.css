@@ -659,7 +659,7 @@ width"].row>.column, .ui[class*="equal width"].grid>.column:not(.row), .ui[class
     margin-left: auto!important;
     margin-right: auto!important;
 }
-.container{
+.login-box{
 	  width:100px;
 	  margin-left: auto!
 	  margin-right: auto!
