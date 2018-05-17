@@ -660,7 +660,7 @@ width"].row>.column, .ui[class*="equal width"].grid>.column:not(.row), .ui[class
     margin-right: auto!important;
 }
 .login-box {
-	  width:300px;
+	  width:100px;
 	  margin-left: auto!
 	  margin-right: auto!
 	   border-radius: 20px;
