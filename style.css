@@ -133,7 +133,7 @@ h1:first-child, h2:first-child, h3:first-child, h4:first-child, h5:first-child {
     padding: 1.8em;
     background: #686767;
     border-radius: 20px;
-    box-shadow: 0px 20px 20px #0000001a;
+    box-shadow: 0px 10px 10px #0000001a;
 }
 .stripe .announcement-box {
     background: #fff;
@@ -660,6 +660,11 @@ width"].row>.column, .ui[class*="equal width"].grid>.column:not(.row), .ui[class
     margin-right: auto!important;
 }
 
-
-
+.abc-box{
+	width: 300px;
+    height: 100px;
+    background: #fff
+	margin-top: 5px;
+    margin-right: 20px;
+}
 
