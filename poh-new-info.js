@@ -1,5 +1,5 @@
 // CONSTANTS
-var contractAddress = '0x2DD64FFCe50eF032e36Fd77Fe46331a96548Ef34'
+var contractAddress = '0xbbf289d846208c16edc8474705c748aff07732db'
 
 var donationAddress = '0x792b20766db701de9e26c53459e03cc7f150d0d1'
 
