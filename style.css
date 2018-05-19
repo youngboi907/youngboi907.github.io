@@ -404,7 +404,7 @@ button, input {
 }
 .ui.primary.button {
     color: #fff;
-    background: #004812 none;
+    background: #2b876e none;
 }
 #buy-tokens {
     width: 100%;
@@ -660,11 +660,5 @@ width"].row>.column, .ui[class*="equal width"].grid>.column:not(.row), .ui[class
     margin-right: auto!important;
 }
 
-.abc-box{
-	width: 300px;
-    height: 100px;
-    background: #fff
-	margin-top: 5px;
-    margin-right: 20px;
-}
+
 
