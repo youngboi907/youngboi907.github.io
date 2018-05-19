@@ -16,7 +16,7 @@ body{
 	font-family: 'Raleway',Helvetica,Arial,Lucida,sans-serif;
 }
 #metamask_error{
-	position: fixed;
+	/*position: fixed;*/
     top: 0;
     left: 0;
     width: 100%;
@@ -25,6 +25,15 @@ body{
 .metamask_error_inner,
 #metamask_error .top-alert{
     padding: 5px 15px;
+}
+#page-container{
+	position: relative;
+}
+#main-header{
+	position: absolute !important;	
+}
+#main-header.sticky-header{
+	position: fixed !important;	
 }
 body.home #page-container{
 	padding-top: 0 !important;
@@ -44,6 +53,11 @@ body.home #main-header.et-fixed-header{
 	text-transform: uppercase;
 	letter-spacing: 1px;	
 	color: #323232;
+}
+.et_pb_slides .et_pb_slider_container_inner {
+    display: table-cell;
+    width: 100%;
+    vertical-align: top;
 }
 body.home #top-menu-nav > ul > li > a{
 	color: #fff;
@@ -73,12 +87,59 @@ body.home .mobile_menu_bar:before{
 .et_mobile_menu{
 	border-top-color: #e6ae49;
 }
+.fixed-icons-wrap{
+    position: fixed;
+    top: 100px;
+    left: -400px;
+    transition: all 0.3s ease;
+    z-index: 99999;
+}
+.fixed-icons-wrap.open{
+	left: 10px;
+}
+.fixed-icons-wrap ul{
+    background-color: #004A1D;
+    width: 87px;
+    float: right;
+    border-radius: 10px;
+    color: #ffffff;
+    text-align: center;
+}
+.fixed-icons-wrap ul li{
+    padding: 10px 5px;
+}
+.fixed-icons-wrap ul li + li{
+    border-top: 1px solid rgba(255,255,255,0.5);
+}
+.fixed-icons-wrap img{
+    height: 35px;
+    margin: 0 auto 5px;
+}
+.fixed-icons-wrap span{
+	display: block;
+}
+.fixed-icons-wrap a{
+    color: #ffffff;
+    font-size: 14px;
+	line-height: 1.2em;
+}
+.fixed-icons-wrap .contactModal{
+	float: left;
+	background-color: #ffffff;
+	padding: 20px 30px 30px;
+	width: 400px;
+	max-height: 500px;
+	overflow-y: auto;
+	margin-right: 10px;
+	box-shadow: 0 5px 15px rgba(0, 0, 0, .5);
+}
 .home-slider h1{
     line-height: 40px;
     letter-spacing: 2px;
     font-size: 43px;
 	text-transform: uppercase;
 	font-weight: 600;
+	color: #fff;
 }
 .home-slider h2{
 	line-height: 37px;
@@ -176,6 +237,25 @@ body.home .mobile_menu_bar:before{
 #quoteDisplay, #eth-address{
 	word-break: break-word;
 }
+.ind-instructions-wrap{
+	position: relative;
+}
+/*.ind-instructions-wrap:before,
+.ind-instructions-wrap:after{
+	background-image: url('https://gandhiji.io/wp-content/uploads/2018/05/Decorative_Indian_Elephant_Transparent_Clip_Art_Image_Hanslodge_Cliparts.png');
+	background-size: cover;
+	width: 265px;
+	height: 305px;
+	position: absolute;
+	top: calc(50% - 150px);
+	content: '';
+}
+.ind-instructions-wrap:before{
+	right: calc(100% + 30px);
+}
+.ind-instructions-wrap:after{
+	left: calc(100% + 30px);
+}*/
 @media(min-width: 981px) and (max-width: 1399px){
 	.ind-sidebar-footer h4{
 		float: none;
@@ -218,6 +298,9 @@ body.home .mobile_menu_bar:before{
 	}
 }
 @media (max-width: 767px){
+	.fixed-icons-wrap{
+		display: none;
+	}
 	.home-slider h1 {
     	line-height: 20px;
     	font-size: 16px;
@@ -239,13 +322,30 @@ body.home .mobile_menu_bar:before{
     	color: #ffffff !important;
 	}
 }
+@media (min-width: 981px)
+{
+.et_pb_gutters3.et_pb_footer_columns2 .footer-widget {
+    width: 29%;
+}
+}
+.footer-widget .et_pb_widget {
+    float: none;
+}
+#main-footer .footer-widget h4{
+	margin-bottom: 5px;
+	padding-bottom: 0;
+}
 #footer-bottom {
-    padding: 75px 0 55px;
+    /*padding: 75px 0 55px;*/
+	padding: 0;
 }
 #footer-info{
-	float: none;
+	float: right;
 	text-align: center;
 }
 #footer-info a {
     color: #323232;
+}
+.et-social-icons {
+    float: left;
 }
