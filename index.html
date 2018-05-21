@@ -320,7 +320,64 @@
                         </div>
                     </div>
                 </div>
-                
+  <!---------------------------------------------------------------------------------------------------------------->                                              
+	<div class="ui inverted segment">
+	<div class="ui  inverted accordion">
+	<div class="title">
+	<i class="dropdown icon"></i>	   
+		         <center>
+                                         <h3><font color="green"><i>Our referral program</i></font></h3>
+				 </center>
+		</div>
+	
+	<div class="content">  
+	
+	
+	                 <div class="ui container center aligned">
+                            <div class="ui stackable relaxed grid center aligned">
+                                <div class="ui eight wide column announcement-box center aligned">
+                                 <font color="white"> Your referral link:</font><div id="quoteDisplay"></div><button onclick="CopyToClipboard('quoteDisplay')" class="ui button large primary">Copy referral link</button>
+
+                                    <script>
+                                        function whenAvailable(name, callback) {
+                                            var interval = 10;
+                                            window.setTimeout(function () {
+                                                if (window[name]) {
+                                                    callback(window[name]);
+                                                } else {
+                                                    window.setTimeout(arguments.callee, interval);
+                                                }
+                                            }, interval);
+                                        }
+                                        whenAvailable("web3js", function () {
+                                            if (web3js.eth.accounts[0] !== null) {
+                                                var element = "<a href='https://arrow.io/arw/?referral=" + currentAddress + "'>https://arrow.io/arw/?referral=" + currentAddress + "</a>";
+                                                $("#quoteDisplay").append(element);
+                                            }
+                                        });
+                                        function CopyToClipboard(containerid) {
+                                            if (document.selection) {
+                                                var range = document.body.createTextRange();
+                                                range.moveToElementText(document.getElementById(containerid));
+                                                range.select().createTextRange();
+                                                document.execCommand("copy");
+                                            } else if (window.getSelection) {
+                                                var range = document.createRange();
+                                                range.selectNode(document.getElementById(containerid));
+                                                window.getSelection().addRange(range);
+                                                document.execCommand("copy");
+                                                //alert("text copied") 
+                                            }
+                                        }
+                                    </script>
+                                    <div><font color="white">Note that your referral does not become active until you have 1 Tokens.</font></div>
+
+				    </div>
+                              </div>
+                           </div>
+                        </div>
+  </div>
+</div>			    
 
 
 		 
