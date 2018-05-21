@@ -21,22 +21,35 @@
     
 </head>
 <body>
-	<div class="ui left demo vertical inverted sidebar labeled icon menu">
-  <a class="item">
-    Home
-  </a>
-  <a class="item">
-    Topics
-  </a>
-  <a class="item">
-    Friends
-  </a>
-</div>
-  <div class="pusher">	
+	<div class="ui sidebar inverted vertical menu">
+    <a class="item">
+      Home
+    </a>
+    <a class="item">
+      Contract
+    </a>
+    <a class="item">
+      About
+    </a>
+  </div>
 	
-	<script>										 
-        $('.ui.labeled.icon.sidebar').sidebar('toggle');
-        </script>
+	<div class="ui basic icon menu">
+	<div id="toggle" class="item">
+	<i class="sidebar icon"></i>	
+		Menu
+   </div>
+   </div>
+  <div class="pusher">	
+	  
+	  
+	
+	  
+	  
+	     <script>
+	      $('#toggle').click (function(){}	     
+              $('.ui.sidebar') .sidebar('toggle');
+		     });
+              </script>
 	
 	
 	
