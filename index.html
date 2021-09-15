@@ -1,0 +1,1364 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <!--Bookmark Icon-->
+        <link rel="apple-touch-icon" sizes="180x180" href="webassets/icon/apple-touch-icon.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="webassets/icon/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="webassets/icon/favicon-16x16.png">
+        <link rel="manifest" href="webassets/icon/site.webmanifest">
+        <link rel="mask-icon" href="webassets/icon/safari-pinned-tab.svg" color="#5bbad5">
+        <meta name="msapplication-TileColor" content="#da532c">
+        <meta name="theme-color" content="#ffffff">
+
+        <meta charset="utf-8">
+        <title>_checkonchain</title>
+        <!-- Bootstrap core CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">     
+    
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro&display=swap" rel="stylesheet">
+        <link rel="stylesheet" type="text/css" href="webassets/css/custom.css">
+
+        <!-- Website Analytics -->
+        <script type='text/javascript'>
+          //some default pre init
+          var Countly = Countly || {};
+          Countly.q = Countly.q || [];
+          
+          //provide countly initialization parameters
+          Countly.app_key = '30332facb3e31918d28b4a70d6f21296e5dd8e8c';
+          Countly.url = 'https://analytics.withdecred.org';
+          
+          Countly.q.push(['track_sessions']);
+          Countly.q.push(['track_pageview']);
+          Countly.q.push(['track_clicks']);
+          
+          //load countly script asynchronously
+          (function() {
+             var cly = document.createElement('script'); cly.type = 'text/javascript';
+             cly.async = true;
+             //enter url of script here
+             cly.src = 'https://cdn.jsdelivr.net/npm/countly-sdk-web@latest/lib/countly.min.js';
+             cly.onload = function(){Countly.init()};
+             var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(cly, s);
+          })();
+          </script>
+
+          <!-- Social Sharing Image/Details -->
+          <script 
+          type="application/ld+json"> 
+          { "@context": "https://schema.org", "@type": "Organization", "name": "_checkonchain On-Chain Analysis", "alternateName": "Bitcoin, Decred, and Monero On-Chain Analysis Suite", "url": "https://checkonchain.com", "logo": "https://checkonchain.com/webassets/images/social_img.png", "sameAs": "https://twitter.com/_Checkmatey_" } 
+          </script>
+
+          <meta name="twitter:card" content="summary_large_image">
+          <meta name="twitter:site" content="@_Checkmatey_">
+          <meta name="twitter:description" content="An on-chain charting suite for Bitcoin and Decred.">
+          <meta name="twitter:title" content="_checkonchain On-Chain Analysis Suite">
+          <meta name="twitter:image" content="https://checkonchain.com/webassets/images/social_img.png">
+
+          <meta property="og:title" content="_checkonchain">
+          <meta property="og:site_name" content="_checkonchain On-Chain Analysis Suite">
+          <meta property="og:url" content="https://checkonchain.com">
+          <meta property="og:description" content="An on-chain charting suite for Bitcoin and Decred.">
+          <meta property="og:type" content="website">
+          <meta property="og:image" content="https://checkonchain.com/webassets/images/social_img.png">
+
+    </head>
+    <body>
+      <!-- Website Analytics -->
+      <noscript><img src='https://analytics.withdecred.org/pixel.png?app_key=30332facb3e31918d28b4a70d6f21296e5dd8e8c&begin_session=1'/></noscript>
+      
+      <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+        <a class="navbar-brand" href="index.html">
+          <img src="webassets/images/checkonchain.png" width="30" height="30" class="d-inline-block align-top" alt="">
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+      
+           <div class="collapse navbar-collapse" id="navbarMenu">
+            <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">BTC: Magic</a>
+                    <div class="dropdown-menu" aria-labelledby="dropdown01">
+                      <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/mayermultiple_pricing_usd/mayermultiple_pricing_usd_light.html">Mayer Multiple</a>
+                      <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/magiclinesrecent_pricing_usd/magiclinesrecent_pricing_usd_light.html">Magic Lines (Recent)</a>
+                      <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/magiclinesfull_pricing_usd/magiclinesfull_pricing_usd_light.html">Magic Lines (Full History)</a>
+                      <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/investortool_pricing_usd/investortool_pricing_usd_light.html">Investor Tool</a>
+                      <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/histogram_probability/histogram_probability_light.html">Probability Histograms</a>
+                      <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/s2fmodel_valuation_usd/s2fmodel_valuation_usd_light.html">S2F Models (Valuation)</a>
+                      <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/s2fmodel_pricing_usd/s2fmodel_pricing_usd_light.html">S2F Models (Pricing)</a>
+                      <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/drawdownmodel_pricing_usd/drawdownmodel_pricing_usd_light.html">Price Drawdown Model</a>
+                      <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/monthlyreturns_pricing_usd/monthlyreturns_pricing_usd_light.html">Monthly Returns</a>
+                      <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/quarterlyretrace_pricing_usd/quarterlyretrace_pricing_usd_light.html">Quarterly Retracement</a>
+                    </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">BTC: Realised</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/mvrv_valuation_usd/mvrv_valuation_usd_light.html">MVRV Ratio (Valuation)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/mvrv_pricing_usd/mvrv_pricing_usd_light.html">MVRV Ratio (Pricing)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/unrealisedpnl_pricing_usd/unrealisedpnl_pricing_usd_light.html">Unrealised PnL</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/mrktrealgrad14day_oscillator_usd/mrktrealgrad14day_oscillator_usd_light.html">Market Gradient Oscillator (14-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/mrktrealgrad28day_oscillator_usd/mrktrealgrad28day_oscillator_usd_light.html">Market Gradient Oscillator (28-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/mrktrealgrad140day_oscillator_usd/mrktrealgrad140day_oscillator_usd_light.html">Market Gradient Oscillator (140-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/reserverisk_pricing_usd/reserverisk_pricing_usd_light.html">Reserve Risk</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/livelinessbinary_pricing_usd/livelinessbinary_pricing_usd_light.html">Binary Liveliness</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/realizedprofit1_pricing_usd/realizedprofit1_pricing_usd_light.html">Realised Profit (1-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/realizedprofit30_pricing_usd/realizedprofit30_pricing_usd_light.html">Realised Profit (30-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/realizedprofit90_pricing_usd/realizedprofit90_pricing_usd_light.html">Realised Profit (90-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/histogram_urpd_usd/histogram_urpd_usd_light.html">Realised Volume Profile (USD)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/histogram_urpd_btc/histogram_urpd_btc_light.html">Realised Volume Profile (BTC)</a>
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">BTC: Mining</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/diffribbon_valuation_usd/diffribbon_valuation_usd_light.html">Difficulty Ribbon (Valuation)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/diffribbon_pricing_usd/diffribbon_pricing_usd_light.html">Difficulty Ribbon (Pricing)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/blocksubsidy_valuation_usd/blocksubsidy_valuation_usd_light.html">Block Subsidy Model (Valuation)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/blocksubsidy_pricing_usd/blocksubsidy_pricing_usd_light.html">Block Subsidy Model (Pricing)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/puellmultiple_oscillator_usd/puellmultiple_oscillator_usd_light.html">Puell Multiple</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/miningpulse_oscillator_usd/miningpulse_oscillator_usd_light.html">Mining Pulse</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/minerbalance_pricing_usd/minerbalance_pricing_usd_light.html">Miner Balances</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/minerflows_pricing_usd/minerflows_pricing_usd_light.html">Miner Flows</a>
+
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">BTC: Performance</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/nvtrvt_pricing_usd/nvtrvt_pricing_usd_light.html">NVT + RVT Ratio</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/nvtrvtffadj_pricing_usd/nvtrvtffadj_pricing_usd_light.html">NVT + RVT Free Float Adj.</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/valueperbyte_performance_usd/valueperbyte_performance_usd_light.html">Value Stored per byte</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/metcalfemodel_valuation_usd/metcalfemodel_valuation_usd_light.html">Metcalfe Models (Valuation)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/metcalefmodel_pricing_usd/metcalefmodel_pricing_usd_light.html">Metcalfe Models (Pricing)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/histogram_spentutxoage/histogram_spentutxoage_light.html">Spent Output Age Probabilities</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/performance_txvol/performance_txvol_light.html">Transaction Volumes</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/performance_txcount_pricing_usd/performance_txcount_pricing_usd_light.html">Transaction Counts</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/performance_actaddress_pricing_usd/performance_actaddress_pricing_usd_light.html">Active Addresses</a>
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">BTC: Supply</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/supplycurves_pricing_usd/supplycurves_pricing_usd_light.html">Supply Dynamics</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/youngoldcoins_pricing_usd/youngoldcoins_pricing_usd_light.html">Old and Young Coins</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/coinmaturation30SMA_pricing_usd/coinmaturation30SMA_pricing_usd_light.html">Coin Maturation (30-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/coinmaturation60SMA_pricing_usd/coinmaturation60SMA_pricing_usd_light.html">Coin Maturation (60-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/hodlwaves0_pricing_usd/hodlwaves0_pricing_usd_light.html">HODL Waves (Supply)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/hodlwaves1_pricing_usd/hodlwaves1_pricing_usd_light.html">HODL Waves (%)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/supplywaves0_pricing_usd/supplywaves0_pricing_usd_light.html">Address Waves (Supply)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/supplywaves1_pricing_usd/supplywaves1_pricing_usd_light.html">Address Waves (%)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/walletwaves0_pricing_usd/walletwaves0_pricing_usd_light.html">Wallet Waves (Supply)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/walletwaves1_pricing_usd/walletwaves1_pricing_usd_light.html">Wallet Waves (%)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/exchangeflows_pricing_usd/exchangeflows_pricing_usd_light.html">Exchange Flows</a>
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">BTC: Cycles</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/cycle_btm/cycle_btm_light.html">Growth since Bottom</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/cycle_top/cycle_top_light.html">Growth since Top</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/cycle_halving/cycle_halving_light.html">Growth since Halving</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/cycle_bullbearsats/cycle_bullbearsats_light.html">Golden Cross + Sats/$</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="btconchain/feargreed_pricing_usd/feargreed_pricing_usd_light.html">Fear and Greed Index</a>
+                  </div>
+                </li>
+
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">DCR: Fair-Value</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/mayermultiple_pricing_usd/mayermultiple_pricing_usd_light.html">Mayer Multiple</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/s2fmodel_valuation_usd/s2fmodel_valuation_usd_light.html">S2F Model (Valuation)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/s2fmodel_pricing_usd/s2fmodel_pricing_usd_light.html">S2F Model (Pricing)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/s2fresiduals_oscillator_usd/s2fresiduals_oscillator_usd_light.html">S2F Residuals Oscillator</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/histogram_probability_oscillators/histogram_probability_oscillators_light.html">Probability Histograms (Oscillators)</a>
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">DCR: Block Subsidy</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/blocksubsidy_valuation_usd/blocksubsidy_valuation_usd_light.html">USD Block Subsidy (Valuation)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/blocksubsidy_pricing_usd/blocksubsidy_pricing_usd_light.html">USD Block Subsidy (Pricing)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/blocksubsidy_valuation_btc/blocksubsidy_valuation_btc_light.html">BTC Block Subsidy (Valuation)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/blocksubsidy_pricing_btc/blocksubsidy_pricing_btc_light.html">BTC Block Subsidy (Pricing)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/commitments_valuation_usd/commitments_valuation_usd_light.html">USD Stakeholder Commitments (Valuation)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/commitments_valuation_usd/commitments_valuation_usd_light.html">USD Stakeholder Commitments (Pricing)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/commitments_valuation_usd/commitments_valuation_usd_light.html">BTC Stakeholder Commitments (Valuation)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/commitments_valuation_usd/commitments_valuation_usd_light.html">BTC Stakeholder Commitments (Pricing)</a>
+
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/stakevpvr_pricing_usd/stakevpvr_pricing_usd_light.html">Stake VPVR (USD)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/stakevpvr_pricing_btc/stakevpvr_pricing_btc_light.html">Stake VPVR (BTC)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/miningvpvr_pricing_usd/miningvpvr_pricing_usd_light.html">Mining VPVR (USD)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/miningvpvr_pricing_btc/miningvpvr_pricing_btc_light.html">Mining VPVR (BTC)</a>
+
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">DCR: Realised</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/mvrv_valuation_usd/mvrv_valuation_usd_light.html">USD Realised Valuation</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/mvrv_pricing_usd/mvrv_pricing_usd_light.html">USD Realised Price</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/mvrv_valuation_btc/mvrv_valuation_btc_light.html">BTC Realised Valuation</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/mvrv_pricing_btc/mvrv_pricing_btc_light.html">BTC Realised Price</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/unrealisedpnl_oscillator_usd/unrealisedpnl_oscillator_usd_light.html">Unrealised PnL</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/mrktrealgrad28day_oscillator_usd/mrktrealgrad28day_oscillator_usd_light.html">Market Gradient Oscillator (28-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/mrktrealgrad142day_oscillator_usd/mrktrealgrad142day_oscillator_usd_light.html">Market Gradient Oscillator (142-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/realizedprofit_pricing_usd/realizedprofit_pricing_usd_light.html">Realised Profit (1-day)</a>
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">DCR: Mining</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/diffribbon_valuation_usd/diffribbon_valuation_usd_light.html">Difficulty Ribbon (Valuation)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/diffribbon_pricing_usd/diffribbon_pricing_usd_light.html">Difficulty Ribbon (Pricing)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/puellmultiple_oscillator_usd/puellmultiple_oscillator_usd_light.html">Puell Multiple</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/miningpulse_oscillator_usd/miningpulse_oscillator_usd_light.html">Mining Pulse</a>
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">DCR: Tickets</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/142dayticsum_pricing_usd/142dayticsum_pricing_usd_light.html">142-day Ticket Sum</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/ticfundrate28day_oscillator_usd/ticfundrate28day_oscillator_usd_light.html">Ticket Funding Rate (28-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/ticfundrate56day_oscillator_usd/ticfundrate56day_oscillator_usd_light.html">Ticket Funding Rate (56-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/ticfundrate142day_oscillator_usd/ticfundrate142day_oscillator_usd_light.html">Ticket Funding Rate (142-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/tvwap_valuation_usd/tvwap_valuation_usd_light.html">TVWAP (Valuation)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/tvwap_pricing_usd/tvwap_pricing_usd_light.html">TVWAP (Pricing)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/hodlerconversion_oscillator_usd/hodlerconversion_oscillator_usd_light.html">Hodler Conversion Rate</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/stronghand28_oscillator_usd/stronghand28_oscillator_usd_light.html">Strongest Hand (28-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/stronghand56_oscillator_usd/stronghand56_oscillator_usd_light.html">Strongest Hand (56-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/stronghand142_oscillator_usd/stronghand142_oscillator_usd_light.html">Strongest Hand (142-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/histogram_probability_oscillators/histogram_probability_oscillators_light.html">Probability Histograms (TVWAP)</a>
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">DCR: Performance</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/performance_txvol/performance_txvol_light.html">Onchain Transfer Volume</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/txsumadjsply_oscillator_usd/txsumadjsply_oscillator_usd_light.html">Coins Moved Adjusted for Supply</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/nvtrvt_oscillator_usd/nvtrvt_oscillator_usd_light.html">NVT and RVT Ratio</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/performance_ticketvol/performance_ticketvol_light.html">Ticket Volumes</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/performance_privacyvol/performance_privacyvol_light.html">StakeShuffle++ Volumes</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/performance_dcrdexvol/performance_dcrdexvol_light.html">DCRDEX Volumes</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/valueperbyte_performance_usd/valueperbyte_performance_usd_light.html">Value Stored per byte</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/stakingroi_performance_dcr/stakingroi_performance_dcr_light.html">Staking ROI (DCR)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/stakingroi_performance_usd/stakingroi_performance_usd_light.html">Staking ROI (USD)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/supplydilution_performance/supplydilution_performance_light.html">Supply Dilution</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/hodlwaves_pricing_usd/hodlwaves_pricing_usd_light.html">HODL Waves</a>
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">DCR: Supply</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/supplydilution_performance/supplydilution_performance_light.html">Supply Dilution</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/supplycurves_pricing_usd/supplycurves_pricing_usd_light.html">Supply Dynamics</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/hodlwaves0_pricing_usd/hodlwaves0_pricing_usd_light.html">HODL Waves (Supply)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/hodlwaves1_pricing_usd/hodlwaves1_pricing_usd_light.html">HODL Waves (%)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/supplywaves0_pricing_usd/supplywaves0_pricing_usd_light.html">Address Waves (Supply)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/supplywaves1_pricing_usd/supplywaves1_pricing_usd_light.html">Address Waves (%)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/walletwaves0_pricing_usd/walletwaves0_pricing_usd_light.html">Wallet Waves (Supply)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/walletwaves1_pricing_usd/walletwaves1_pricing_usd_light.html">Wallet Waves (%)</a>
+
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">DCR: Treasury</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/treasuryio_performance/treasuryio_performance_light.html">Treasury Balances (DCR)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/treasuryvotepower_performance/treasuryvotepower_performance_light.html">Vote Governance Power</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/treasurysingplepay_pricing_usd/treasurysingplepay_pricing_usd_light.html">Treasury Inflow/Outflow</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/treasuryflow30_pricing_btc/treasuryflow30_pricing_btc_light.html">Treasury Net-Flow (30-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/treasuryflow90_pricing_btc/treasuryflow90_pricing_btc_light.html">Treasury Net-Flow (30-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/treasuryroi_pricing_usd/treasuryroi_pricing_usd_light.html">Treasury ROI</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="dcronchain/treasuryrunway_pricing_usd/treasuryrunway_pricing_usd_light.html">Treasury Run-way</a>
+                  </div>
+                </li>
+
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="dropdown02" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Stablecoins</a>
+                  <div class="dropdown-menu" aria-labelledby="dropdown02">
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/reservecap_pricing_usd/reservecap_pricing_usd_light.html">Stablecoin Cap</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/buyingpower_pricing_usd/buyingpower_pricing_usd_light.html">Buying Power</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/adjnvtsignal_pricing_usd/adjnvtsignal_pricing_usd_light.html">Adjusted NVT Signal</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/changeratio30_pricing_usd/changeratio30_pricing_usd_light.html">Change Ratio (30-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/flowbalance14_pricing_usd/flowbalance14_pricing_usd_light.html">Flow Balance (14-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/stableprintflow30_pricing_usd/stableprintflow30_pricing_usd_light.html">Flow Ratio (30-day)</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/stableaddress_pricing_usd/stableaddress_pricing_usd_light.html">Stablecoin Addresses</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/stableprintvpvr_pricing_usd/stableprintvpvr_pricing_usd_light.html">Stablecoin Print VPVR</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/stableflowvpvr_pricing_usd/stableflowvpvr_pricing_usd_light.html">Stablecoin Flows VPVR</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/stablerollingprint180_pricing_usd/stablerollingprint180_pricing_usd_light.html">Stable Print 180-Day VPVR</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/stablerollingvpvr180_pricing_usd/stablerollingvpvr180_pricing_usd_light.html">Stable Flows 180-Day VPVR</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="stableonchain/reserverollingvpvr180_pricing_usd/reserverollingvpvr180_pricing_usd_light.html">Reserve Flows 180-Day VPVR</a>
+                    <a class="dropdown-item" rel="noopener" target="_blank" href="ethonchain/defideflation_stack1/defideflation_stack1_light.html">DeFi Deflation</a>
+                  </div>
+                </li>
+
+            </ul>
+        </div>
+          </nav>
+          <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+          <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+          
+          <div class="jumbotron bg-dark text-white">
+                <div class="container">
+                    <h1 class="display-4"><kbd> _checkonchain </kbd></h1>
+                    <p>This site presents the latest and greatest in on-chain analysis and the sexiest charts on the internet for Bitcoin and Decred. These models are pure signal, open source and provide exactly zero guarantees of accuracy and validity. Use at your own risk. All data sourced from a combination of glassnode.com, coinmetrics.io and dcrdata.
+                      <br>
+                      <br>For more information, please contact @_checkmatey_ or visit https://www.readyset.vision/plans/124470 for the On-chain Jedi Masterclass Series to learn about how each metric is developed, applied and deployed for edge.</p>
+                      <br>
+                    <p>
+                      <a class="btn btn-warning btn-lg" href="https://www.readyset.vision/plans/155816" role="button"> <b>Masterclass: Learn to be an On-chain Analyst!</b> &raquo;</a>
+                      <br><br>
+                      <a class="btn btn-outline-info btn-md" href="#bitcoin" role="button">Bitcoin &raquo;</a>
+                      <a class="btn btn-outline-info btn-md" href="#decred" role="button">Decred &raquo;</a>
+                      <a class="btn btn-outline-info btn-md" href="#monero" role="button">Monero &raquo;</a>
+                      <a class="btn btn-outline-info btn-md" href="#research" role="button">Research &raquo;</a>
+                      <a class="btn btn-outline-info btn-md" href="https://roughconsensus.libsyn.com/" role="button">Rough Consensus Podcast &raquo;</a>
+                      <a class="btn btn-outline-warning btn-md" href="https://craigwrightisnotsatoshi.com/bitcoin.pdf" role="button">Bitcoin Whitepaper &raquo;</a>
+                    </p>
+                    <hr>
+                    If you find this site, research and analysis valuable, you could buy this random dude on the internet a beer.
+                    <br><b>BTC:</b> bc1qmkkz9sfgr4fv6t0gcva3ktnpg7n0qz9ev0zye2  
+                    <br><b>DCR:</b> Dsche1LrLYEq8w268d39empNanEBet61zBD
+                    <br><b>XMR:</b> 48ogSz5LicNZhq6p1FBaMMHaTE1rPmi78TerD6PwBWfMJxCn2Aaxn4aRMDUBAxN8A9bQA491ibx6hUZVCr6jdUQX4BUifDE
+                    <br>
+                    <a class="btn btn-outline-light btn-sm" href="https://twitter.com/_Checkmatey_" role="button">Twitter &raquo;</a>
+                    <a class="btn btn-outline-light btn-sm" href="https://medium.com/@_Checkmatey_" role="button">Medium &raquo;</a>
+                    <a class="btn btn-outline-light btn-sm" href="https://github.com/checkmatey?tab=repositories" role="button">Github &raquo;</a>
+                </div>
+            </div>
+            <a name="bitcoin"></a>
+            <br>
+            <br>
+            <br>
+            <div class="container">
+              <h1 name="bitcoin" class="display-6"><img src="webassets/images/btc.png" class="img-rounded" alt="Bitcoin" width="42" height="42"><b>  Bitcoin Metrics</b></h1>            
+              <hr style="height:2px;border:none;color:#333;background-color:#333;" />
+
+                <br>
+                <h2 class="display-6"><b>Magic Lines</b></h2>
+                <span class="badge badge-warning">Simple but powerful pricing models for the Corn! Don't underestimate them.</span>
+                <hr>
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Mayer Multiple</h3>
+                      <p>Pricing model and oscillator derived from the 200-DMA</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/mayermultiple_pricing_usd/mayermultiple_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                      <h3>Magic Lines<br>(Recent)</h3>
+                      <p>Bitcoin's magic lines: 128D, 200D, 128W and 200W</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/magiclinesrecent_pricing_usd/magiclinesrecent_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                      <h3>Magic Lines<br>(Full History)</h3>
+                      <p>Bitcoin's magic lines: 128D, 200D, 128W and 200W</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/magiclinesfull_pricing_usd/magiclinesfull_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Stock-to-Flow Models (Valuation)</h3>
+                    <p>Comparison between @100TrillionUSD and Checkmate's S2F Models. PlanB's is taken from the original paper, Checkmate calculates log-log regression to Market Cap on every daily closing price.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/s2fmodel_valuation_usd/s2fmodel_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Stock-to-Flow Models (Pricing)</h3>
+                    <p>As per S2F Valuation model adjusted to present as coin price.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/s2fmodel_pricing_usd/s2fmodel_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Investor Tool</h3>
+                    <p>Picking tops and bottoms using the long term 2yr Moving Average after @PositiveCrypto. Chart is supplemented with high conviction bottom/accumulation 128W and 200W moving averages.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/investortool_pricing_usd/investortool_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Price Drawdown Models</h3>
+                    <p>Forward Looking Targets of the market top assuming current ATH is the bear market floor</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/drawdownmodel_pricing_usd/drawdownmodel_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Monthly Returns</h3>
+                    <p>Oscillator presenting 30-day returns for Bitcoin as a measure of overheated or undervalued</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/monthlyreturns_pricing_usd/monthlyreturns_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>                <div class="col-md-4">
+                  <h3>Quarterly Retrace</h3>
+                    <p>Rolling Quarterly 50% Retracement (USD) for simple short-term bull / bear signal</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/quarterlyretrace_pricing_usd/quarterlyretrace_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+
+
+                </div>
+                <br>
+                <br>
+                <br>
+                <h2 class="display-6"><b>Realised Value</b></h2>
+                <span class="badge badge-warning">Tracking aggregate market cost basis, profit + loss.</span>
+                <hr>
+                <div class="row">
+                    <div class="col-md-4">
+                        <h3>Realised Cap + MVRV<br>(Valuation)</h3>
+                        <p>Total value stored in Bitcoin</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/mvrv_valuation_usd/mvrv_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                    </div>
+                    <div class="col-md-4">
+                      <h3>Realised Price + MVRV<br>(Pricing)</h3>
+                      <p>Aggregate break-even pricing model</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/mvrv_pricing_usd/mvrv_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                    </div>
+                    <div class="col-md-4">
+                      <h3>Unrealised Profit & Loss</h3>
+                      <p>Oscillator for net aggregate PnL</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/unrealisedpnl_pricing_usd/unrealisedpnl_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                      <h3>Market-Realised Gradient Oscillator (14-day)</h3>
+                      <p>Momentum oscillator for swing trades</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/mrktrealgrad14day_oscillator_usd/mrktrealgrad14day_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                    </div>
+                    <div class="col-md-4">
+                      <h3>Market-Realised Gradient Oscillator (28-day)</h3>
+                      <p>Momentum oscillator for mid-term swing trades</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/mrktrealgrad28day_oscillator_usd/mrktrealgrad28day_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                    </div>
+                    <div class="col-md-4">
+                      <h3>Market-Realised Gradient Oscillator (140-day)</h3>
+                      <p>Momentum oscillator for long term trades</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/mrktrealgrad140day_oscillator_usd/mrktrealgrad140day_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Realised Profits (Daily)</h3>
+                    <p>Calculate profits realised as a % of current market cap daily</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/realizedprofit1_pricing_usd/realizedprofit1_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Realised Profits (Monthly)</h3>
+                    <p>Calculate profits realised over as a % of current market cap Monthly</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/realizedprofit30_pricing_usd/realizedprofit30_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Realised Profits (Quarterly)</h3>
+                    <p>Calculate profits realised as a % of current market cap Quarterly</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/realizedprofit90_pricing_usd/realizedprofit90_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+              </div>
+
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Spent Output Age Histogram</h3>
+                    <p>Probability of spent output age brackets based on historical occurence</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/histogram_spentutxoage/histogram_spentutxoage_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Probability Histograms</h3>
+                    <p>Probability based on historical occurence</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/histogram_probability/histogram_probability_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+              </div>
+              <div class="row">
+                <div class="col-md-4">
+                  <h3>Realised Volume Profile (USD)</h3>
+                  <p>On-chain volume profile presented in USD denomination.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/histogram_urpd_usd/histogram_urpd_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Realised Volume Profile (BTC)</h3>
+                  <p>On-chain volume profile presented in BTC denomination.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/histogram_urpd_btc/histogram_urpd_btc_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+            </div>
+                <br>
+                <br>
+                <br>
+                <h2 class="display-6"><b>Mining Metrics + Supply Stress</b></h2>
+                <span class="badge badge-warning">Tracking opportunities in miner stress, income and block-times</span>
+
+                <hr>
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Difficulty Ribbon<br>(Valuation)</h3>
+                    <p>Fair value estimate and miner supply side stress</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/diffribbon_valuation_usd/diffribbon_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Difficulty Ribbon<br>(Pricing)</h3>
+                    <p>Price levels based on mining metrics</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/diffribbon_pricing_usd/diffribbon_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Puell Multiple</h3>
+                    <p>Mining income stress oscillator</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/puellmultiple_oscillator_usd/puellmultiple_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+              </div>
+              <div class="row">
+                <div class="col-md-4">
+                  <h3>Block Subsidy Model<br>(Valuation)</h3>
+                  <p>Valuing monetary premium</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/blocksubsidy_valuation_usd/blocksubsidy_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Block Subsidy Model<br>(Pricing)</h3>
+                  <p>Pricing monetary premium</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/blocksubsidy_pricing_usd/blocksubsidy_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Mining Pulse</h3>
+                  <p>Mining block-time stress oscillator</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/miningpulse_oscillator_usd/miningpulse_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Hash-Rate</h3>
+                  <p>Proof-of-Work Mining Hash-rate.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/performance_hashrate_pricing_usd/performance_hashrate_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Miner Balances</h3>
+                  <p>Miner supply held within 0 or 1 Hop from the coinbase transaction.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/minerbalance_pricing_usd/minerbalance_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Miner Net Flows</h3>
+                  <p>Miner change in net balance compared to rolling 14-day median.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/minerflows_pricing_usd/minerflows_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+            </div>
+            <br>
+            <br>
+            <br>
+            <h2 class="display-6"><b>Performance Metrics</b></h2>
+            <span class="badge badge-warning">Tracking perfrormance and settlement metrics for Bitcoin.</span>
+            <hr>
+            <div class="row">
+                <div class="col-md-4">
+                    <h3>NVT + RVT Ratios</h3>
+                    <p>Ratio of valuation to on-chain activity to assess network utilisation.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/nvtrvt_pricing_usd/nvtrvt_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>NVT + RVT Ratios Adjusted for Free Float Supply</h3>
+                  <p>Ratio of valuation to on-chain activity adjusted for free-float supply</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/nvtrvtffadj_pricing_usd/nvtrvtffadj_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Value Stored per byte</h3>
+                  <p>Ratio Market Cap, Realised Cap and Cumulative USD Settled to total Blockchain size. This measures 'value density' of the chain.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/valueperbyte_performance_usd/valueperbyte_performance_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>On-chain Transaction Volumes</h3>
+                  <p>Total On-chain transaction volumes in USD.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/performance_txvol/performance_txvol_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Transaction Counts</h3>
+                  <p>Total On-chain transaction counts.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/performance_txcount_pricing_usd/performance_txcount_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Active Addresses</h3>
+                  <p>Active On-chain Addresses.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/performance_actaddress_pricing_usd/performance_actaddress_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Metcalfe's Law Models<br>(Valuation)</h3>
+                  <p>Log-Log regression models considered for on-chain activity to estimate 'fair value'. Model considers Transaction Counts, Transaction Volume (USD) and Active Addresses.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/metcalfemodel_valuation_usd/metcalfemodel_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Metcalfe's Law Models<br>(Pricing)</h3>
+                  <p>Metcalfe Law models as per Valuation adjusted by supply to present equivalent pricing levels.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/metcalefmodel_pricing_usd/metcalefmodel_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  
+                </div>
+            </div>
+            <br>
+            <br>
+            <br>
+            <h2 class="display-6"><b>Supply Distribution Metrics</b></h2>
+            <span class="badge badge-warning">Analysis related to Bitcoin Supply, Coin Age and Address wealth distributions</span>
+            <hr>
+            <div class="row">
+              <div class="col-md-4">
+                <h3>Coin Maturation (30-day)</h3>
+                <p>30-day Net Position Change metric for the HODL Waves.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/coinmaturation30SMA_pricing_usd/coinmaturation30SMA_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+                <h3>Coin Maturation (60-day)</h3>
+                <p>60-day Net Position Change metric for the HODL Waves.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/coinmaturation60SMA_pricing_usd/coinmaturation60SMA_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+                <h3>Supply Dynamics</h3>
+                <p>Circulating, Free-Float, 1yr Active and Miner Supply.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/supplycurves_pricing_usd/supplycurves_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+                <h3>Old and Young Coin Supply</h3>
+                <p>Mapping out the Old (> 6m) and Young Coin Supply.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/youngoldcoins_pricing_usd/youngoldcoins_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+                <h3>Exchange Flows</h3>
+                <p>Inflows and outflows of BTC out of exchanges (as estimated by Coinmetrics Community Data).</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/exchangeflows_pricing_usd/exchangeflows_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+
+              </div>
+              <div class="col-md-4">
+                <h3>HODL Waves <br>(% of Supply)</h3>
+                <p>Proportion of supply categorised by age since last active.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/hodlwaves1_pricing_usd/hodlwaves1_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+                <h3>Supply Distribution Bands<br>(% of Supply)</h3>
+                <p>Proportion of circulating supply categorised by address holding volume.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/supplywaves1_pricing_usd/supplywaves1_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+                <h3>Address Count Bands<br>(% of Supply)</h3>
+                <p>Proportion of addresses categorised by DCR coin holdings.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/walletwaves1_pricing_usd/walletwaves1_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+
+              <div class="col-md-4">
+                <h3>HODL Waves<br>(Volume)</h3>
+                <p>Coin supply categorised by age since last active.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/hodlwaves0_pricing_usd/hodlwaves0_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+                <h3>Supply Distribution Bands<br>(Volume)</h3>
+                <p>Coin supply categorised by address holding volume.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/supplywaves0_pricing_usd/supplywaves0_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+                <h3>Address Count Bands<br>(Volume)</h3>
+                <p>Total Address count categorised by coin holdings.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/walletwaves0_pricing_usd/walletwaves0_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+            </div>
+            <br>
+            <br>
+            <br>
+            <h2 class="display-6"><b>Cycle Metrics</b></h2>
+            <span class="badge badge-warning">Following the cyclical behaviour of the Bitcoin market.</span>
+            <hr>
+            <div class="row">
+                <div class="col-md-4">
+                    <h3>Cycle since Market Low</h3>
+                    <p>Price performance since the bear market low.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/cycle_btm/cycle_btm_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Cycle since Market Top</h3>
+                  <p>Price performance since the bull market blow-off top.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/cycle_top/cycle_top_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Cycle related to Halvings</h3>
+                  <p>Price relative to the Bitcoin Halving.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/cycle_halving/cycle_halving_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+            </div>
+            <div class="row">
+              <div class="col-md-4">
+                  <h3>Golden Ratio Multipler<br>(Full History)</h3>
+                  <p>Cyclical support and resistance based on Fibbonacci multiples of the 350DMA. Metric originally presented by @PositiveCrypto.</p>
+                  <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/goldenratiofull_pricing_usd/goldenratiofull_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+                <h3>Golden Ratio Multipler<br>(Recent History)</h3>
+                <p>Zoomed in version of the Golden Ratio Multipler by @PositiveCrypto</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/goldenratiorecent_pricing_usd/goldenratiorecent_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+                <h3>Golden Cross Bull-Bear<br>(+ Sats per Dolla!)</h3>
+                <p>Simple cycle metric showing bull-bear bias based on the 50-200-day MA cross. Includes additional salt for fiat maximalists showing mass debasement in sats per dollar.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/cycle_bullbearsats/cycle_bullbearsats_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+              <div class="col-md-4">
+                <h3>Fear and Greed Index</h3>
+                <p>Price relative to the Bitcoin Fear and Greed Index.</p>
+                <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="btconchain/feargreed_pricing_usd/feargreed_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+              </div>
+          </div>
+                <!--
+
+                 -->
+                <a name="decred"></a>
+                <br>
+                <br>
+                <br>
+                <h1 class="display-6"><img src="webassets/images/dcr.png" class="img-rounded" alt="Bitcoin" width="42" height="42"><b> Decred Metrics</b></h1>            
+                <hr style="height:2px;border:none;color:#333;background-color:#333;" />
+                <br>
+                <br>
+                <h2 class="display-6"><b>Fair Value Models</b></h2>
+                <span class="badge badge-info">Estimating a fair value for atoms</span>
+                <hr>
+                <div class="row">
+                  <div class="col-md-4">
+                      <h3>Stock-to-Flow Model<br>(Valuation)</h3>
+                      <p>Stock-to-flow regression model to market cap</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/s2fmodel_valuation_usd/s2fmodel_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                      <h3>Stock-to-Flow Model<br>(Pricing)</h3>
+                      <p>Stock-to-flow regression model to price</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/s2fmodel_pricing_usd/s2fmodel_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                      <h3>Stock-to-flow residual oscillator</h3>
+                      <p>Statistical distance from S2F model mean</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/s2fresiduals_oscillator_usd/s2fresiduals_oscillator_usd_light.html" role="button">View Chart &raquo;</a></p>
+                  </div>
+                </div>
+                <br>
+                <div class="row">
+                  <div class="col-md-4">
+                      <h3>Mayer Multiple</h3>
+                      <p>Oscillator based off the 200-DMA for support and resistance</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/mayermultiple_pricing_usd/mayermultiple_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Probability Histogram<br>(Oscillators)</h3>
+                    <p>Mayer, MVRV, S2F, Puell and 142-day ticket sum</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/histogram_probability_oscillators/histogram_probability_oscillators_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Probability Histogram<br>(TVWAP)</h3>
+                    <p>Ticket weighted volume averaged price</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/histogram_probability_tvwap/histogram_probability_tvwap_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                </div>
+                <br>
+                <br>
+                <br>
+                <h2 class="display-6"><b>Realised Value</b></h2>
+                <span class="badge badge-info">Psychological mean and recency bias for Cred-Heads</span>
+                <hr>
+                <div class="row">
+                  <div class="col-md-4">
+                      <h3>Realised + MVRV Model A<br>(USD, Valuation)</h3>
+                      <p>Decred realised valuation priced in USD</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/mvrv_valuation_usd/mvrv_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                      <h3>Realised + MVRV Model B<br>(USD, Pricing)</h3>
+                      <p>Decred realised price in USD</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/mvrv_pricing_usd/mvrv_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Market-Realised Oscillator<br>(28-day)</h3>
+                    <p>Momentum oscillator for short term trades</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/mrktrealgrad28day_oscillator_usd/mrktrealgrad28day_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                </div>
+                <br>
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Realised + MVRV Model C<br>(BTC, Valuation)</h3>
+                    <p>Decred realised valuation priced in BTC</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/mvrv_valuation_btc/mvrv_valuation_btc_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Realised + MVRV Model D<br>(BTC, Pricing)</h3>
+                    <p>Decred realised priced in BTC</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/mvrv_pricing_btc/mvrv_pricing_btc_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Market-Realised Gradient Oscillator<br>(142-day)</h3>
+                    <p>Momentum oscillator for long term trades</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/mrktrealgrad142day_oscillator_usd/mrktrealgrad142day_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                </div>
+                <br>
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Unrealised Profit & Loss</h3>
+                    <p>Oscillator for net aggregate PnL</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/unrealisedpnl_oscillator_usd/unrealisedpnl_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Realised Profits (Daily)</h3>
+                    <p>Calculate profits realised as a % of current market cap daily</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/realizedprofit_pricing_usd/realizedprofit_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                </div>
+                <br>
+                <br>
+                <br>
+                <h2 class="display-6"><b>Block Subsidy Models</b></h2>
+                <span class="badge badge-info">Aggregate income stress levels for miners, stakers and contractors</span>
+                <hr>
+                <br>
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Block Subsidy Model A<br />(USD, Valuation)</h3>
+                    <p>Cumulative BTC cashflows for seeking supply-side income stress and bottom formation</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/blocksubsidy_valuation_usd/blocksubsidy_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Block Subsidy Model B<br />(USD, Pricing)</h3>
+                    <p>Pricing levels in BTC for cumulative network supply-side cashflows</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/blocksubsidy_pricing_usd/blocksubsidy_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                </div>
+                <br>
+                <br>
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Block Subsidy Model C<br />(BTC, Valuation)</h3>
+                    <p>Cumulative BTC cashflows for seeking supply-side income stress and bottom formation</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/blocksubsidy_valuation_btc/blocksubsidy_valuation_btc_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Block Subsidy Model D<br />(BTC, Pricing)</h3>
+                    <p>Pricing levels in BTC for cumulative network supply-side cashflows</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/blocksubsidy_pricing_btc/blocksubsidy_pricing_btc_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                </div>
+
+                <br>
+                <br>
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Staking VPVR (USD)</h3>
+                    <p>Plotting out proportion of staking rewards earned in various USD price bands.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/stakevpvr_pricing_usd/stakevpvr_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Staking VPVR (BTC)</h3>
+                    <p>Plotting out proportion of staking rewards earned in various BTC price bands.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/stakevpvr_pricing_btc/stakevpvr_pricing_btc_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                </div>
+                <br>
+                <br>
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Mining VPVR (USD)</h3>
+                    <p>Plotting out proportion of mining rewards earned in various USD price bands.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/miningvpvr_pricing_usd/miningvpvr_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Mining VPVR (BTC)</h3>
+                    <p>Plotting out proportion of mining rewards earned in various BTC price bands.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/miningvpvr_pricing_btc/miningvpvr_pricing_btc_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                </div>
+                <br>
+                <br>
+                <br>
+                <h2 class="display-6"><b>Mining Metrics</b></h2>
+                <span class="badge badge-info">Assessing stress in the Decred mining market</span>
+                <hr>
+                <div class="row">
+                  <div class="col-md-4">
+                      <h3>Difficulty Ribbon<br>(Valuation)</h3>
+                      <p>Tracking miner stress and rig expansions</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/diffribbon_valuation_usd/diffribbon_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Difficulty Ribbon<br>(Pricing)</h3>
+                    <p>Tracking miner stress and rig expansions</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/diffribbon_pricing_usd/diffribbon_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                  <div class="col-md-4">
+                      <h3>Puell Multiple</h3>
+                      <p>Assessing miner income against yearly average</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/puellmultiple_oscillator_usd/puellmultiple_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Mining Pulse</h3>
+                    <p>Using block times to monitor mining markets</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/miningpulse_oscillator_usd/miningpulse_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                </div>
+                <br>
+                <br>
+                <br>
+                <h2 class="display-6"><b>Ticket Metrics</b></h2>
+                <span class="badge badge-info">Stakeholders are bullish...but how bullish!?</span>
+                <hr>
+                <div class="row">
+                  <div class="col-md-4">
+                      <h3>28-day Ticket Funding Rate</h3>
+                      <p>Rate of buying first ticket</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/ticfundrate28day_oscillator_usd/ticfundrate28day_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                      <h3>56-day Ticket Funding Rate</h3>
+                      <p>Rate of buying second ticket</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/ticfundrate56day_oscillator_usd/ticfundrate56day_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>142-day Ticket Funding Rate</h3>
+                    <p>Rate of perpetual ticket buying</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/ticfundrate142day_oscillator_usd/ticfundrate142day_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+
+                  <div class="col-md-4">
+                    <h3>28-day Strongest Hand</h3>
+                    <p>Short term ticket volume weighted volatility bands</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/stronghand28_oscillator_usd/stronghand28_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>56-day Strongest Hand</h3>
+                    <p>Mid term ticket volume weighted volatility bands</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/stronghand56_oscillator_usd/stronghand56_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>142-day Strongest Hand</h3>
+                    <p>Long term ticket volume weighted volatility bands</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/stronghand142_oscillator_usd/stronghand142_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+
+                  <div class="col-md-4">
+                    <h3>TVWAP (Valuation)</h3>
+                    <p>Stakeholder ticket buying weighted valuation</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/tvwap_valuation_usd/tvwap_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>TVWAP (Pricing)</h3>
+                    <p>Stakeholder ticket buying weighted pricing</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/tvwap_pricing_usd/tvwap_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Hodler Conversion Rate</h3>
+                    <p>Relative volume of ticket to non-ticket transactions</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/hodlerconversion_oscillator_usd/hodlerconversion_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+
+                  <div class="col-md-4">
+                    <h3>142-day Ticket Sum</h3>
+                    <p>Total USD value bound to the chain over 142-days</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/142dayticsum_pricing_usd/142dayticsum_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                </div>
+                <br>
+                <br>
+                <br>
+                <h2 class="display-6"><b>Performance Metrics</b></h2>
+                <span class="badge badge-info">How is Decred performing under the hood?</span>
+                <hr>
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Onchain Transfer Volumes</h3>
+                    <p>Onchain volume split into Regular, Tickets and CoinShuffle++</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/performance_txvol/performance_txvol_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Coins Moved Adjusted for Supply</h3>
+                    <p>Sum of coins moved relative to supply over period</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/txsumadjsply_oscillator_usd/txsumadjsply_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>NVT and RVT Ratio</h3>
+                    <p>Ratio of network valuation to daily transaction volume</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/nvtrvt_oscillator_usd/nvtrvt_oscillator_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                      <h3>Tickets and Staking</h3>
+                      <p>Ticket price and total DCR value staked</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/performance_ticketvol/performance_ticketvol_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                      <h3>CoinShuffle++</h3>
+                      <p>Privacy mixing volumes</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/performance_privacyvol/performance_privacyvol_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>DCRDEX</h3>
+                    <p>Atomic swap transaction volumes (NOTE:STATIC DATA)</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/performance_dcrdexvol/performance_dcrdexvol_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Value Stored per byte</h3>
+                    <p>Ratio Market Cap, Realised Cap and Cumulative USD Settled to total Blockchain size. This measures 'value density' of the chain.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/valueperbyte_performance_usd/valueperbyte_performance_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Staking ROI in DCR</h3>
+                    <p>Presents the estimated staking reward in DCR for owners of 1 to 5x tickets alongside estimated future ticket prices.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/stakingroi_performance_dcr/stakingroi_performance_dcr_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Staking ROI in USD</h3>
+                    <p>Presents the estimated monthly staking reward in USD for a single ticket for a set of DCR/USD price assumptions.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/stakingroi_performance_usd/stakingroi_performance_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                </div>
+                <br>
+                <br>
+                <br>
+                <h2 class="display-6"><b>Supply Distribution Metrics</b></h2>
+                <span class="badge badge-info">Analysis related to Decred Supply, Coin Age and Address wealth distributions</span>
+                <hr>
+                <div class="row">
+                  <div class="col-md-4">
+                    <h3>Supply Distribution Bands<br>(% of Supply)</h3>
+                    <p>Proportion of circulating supply categorised by address holding volume.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/supplywaves1_pricing_usd/supplywaves1_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Supply Distribution Bands<br>(Volume)</h3>
+                    <p>Coin supply categorised by address holding volume.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/supplywaves0_pricing_usd/supplywaves0_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Ideal Supply Dilution</h3>
+                    <p>Calculates the idealised supply dilution of stakers and premine participants assuming perfect and persistent staking (i.e. maximum plausible premine holdings).</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/supplydilution_performance/supplydilution_performance_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>HODL Waves <br>(% of Supply)</h3>
+                    <p>Proportion of supply categorised by age since last active.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/hodlwaves1_pricing_usd/hodlwaves1_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>HODL Waves<br>(Volume)</h3>
+                    <p>Coin supply categorised by age since last active.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/hodlwaves0_pricing_usd/hodlwaves0_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Supply Dynamics</h3>
+                    <p>Circulating, Free Float, Active 1yr, Stakehuffle++ and Staked Supply.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/supplycurves_pricing_usd/supplycurves_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Address Count Bands<br>(% of Supply)</h3>
+                    <p>Proportion of addresses categorised by DCR coin holdings.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/walletwaves1_pricing_usd/walletwaves1_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Address Count Bands<br>(Volume)</h3>
+                    <p>Total Address count categorised by coin holdings.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/walletwaves0_pricing_usd/walletwaves0_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                  
+                  </div>
+                </div>
+                <br>
+                <br>
+                <br>
+                <h2 class="display-6"><b>Treasury Metrics</b></h2>
+                <span class="badge badge-info">Analysis related to the Decred Treasury spending, runway and sustainability</span>
+                <hr>
+                <div class="row">
+                  <div class="col-md-4">
+                      <h3>Treasury Balances (DCR)</h3>
+                      <p>Tracking total inflows, outflows and balance of DCR Treasury Block Rewards</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/treasuryio_performance/treasuryio_performance_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Treasury Vote Power</h3>
+                    <p>Compares the value of the treasury to ticket price as a measure of 'value governed per vote'</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/treasuryvotepower_performance/treasuryvotepower_performance_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                      <h3>Treasury Flows USD Oscillator</h3>
+                      <p>Oscillator showing Inflows vs payments to the Treasury</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/treasurysingplepay_pricing_usd/treasurysingplepay_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+
+                  <div class="col-md-4">
+                    <h3>Treasury Net-Flow (30-Day)</h3>
+                    <p>30-Day Sum of USD net inflow/outflows to the Decred Treasury</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/treasuryflow30_pricing_btc/treasuryflow30_pricing_btc_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Treasury Net-Flow (90-Day)</h3>
+                    <p>90-Day Sum of USD net inflow/outflows to the Decred Treasury</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/treasuryflow90_pricing_btc/treasuryflow90_pricing_btc_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Treasury Return on Investment</h3>
+                    <p>Comparing treasury balance in USD vs multiples of lifetime cumulative spend</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/treasuryroi_pricing_usd/treasuryroi_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+
+                  <div class="col-md-4">
+                    <h3>Treasury Remaining Runway (Months)</h3>
+                    <p>Comparing max monthly spend rate to present Treasury balance + Future inflows to estimate runway.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/treasuryrunway_pricing_usd/treasuryrunway_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                </div>
+                <br>
+                <br>
+                <br>
+
+
+
+
+                <a name="monero"></a>
+                <br>
+                <br>
+                <br>
+                <h1 class="display-6"><img src="webassets/images/xmr.png" class="img-rounded" alt="Bitcoin" width="42" height="42"><b> Monero Metrics</b></h1>            
+                <hr style="height:2px;border:none;color:#333;background-color:#333;" />
+                <br>
+                <h2 class="display-6"><b>Cyclical Patterns</b></h2>
+                <span class="badge badge-danger">Well, thats the thing with a private chain...you can't see anything!</span>
+                <hr>              
+                <div class="row">
+                  <div class="col-md-4">
+                      <h3>Transaction Counts vs <br>Date</h3>
+                      <p>Comparing transaction counts over time.</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="xmronchain/transaction_counts_sply_date/transaction_counts_sply_date_light.html" role="button">View Chart &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Transaction Counts vs <br>Protocol Age</h3>
+                    <p>Comparing transaction counts against days alive.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="xmronchain/transaction_counts_sply_age_days/transaction_counts_sply_age_days_light.html" role="button">View Chart &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Transaction Counts vs <br>Coin Age</h3>
+                    <p>Comparing transaction counts against proportion of 2050 mined supply</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="xmronchain/transaction_counts_sply_age_sply/transaction_counts_sply_age_sply_light.html" role="button">View Chart &raquo;</a></p>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-4">
+                      <h3>Price Cycle Comparison<br>(vs Supply Age)</h3>
+                      <p>Comparing BTC, DCR and XMR valuation to coin supply age.</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="xmronchain/marketcap_vs_agesply/marketcap_vs_agesply_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Price Cycle Comparison<br>(vs Protocol Age)</h3>
+                      <p>Comparing BTC, DCR and XMR valuation to protocol lifespan.</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="xmronchain/marketcap_vs_agedays/marketcap_vs_agedays_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                      
+                  </div>
+                </div>
+
+
+                <a name="haven"></a>
+                <br>
+                <br>
+                <br>
+                <h1 class="display-6"><img src="webassets/images/xhv.png" class="img-rounded" alt="Bitcoin" width="42" height="42"><b> Haven Protocol Metrics</b></h1>            
+                <hr style="height:2px;border:none;color:#333;background-color:#333;" />
+                <br>
+                <h2 class="display-6"><b>Cyclical Patterns</b></h2>
+                <span class="badge badge-dark">Comparing the growth of Haven to Monero at various protocol ages!</span>
+                <hr>              
+                <div class="row">
+                <div class="col-md-4">
+                  <h3>Monero XMR vs Haven XHV<br>(Valuation vs Protocol Age)</h3>
+                    <p>Comparing XMR, XHV valuation to protocol lifespan.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="xmronchain/xmr_vs_xhv_valuation_usd/xmr_vs_xhv_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+                <div class="col-md-4">
+                  <h3>Monero XMR vs Haven XHV<br>(Pricing vs Protocol Age)</h3>
+                    <p>Comparing XMR, XHV price to protocol lifespan.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="xmronchain/xmr_vs_xhv_pricing_usd/xmr_vs_xhv_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                </div>
+              </div>
+
+
+
+
+                <a name="horizen"></a>
+                <br>
+                <br>
+                <br>
+                <h1 class="display-6"><img src="webassets/images/zen.png" class="img-rounded" alt="Horizen" width="42" height="42"><b> Horizen Metrics</b></h1>            
+                <hr style="height:2px;border:none;color:#333;background-color:#333;" />
+                <br>
+                <h2 class="display-6"><b>Performance Metrics</b></h2>
+                <span class="badge badge-dark">Overall performance of the Horizen blockchain</span>
+                <hr>              
+                <div class="row">
+                  <div class="col-md-4">
+                      <h3>Node Counts</h3>
+                      <p>Overall Horizen Node Counts</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="zenonchain/nodecount/nodecount_light.html" role="button">View Chart &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Supply Dynamics</h3>
+                    <p>Total issued supply and supply staked, transparent and shielded.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="zenonchain/splydynamics/splydynamics_light.html" role="button">View Chart &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Transaction and Exchange Volumes</h3>
+                    <p>Comparing transaction volumesn-chain and to exchanges.</p>
+                    <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="zenonchain/txvolumes/txvolumes_light.html" role="button">View Chart &raquo;</a></p>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-4">
+                      <h3>Block Subsidy Model <br>(Valuation)</h3>
+                      <p>Block Subsidy Models considering network Valuation.</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="zenonchain/blocksubsidy_valuation_usd/blocksubsidy_valuation_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                  <div class="col-md-4">
+                    <h3>Block Subsidy Model <br>(Pricing)</h3>
+                      <p>Block Subsidy Models considering pricing.</p>
+                      <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="zenonchain/blocksubsidy_pricing_usd/blocksubsidy_pricing_usd_light.html" role="button">View Chart! &raquo;</a></p>
+                  </div>
+                </div>
+
+                <a name="research"></a>
+                <br>
+                <br>
+                <br>
+                <br>
+                <h1 class="display-6"><img src="webassets/images/onchain.png" class="img-rounded" alt="Bitcoin" width="42" height="42"><b> Research Papers</b></h1>            
+                <hr style="height:2px;border:none;color:#333;background-color:#333;" />
+                <br>
+                <h2 class="display-6"><b>Decred: Unforgeably Scarce, Hyper-Secure</b></h2>
+                <span class="badge badge-info">Sound Money means Security, Finality and Scarcity.</span>
+                <hr>
+
+                <div class="container">
+                  <div class="row">
+                    <div class="col-sm">
+                      
+                      <div class="card" style="width: 24rem;">
+                        <img src="research/dcr_unforgeable_costliness/images/image_cover.png" class="card-img-top" alt="Unforgeably Secure">
+                        <div class="card-body">
+                          <h6 class="card-title">Decred: Unforgeably Scarce, Hyper-Secure</h6>
+                          <p class="card-text">A detailed study into unforgeable costliness, blockchain security and transaction finality assurances provided by Decred and Bitcoin.</p>
+                          <a href="https://medium.com/@_Checkmatey_/decred-hypersecure-unforgeably-scarce-e076b91a2be" class="btn btn-success">Research Paper</a>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-sm">
+                      <div class="col-md-12">
+                        <h4>Decred Security Curve</h4>
+                        <p>Demonstrating the exponential benefits to blockchain security offered by Hybrid PoW/PoS Consensus.</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/research_unforgeablysecure/dcr_securitycurve/dcr_securitycurve_dark.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                      <div class="col-md-12">
+                        <h4>Daily Cost to Attack (A)</h4>
+                        <p><b>Model A:</b>  Daily block reward as a proxy for daily attack cost (excludes ticket and ASIC CAPEX).</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/research_unforgeablysecure/dcr_unforgeablecostdaily_sply_notickets/dcr_unforgeablecostdaily_sply_notickets_dark.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                      <div class="col-md-12">
+                        <h4>Finality Ratio</h4>
+                        <p>Taking the ratio between Decred and Bitcoin security under various attack assumptions to compare finality.</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/research_unforgeablysecure/dcr_finalityratio/dcr_finalityratio_dark.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                    </div>
+                    <div class="col-sm">
+                      <div class="col-md-12">
+                        <h4>Unforgeable Costliness</h4>
+                        <p>Compare the total unforgeable costliness of Decred and Bitcoin over history (cumulative security spend).</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/research_unforgeablysecure/dcr_unforgeablecostcumulative_sply/dcr_unforgeablecostcumulative_sply_dark.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                      <div class="col-md-12">
+                        <h4>Daily Cost to Attack (B)</h4>
+                        <p><b>Model B:</b>  Daily block reward as a proxy for daily attack cost (includes ticket CAPEX, Not ASICs).</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/research_unforgeablysecure/dcr_unforgeablecostdaily_sply_wtickets/dcr_unforgeablecostdaily_sply_wtickets_dark.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                      <div class="col-md-12">
+                        <h4>Compare Unforgeable Costliness</h4>
+                        <p>Compare cumulative security spend to top PoW coins (Model A, excludes PoW and PoS CAPEX).</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/research_unforgeablysecure/dcr_compareunforgeable_sply_notickets/dcr_compareunforgeable_sply_notickets_dark.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <br>
+                <br>
+                <br>
+                <br>
+                <h2 class="display-6"><b>Decred: The Resilient Stronghold</b></h2>
+                <span class="badge badge-info">A detailed audit of Decred onchain performance.</span>
+                <hr>
+                <div class="container">
+                  <div class="row">
+                    <div class="col-sm">
+                      
+                      <div class="card" style="width: 24rem;">
+                        <img src="research/dcr_useradoption/images/image_cover.png" class="card-img-top" alt="Unforgeably Secure">
+                        <div class="card-body">
+                          <h6 class="card-title">Decred: The Resilient Stronghold</h6>
+                          <p class="card-text">A detailed audit of Decred onchain performance.</p>
+                          <a href="https://medium.com/decred/decred-the-resilient-stronghold-4038dc64dd2a" class="btn btn-success">Research Paper</a>
+                        </div>
+                      </div>
+                      <br>
+                      <div class="col-md-12">
+                        <h4>Block Reward Fee Ratio</h4>
+                        <p><b>Miners:</b> Comparing the fee ratio and long term security viability for Bitcoin and Decred .</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/research_resilientstronghold/dcr_miner_feeratio/dcr_miner_feeratio_light.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                    </div>
+                    <div class="col-sm">
+                      <div class="col-md-12">
+                        <h4>Cumulative Settled Value (USD)</h4>
+                        <p><b>Users:</b> Cumulative USD value settled onchain (denominated both in USD and native units).</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/research_resilientstronghold/dcr_user_cum_txval/dcr_user_cum_txval_light.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                      <div class="col-md-12">
+                        <h4>Transaction Counts</h4>
+                        <p><b>Users:</b> Presents the daily and cumulative transaction counts for Decred against protocol age (days since genesis).</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/research_resilientstronghold/dcr_user_tx_count/dcr_user_tx_count_light.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                      <div class="col-md-12">
+                        <h4>Miner Cumulative Income</h4>
+                        <p><b>Miners:</b> Cumulative PoW miner income from block-subsity and fees.</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/research_resilientstronghold/dcr_miner_cum_income/dcr_miner_cum_income_light.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                    </div>
+                    <div class="col-sm">
+                      <div class="col-md-12">
+                        <h4>Daily Native Units Settled (DCR)</h4>
+                        <p><b>Users:</b> Presents the daily native units settled onchain in regular and ticket transactions.</p>
+                        <p><a class="btn btn-secondary" rel="noopener" target="_blank" href="dcronchain/research_resilientstronghold/dcr_user_global_txflow/dcr_user_global_txflow_light.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                      <div class="col-md-12">
+                        <h4>Mean + Median Tx Size</h4>
+                        <p><b>Users:</b> Presents Median + Mean transaction size denominated in native units against protocol age (days since genesis).</p>
+                        <p><a class="btn btn-secondary" rel="noopener" rel="noopener" target="_blank" href="dcronchain/research_resilientstronghold/dcr_user_local_txflow/dcr_user_local_txflow_light.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                      <div class="col-md-12">
+                        <h4>Miner Hashrate Growth</h4>
+                        <p><b>Miners:</b> Presents logarithmic growth of proof-of-work mining hashrate + difficulty.</p>
+                        <p><a class="btn btn-secondary" rel="noopener" rel="noopener" target="_blank" href="dcronchain/research_resilientstronghold/dcr_miner_pow_growth/dcr_miner_pow_growth_light.html" role="button">View Chart! &raquo;</a></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <br>
+                <br>
+                <br>
+            </div>
+            <hr>
+            
+        <footer class="container">
+            <p>&copy; _checkonchain est-2020</p>
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+            <script type="text/javascript">
+            var scrolltotop={setting:{startline:100,scrollto:0,scrollduration:1e3,fadeduration:[500,100]},controlHTML:'<img src="https://i1155.photobucket.com/albums/p559/scrolltotop/arrow3.png" />',controlattrs:{offsetx:5,offsety:5},anchorkeyword:"#top",state:{isvisible:!1,shouldvisible:!1},scrollup:function(){this.cssfixedsupport||this.$control.css({opacity:0});var t=isNaN(this.setting.scrollto)?this.setting.scrollto:parseInt(this.setting.scrollto);t="string"==typeof t&&1==jQuery("#"+t).length?jQuery("#"+t).offset().top:0,this.$body.animate({scrollTop:t},this.setting.scrollduration)},keepfixed:function(){var t=jQuery(window),o=t.scrollLeft()+t.width()-this.$control.width()-this.controlattrs.offsetx,s=t.scrollTop()+t.height()-this.$control.height()-this.controlattrs.offsety;this.$control.css({left:o+"px",top:s+"px"})},togglecontrol:function(){var t=jQuery(window).scrollTop();this.cssfixedsupport||this.keepfixed(),this.state.shouldvisible=t>=this.setting.startline?!0:!1,this.state.shouldvisible&&!this.state.isvisible?(this.$control.stop().animate({opacity:1},this.setting.fadeduration[0]),this.state.isvisible=!0):0==this.state.shouldvisible&&this.state.isvisible&&(this.$control.stop().animate({opacity:0},this.setting.fadeduration[1]),this.state.isvisible=!1)},init:function(){jQuery(document).ready(function(t){var o=scrolltotop,s=document.all;o.cssfixedsupport=!s||s&&"CSS1Compat"==document.compatMode&&window.XMLHttpRequest,o.$body=t(window.opera?"CSS1Compat"==document.compatMode?"html":"body":"html,body"),o.$control=t('<div id="topcontrol">'+o.controlHTML+"</div>").css({position:o.cssfixedsupport?"fixed":"absolute",bottom:o.controlattrs.offsety,right:o.controlattrs.offsetx,opacity:0,cursor:"pointer"}).attr({title:"Scroll to Top"}).click(function(){return o.scrollup(),!1}).appendTo("body"),document.all&&!window.XMLHttpRequest&&""!=o.$control.text()&&o.$control.css({width:o.$control.width()}),o.togglecontrol(),t('a[href="'+o.anchorkeyword+'"]').click(function(){return o.scrollup(),!1}),t(window).bind("scroll resize",function(t){o.togglecontrol()})})}};scrolltotop.init();</script>
+        </footer>
+    </body>
+</html>
