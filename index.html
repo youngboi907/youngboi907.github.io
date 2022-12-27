@@ -108,3 +108,34 @@
       <h2>Welcome to my website!</h2>
       <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin fermentum elementum velit, in iaculis mauris eleifend a. Cras fermentum est vel mauris fermentum, a pharetra nisl volutpat. Sed sit amet nisi at justo rutrum imperdiet eu eu quam. Aenean placerat orci et diam sod
 
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        import requests
+
+# Set the API endpoint and the required parameters
+endpoint = "https://api.phemex.com/funding/v2/ticker"
+symbol = "BTCUSD"
+
+# Make the GET request
+response = requests.get(endpoint, params={'symbol': symbol})
+
+# Check the status code to ensure the request was successful
+if response.status_code == 200:
+    # Get the funding rate data from the response
+    data = response.json()
+    funding_rate = data['fundingRate']
+    print(f"The current funding rate for {symbol} is {funding_rate}")
+else:
+    print("An error occurred while fetching the funding rates.")
+
