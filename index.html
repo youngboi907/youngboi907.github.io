@@ -1,0 +1,35 @@
+<html>
+  <body>
+    <pre>
+      <code>
+import requests
+
+# Phemex funding rate API endpoint
+phemex_url = "https://api.phemex.com/v1/funding/BTCUSD"
+
+# Bitget funding rate API endpoint
+bitget_url = "https://www.bitget.com/swap-api/v1/instruments/BTC-USD-SWAP/funding_time"
+
+# Send a request to the Phemex API to get the funding rate
+phemex_response = requests.get(phemex_url)
+
+# Parse the response and get the funding rate
+phemex_rate = phemex_response.json()['data'][0]['rate']
+
+# Send a request to the Bitget API to get the funding rate
+bitget_response = requests.get(bitget_url)
+
+# Parse the response and get the funding rate
+bitget_rate = bitget_response.json()['fundingRate']
+
+# Compare the funding rates and print the result
+if phemex_rate > bitget_rate:
+  print("Phemex has a higher funding rate than Bitget")
+elif phemex_rate < bitget_rate:
+  print("Bitget has a higher funding rate than Phemex")
+else:
+  print("Phemex and Bitget have the same funding rate")
+      </code>
+    </pre>
+  </body>
+</html>
