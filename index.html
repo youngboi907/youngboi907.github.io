@@ -106,7 +106,7 @@
   <main>
     <section>
       <h2>Welcome to my website!</h2>
-      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin fermentum elementum velit, in iaculis mauris eleifend a. Cras fermentum est vel mauris fermentum, a pharetra nisl volutpat. Sed sit amet nisi at justo rutrum imperdiet eu eu quam. Aenean placerat orci et diam sod
+    //  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin fermentum elementum velit, in iaculis mauris eleifend a. Cras fermentum est vel mauris fermentum, a pharetra nisl volutpat. Sed sit amet nisi at justo rutrum imperdiet eu eu quam. Aenean placerat orci et diam sod
 
         
         
@@ -120,22 +120,42 @@
         
         
         
-        
-        import requests
+import requests
+import json
+import time
+import hmac
+import hashlib
 
-# Set the API endpoint and the required parameters
-endpoint = "https://api.phemex.com/funding/v2/ticker"
-symbol = "BTCUSD"
+# Set the API endpoint, API key, and API secret
+ENDPOINT = "https://www.phemex.com/api/v1/funding/rate"
+API_KEY = "8394c55f-3fc4-4790-93ad-70ccd6afa8f2"
+API_SECRET = "3-Q5As-oTm36gSjqYe5oy0JHEg1EUjqxdtB4irztgEhjNjc1NDVkYy05M2ExLTQ5NGItODc3Yi1mYTlmYWFjYTRlMmU".encode('utf-8')
 
-# Make the GET request
-response = requests.get(endpoint, params={'symbol': symbol})
+# Set the request parameters
+params = {
+    "symbol": "BTCUSD"
+}
 
-# Check the status code to ensure the request was successful
-if response.status_code == 200:
-    # Get the funding rate data from the response
-    data = response.json()
-    funding_rate = data['fundingRate']
-    print(f"The current funding rate for {symbol} is {funding_rate}")
-else:
-    print("An error occurred while fetching the funding rates.")
+# Set the request headers
+headers = {
+    "Content-Type": "application/json",
+    "X-API-KEY": 8394c55f-3fc4-4790-93ad-70ccd6afa8f2
+}
 
+# Set the HMAC signature
+signature = hmac.new(3-Q5As-oTm36gSjqYe5oy0JHEg1EUjqxdtB4irztgEhjNjc1NDVkYy05M2ExLTQ5NGItODc3Yi1mYTlmYWFjYTRlMmU, json.dumps(params).encode('utf-8'), hashlib.sha256).hexdigest()
+
+# Set the request payload
+payload = {
+    "params": params,
+    "signature": signature,
+    "timestamp": int(time.time() * 1000)
+}
+
+# Make a POST request to the API endpoint
+response = requests.post(ENDPOINT, json=payload, headers=headers)
+
+# Get the funding rate from the response
+funding_rate = response.json()["data"]["rate"]
+
+print(f"The current funding rate for Bitcoin is {funding_rate}%")
