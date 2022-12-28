@@ -1,42 +1,27 @@
 <html>
   <head>
-    <title>Bitcoin Funding Rates Comparison</title>
-    <style>
-      /* Style for the table */
-      table {
-        border-collapse: collapse;
-      }
-      th, td {
-        border: 1px solid #ddd;
-        padding: 8px;
-      }
-      tr:nth-child(even) {
-        background-color: #f2f2f2;
-      }
-      tr:hover {
-        background-color: #f5f5f5;
-      }
-      th {
-        background-color: #4caf50;
-        color: white;
-      }
-      
-      /* Style for the loading message */
-      .loading {
-        font-size: 18px;
-        color: #4caf50;
-      }
-    </style>
+    <title>Ethereum Funding Rates Comparison</title>
   </head>
   <body>
-    <h1>Bitcoin Funding Rates Comparison</h1>
-    <table id="rates-table">
+    <h1>Ethereum Funding Rates Comparison</h1>
+    <table>
       <tr>
         <th>Exchange</th>
         <th>Funding Rate</th>
       </tr>
+      <tr>
+        <td>Phemex</td>
+        <td id="phemex-rate"></td>
+      </tr>
+      <tr>
+        <td>Bitget</td>
+        <td id="bitget-rate"></td>
+      </tr>
+      <tr>
+        <td>Binance</td>
+        <td id="binance-rate"></td>
+      </tr>
     </table>
-    <p class="loading">Loading rates...</p>
     
     <!-- Include the jQuery library -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -45,20 +30,28 @@
       // Function to fetch and display the funding rates from the exchanges
       function updateRates() {
         // Phemex funding rate API endpoint
-        var phemexUrl = "https://api.phemex.com/v1/funding/BTCUSD";
+        var phemexUrl = "https://api.phemex.com/v1/funding/ETHUSD";
         
         // Bitget funding rate API endpoint
-        var bitgetUrl = "https://www.bitget.com/swap-api/v1/instruments/BTC-USD-SWAP/funding_time";
+        var bitgetUrl = "https://www.bitget.com/swap-api/v1/instruments/ETH-USD-SWAP/funding_time";
         
         // Binance funding rate API endpoint
-        var binanceUrl = "https://www.binance.com/api/v3/futures/fundingRate?symbol=BTCUSDT";
+        var binanceUrl = "https://www.binance.com/api/v3/futures/fundingRate?symbol=ETHUSDT";
         
         // Fetch the funding rate from Phemex
         $.get(phemexUrl, function(data) {
-          // Add a new row to the table with the exchange and rate
-          $("#rates-table").append("<tr><td>Phemex</td><td>" + data.data[0].rate + "</td></tr>");
+          // Update the funding rate in the table
+          $("#phemex-rate").text(data.data[0].rate);
         });
         
         // Fetch the funding rate from Bitget
         $.get(bitgetUrl, function(data) {
-          // Add a new row to the table with
+          // Update the funding rate in the table
+          $("#bitget-rate").text(data.fundingRate);
+        });
+        
+        // Fetch the funding rate from Binance
+        $.get(binanceUrl, function(data) {
+          // Update the funding rate in the table
+          $("#binance-rate").text(data.rate);
+        });
