@@ -124,44 +124,41 @@
     <script src="https://widgets.coingecko.com/coingecko-coin-list-widget.js"></script>
 <coingecko-coin-list-widget  coin-ids="bitcoin,eos,ethereum,litecoin,ripple,republic-protocol,football-coin,celo,iostoken,terra-luna-2,flow" currency="usd" locale="en"></coingecko-coin-list-widget>
     
+
+   
     
-        <!-- Add your HTML content here -->
-    <h1>Funding Rate Arbitrage Bot</h1>
-    <p>This bot will open a long position in a futures contract with a positive funding rate and a short position in a contract with a negative funding rate.</p>
+    <!-- HTML code to fetch and display the funding rate of Bitcoin on Phemex.com -->
+<div id="funding-rate-container">
+  <!-- Funding rate data will be displayed here -->
+</div>
 
-    <!-- Use a form to input the contract details -->
-    <form>
-      <label for="long-contract">Long Contract:</label><br>
-      <input type="text" id="long-contract" name="long-contract"><br>
-      <label for="short-contract">Short Contract:</label><br>
-      <input type="text" id="short-contract" name="short-contract"><br>
-      <input type="submit" value="Start Arbitrage">
-    </form> 
+<script>
+  // URL of the Phemex API endpoint that returns the funding rate data
+  const API_URL = "https://api.phemex.com/funding/v2/BTC";
 
-    <!-- Use JavaScript to submit the form and execute the trade -->
-    <script>
-      // Get the form element
-      const form = document.querySelector('form');
+  // Make an HTTP GET request to the Phemex API endpoint
+  fetch(API_URL, {
+    headers: {
+      "Content-Type": "application/json"
+    }
+  })
+    .then(response => response.json()) // Parse the response as JSON
+    .then(data => {
+      // Extract the funding rate from the Phemex API response
+      const fundingRate = data.rate;
 
-      // Add an event listener to the form submit event
-      form.addEventListener('submit', (event) => {
-        // Prevent the form from submitting
-        event.preventDefault();
+      // Display the funding rate on the webpage
+      document.getElementById("funding-rate-container").innerHTML = fundingRate;
 
-        // Get the long and short contract details
-        const longContract = form.long-contract.value;
-        const shortContract = form.short-contract.value;
+      // Print the funding rate to the console
+      console.log(`Funding rate: ${fundingRate}`);
+    })
+    .catch(error => {
+      // Handle any errors that occurred during the request
+      console.error(error);
+    });
+</script>
 
-        // Execute the trade using the long and short contract details
-        executeTrade(longContract, shortContract);
-      });
-
-      // Define the executeTrade function
-      function executeTrade(longContract, shortContract) {
-        // Place the trade using the long and short contract details
-        // You can use an API or trading platform to place the trade here
-      }
-    </script>
  
     
     
