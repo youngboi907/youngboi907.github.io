@@ -42,18 +42,33 @@
         $.get(phemexUrl, function(data) {
           // Update the rate in the table
           $("#phemex-rate").text(data.data[0].rate);
+           // Print the rate to the console
+      console.log("Phemex funding rate:", data.data[0].rate);
         });
+        
+        
+        
+        
         
         // Fetch the funding rate from Bitget
         $.get(bitgetUrl, function(data) {
           // Update the rate in the table
-          $("#bitget-rate").text(data.fundingRate);
+          $("#bitget-rate").text(data.fundingRate);  
+      // Print the rate to the console
+      console.log("Bitget funding rate:", data.fundingRate);
         });
+        
+        
+        
+        
         
         // Fetch the funding rate from Binance
         $.get(binanceUrl, function(data) {
           // Update the rate in the table
-          $("#binance-rate").text(data.rate);
+          $("#binance-rate").text(data.rate);  
+          // Print the rate to the console
+      console.log("Binance funding rate:", data.rate);
+          
         });
       }
       
