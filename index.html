@@ -125,6 +125,52 @@
 <coingecko-coin-list-widget  coin-ids="bitcoin,eos,ethereum,litecoin,ripple,republic-protocol,football-coin,celo,iostoken,terra-luna-2,flow" currency="usd" locale="en"></coingecko-coin-list-widget>
     
     
+        <!-- Add your HTML content here -->
+    <h1>Funding Rate Arbitrage Bot</h1>
+    <p>This bot will open a long position in a futures contract with a positive funding rate and a short position in a contract with a negative funding rate.</p>
+
+    <!-- Use a form to input the contract details -->
+    <form>
+      <label for="long-contract">Long Contract:</label><br>
+      <input type="text" id="long-contract" name="long-contract"><br>
+      <label for="short-contract">Short Contract:</label><br>
+      <input type="text" id="short-contract" name="short-contract"><br>
+      <input type="submit" value="Start Arbitrage">
+    </form> 
+
+    <!-- Use JavaScript to submit the form and execute the trade -->
+    <script>
+      // Get the form element
+      const form = document.querySelector('form');
+
+      // Add an event listener to the form submit event
+      form.addEventListener('submit', (event) => {
+        // Prevent the form from submitting
+        event.preventDefault();
+
+        // Get the long and short contract details
+        const longContract = form.long-contract.value;
+        const shortContract = form.short-contract.value;
+
+        // Execute the trade using the long and short contract details
+        executeTrade(longContract, shortContract);
+      });
+
+      // Define the executeTrade function
+      function executeTrade(longContract, shortContract) {
+        // Place the trade using the long and short contract details
+        // You can use an API or trading platform to place the trade here
+      }
+    </script>
+ 
+    
+    
+    
+    
+    
+    
+    
+    
     
   </body>
   </head>  
