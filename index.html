@@ -1,35 +1,64 @@
 <html>
+  <head>
+    <title>Bitcoin Funding Rates Comparison</title>
+  </head>
   <body>
-    <pre>
-      <code>
-import requests
-
-# Phemex funding rate API endpoint
-phemex_url = "https://api.phemex.com/v1/funding/BTCUSD"
-
-# Bitget funding rate API endpoint
-bitget_url = "https://www.bitget.com/swap-api/v1/instruments/BTC-USD-SWAP/funding_time"
-
-# Send a request to the Phemex API to get the funding rate
-phemex_response = requests.get(phemex_url)
-
-# Parse the response and get the funding rate
-phemex_rate = phemex_response.json()['data'][0]['rate']
-
-# Send a request to the Bitget API to get the funding rate
-bitget_response = requests.get(bitget_url)
-
-# Parse the response and get the funding rate
-bitget_rate = bitget_response.json()['fundingRate']
-
-# Compare the funding rates and print the result
-if phemex_rate > bitget_rate:
-  print("Phemex has a higher funding rate than Bitget")
-elif phemex_rate < bitget_rate:
-  print("Bitget has a higher funding rate than Phemex")
-else:
-  print("Phemex and Bitget have the same funding rate")
-      </code>
-    </pre>
+    <h1>Bitcoin Funding Rates Comparison</h1>
+    <table>
+      <tr>
+        <th>Exchange</th>
+        <th>Funding Rate</th>
+      </tr>
+      <tr>
+        <td>Phemex</td>
+        <td id="phemex-rate"></td>
+      </tr>
+      <tr>
+        <td>Bitget</td>
+        <td id="bitget-rate"></td>
+      </tr>
+      <tr>
+        <td>Binance</td>
+        <td id="binance-rate"></td>
+      </tr>
+    </table>
+    
+    <!-- Include the jQuery library -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script>
+      // Function to fetch and display the funding rates from the exchanges
+      function updateRates() {
+        // Phemex funding rate API endpoint
+        var phemexUrl = "https://api.phemex.com/v1/funding/BTCUSD";
+        
+        // Bitget funding rate API endpoint
+        var bitgetUrl = "https://www.bitget.com/swap-api/v1/instruments/BTC-USD-SWAP/funding_time";
+        
+        // Binance funding rate API endpoint
+        var binanceUrl = "https://www.binance.com/api/v3/futures/fundingRate?symbol=BTCUSDT";
+        
+        // Fetch the funding rate from Phemex
+        $.get(phemexUrl, function(data) {
+          // Update the rate in the table
+          $("#phemex-rate").text(data.data[0].rate);
+        });
+        
+        // Fetch the funding rate from Bitget
+        $.get(bitgetUrl, function(data) {
+          // Update the rate in the table
+          $("#bitget-rate").text(data.fundingRate);
+        });
+        
+        // Fetch the funding rate from Binance
+        $.get(binanceUrl, function(data) {
+          // Update the rate in the table
+          $("#binance-rate").text(data.rate);
+        });
+      }
+      
+      // Update the rates every 5 seconds
+      setInterval(updateRates, 3000);
+    </script>
   </body>
 </html>
