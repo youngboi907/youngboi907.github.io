@@ -1,57 +1,21 @@
 <html>
   <head>
-    <title>Ethereum Funding Rates Comparison</title>
+    <title>Ren/USDT Funding Rate on Phemex</title>
   </head>
   <body>
-    <h1>Ethereum Funding Rates Comparison</h1>
-    <table>
-      <tr>
-        <th>Exchange</th>
-        <th>Funding Rate</th>
-      </tr>
-      <tr>
-        <td>Phemex</td>
-        <td id="phemex-rate"></td>
-      </tr>
-      <tr>
-        <td>Bitget</td>
-        <td id="bitget-rate"></td>
-      </tr>
-      <tr>
-        <td>Binance</td>
-        <td id="binance-rate"></td>
-      </tr>
-    </table>
-    
-    <!-- Include the jQuery library -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
+    <h1>Ren/USDT Funding Rate on Phemex</h1>
+    <div id="funding-rate"></div>
+    <script src="https://cdn.phemex.com/sdk/latest/phemex.min.js"></script>
     <script>
-      // Function to fetch and display the funding rates from the exchanges
-      function updateRates() {
-        // Phemex funding rate API endpoint
-        var phemexUrl = "https://api.phemex.com/v1/funding/ETHUSD";
-        
-        // Bitget funding rate API endpoint
-        var bitgetUrl = "https://www.bitget.com/swap-api/v1/instruments/ETH-USD-SWAP/funding_time";
-        
-        // Binance funding rate API endpoint
-        var binanceUrl = "https://www.binance.com/api/v3/futures/fundingRate?symbol=ETHUSDT";
-        
-        // Fetch the funding rate from Phemex
-        $.get(phemexUrl, function(data) {
-          // Update the funding rate in the table
-          $("#phemex-rate").text(data.data[0].rate);
-        });
-        
-        // Fetch the funding rate from Bitget
-        $.get(bitgetUrl, function(data) {
-          // Update the funding rate in the table
-          $("#bitget-rate").text(data.fundingRate);
-        });
-        
-        // Fetch the funding rate from Binance
-        $.get(binanceUrl, function(data) {
-          // Update the funding rate in the table
-          $("#binance-rate").text(data.rate);
-        });
+      const phemex = new Phemex();
+
+      phemex.market.getFundingRate({
+        symbol: "REN-USDT",
+        limit: 1
+      }).then(response => {
+        const fundingRate = response.data[0].fundingRate;
+        document.getElementById("funding-rate").innerHTML = `The current funding rate for Ren/USDT on Phemex is ${fundingRate}`;
+      });
+    </script>
+  </body>
+</html>
