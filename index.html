@@ -1,1 +1,56 @@
         
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Phemex API Example</title>
+</head>
+<body>
+  <div id="result"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+  <script>
+    // Set the API endpoint, API key, and API secret
+    const ENDPOINT = "https://www.phemex.com/api/v1/funding/rate";
+    const API_KEY = "YOUR_API_KEY";
+    const API_SECRET = "YOUR_API_SECRET";
+
+    // Set the request parameters
+    const params = {
+      symbol: "BTCUSD"
+    };
+
+    // Set the request headers
+    const headers = {
+      "Content-Type": "application/json",
+      "X-API-KEY": API_KEY
+    };
+
+    // Set the HMAC signature
+    const message = JSON.stringify(params);
+    const signature = CryptoJS.HmacSHA256(message, API_SECRET).toString(CryptoJS.enc.Hex);
+
+    // Set the request payload
+    const payload = {
+      params: params,
+      signature: signature,
+      timestamp: Date.now()
+    };
+
+    // Make a POST request to the API endpoint using AJAX
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", ENDPOINT, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        // Get the funding rate from the response
+        const data = JSON.parse(xhr.responseText);
+        const funding_rate = data.data.rate;
+
+        // Display the funding rate
+        document.getElementById("result").innerHTML = "The current funding rate for Bitcoin is " + funding_rate + "%";
+      }
+    };
+    xhr.send(JSON.stringify(payload));
+  </script>
+</body>
+</html>
