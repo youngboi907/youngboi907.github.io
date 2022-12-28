@@ -45,8 +45,8 @@
     <script>
       // Function to fetch and display the funding rates from the exchanges
       function updateRates() {
-        // Get the list of top 100 cryptocurrencies from CoinMarketCap
-        var cmcUrl = "https://api.coinmarketcap.com/v2/ticker/?limit=100";
+        // Get the list of top 10 cryptocurrencies from CoinMarketCap
+        var cmcUrl = "https://api.coinmarketcap.com/v2/ticker/?limit=10";
         $.get(cmcUrl, function(data) {
           // Loop through the list of cryptocurrencies
           for (var id in data.data) {
@@ -62,3 +62,6 @@
             var binanceUrl = "https://www.binance.com/api/v3/futures/fundingRate?symbol=" + currency.symbol + "USDT";
             
             // Fetch the funding rate from Phemex
+            $.get(phemexUrl, function(data) {
+              // Add a new row to the table with the currency, exchange, and rate
+              $("#rates-table").append("<tr><td>" + currency.name + "</td><td>Phemex</td><td>" + data.data[0].rate + "
