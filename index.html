@@ -26,6 +26,18 @@ url =  "wss://fstream.binance.com/ws"
 
 ws = websocket.WebSocketApp(url,on_open=on_open,on_message=on_message)
 ws.run_forever()
+  
+  
+  
+  import ccxt
+from pprint import pprint
+print('CCXT Version:', ccxt.__version__)
+exchange = ccxt.binance({
+    'enableRateLimit': True,
+})
+response = exchange.fapiPublicGetPremiumIndex()
+pprint(response)
+  
   </script>
 </body>
 </html>
