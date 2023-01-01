@@ -1,46 +1,31 @@
-<!DOCTYPE html>
 <html>
-  <head>
-    <title>Binance Funding Rate</title>
-  </head>
-  <body>
-    <h1>Binance Funding Rate</h1>
-    <div id="funding-rate"></div>
-    <script>
-      // Set the API endpoint and contract symbol
-      const endpoint = "wss://fstream.binance.com/fapi/v1/fundingRate";
-      const symbol = "BTCUSDT";
+<head>
+  <title>Websocket Market Stream</title>
+</head>
+<body>
+  <h1>Websocket Market Stream</h1>
 
-      // Set the request parameters
-      const params = {
-        symbol: symbol,
-        period: 86400,  // Funding rate for the previous 24 hours
-      };
+  <script type="text/python">
+import websocket
+import json
 
-      // Make the request
-      fetch(endpoint, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        params: params,
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          // Print the funding rate in the "funding-rate" div
-          document.getElementById("funding-rate").innerHTML = data.fundingRate;
-        });
-    </script>
-    
-    
-    
-    
-    
-    
-      <py-script src="youngboi907.github.io/binance-futures.py"></py-script>
-    
-                                         
-    
-    
-    
-    
-  </body>
+
+def on_open(ws):
+    sub_msg = {"method": "SUBSCRIBE","params": ["!ticker@arr"],"id": 1}
+    ws.send(json.dumps(sub_msg))
+    print("Opened connection")
+
+
+def on_message(ws, message):
+    data = json.loads(message)
+    # print(type(data))
+    for x in data:
+        print(x['s'],x['c'])
+
+url =  "wss://fstream.binance.com/ws"
+
+ws = websocket.WebSocketApp(url,on_open=on_open,on_message=on_message)
+ws.run_forever()
+  </script>
+</body>
 </html>
