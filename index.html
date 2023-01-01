@@ -126,30 +126,7 @@
     
 
    
-    
-    <!-- HTML code to fetch and display the funding rate of Bitcoin on Phemex.com -->
-<div id="funding-rate-container">
-  <!-- Funding rate data will be displayed here -->
-</div>
-
-<script>
-  // URL of the Phemex API endpoint that returns the funding rate data
-  const API_URL = "https://api.phemex.com/funding/v2/BTC";
-
-  // Make an HTTP GET request to the Phemex API endpoint
-  fetch(API_URL, {
-    headers: {
-      "Content-Type": "application/json"
-    }
-  })
-    .then(response => response.json()) // Parse the response as JSON
-    .then(data => {
-      // Extract the funding rate from the Phemex API response
-      const fundingRate = data.rate;
-
-      // Display the funding rate on the webpage
-      document.getElementById("funding-rate-container").innerHTML = fundingRate;
-
+ 
       // Print the funding rate to the console
       console.log(`Funding rate: ${fundingRate}`);
     })
@@ -162,7 +139,33 @@
  
     
     
-    
+ <!-- Include the Binance API library -->
+<script src="https://cdn.jsdelivr.net/npm/binance-api-client"></script>
+
+<!-- Create a div to display the funding rate data -->
+<div id="funding-rate-data"></div>
+
+<!-- Use the Binance API to request funding rate data -->
+<script>
+  // Initialize the Binance API client
+  const client = new BinanceClient();
+
+  // Request BTC/USDT perpetual contract data
+  client.futuresCandleHistory("BTCUSDT", "perp", "1h")
+    .then((data) => {
+      // Get the most recent funding rate data
+      const fundingRateData = data[data.length - 1];
+
+      // Get the funding rate from the data
+      const fundingRate = fundingRateData.fundingRate;
+
+      // Update the div with the funding rate data
+      document.getElementById("funding-rate-data").innerHTML = `
+        Funding Rate: ${fundingRate}
+      `;
+    });
+</script>
+   
     
     
     
