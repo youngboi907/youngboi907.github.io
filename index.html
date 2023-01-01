@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Binance Funding Rate</title>
+  </head>
+  <body>
+    <h1>Binance Funding Rate</h1>
+    <div id="funding-rate"></div>
+    <script>
+      // Set the API endpoint and contract symbol
+      const endpoint = "https://fapi.binance.com/fapi/v1/futures/data/fundingRate";
+      const symbol = "BTCUSDT";
+
+      // Set the request parameters
+      const params = {
+        symbol: symbol,
+        period: 86400,  // Funding rate for the previous 24 hours
+      };
+
+      // Make the request
+      fetch(endpoint, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        params: params,
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          // Print the funding rate in the "funding-rate" div
+          document.getElementById("funding-rate").innerHTML = data.fundingRate;
+        });
+    </script>
+  </body>
+</html>
