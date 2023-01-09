@@ -1,43 +1,41 @@
+<!DOCTYPE html>
 <html>
 <head>
-  <title>Websocket Market Stream</title>
+  <title>Crypto Price Alarm</title>
 </head>
 <body>
-  <h1>Websocket Market Stream</h1>
+  <h1>Crypto Price Alarm</h1>
+  <form>
+    <label for="target-price">Enter target price:</label><br>
+    <input type="text" id="target-price" name="target-price"><br>
+    <input type="submit" value="Set Alarm">
+  </form>
+  <p id="alarm"></p>
+  <script>
+    const form = document.querySelector('form');
+    const alarm = document.querySelector('#alarm');
 
-  <script type="text/python">
-import websocket
-import json
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const targetPrice = form.elements['target-price'].value;
+      setAlarm(targetPrice);
+    });
 
-
-def on_open(ws):
-    sub_msg = {"method": "SUBSCRIBE","params": ["!ticker@arr"],"id": 1}
-    ws.send(json.dumps(sub_msg))
-    print("Opened connection")
-
-
-def on_message(ws, message):
-    data = json.loads(message)
-    # print(type(data))
-    for x in data:
-        print(x['s'],x['c'])
-
-url =  "wss://fstream.binance.com/ws"
-
-ws = websocket.WebSocketApp(url,on_open=on_open,on_message=on_message)
-ws.run_forever()
-  
-  
-  
-  import ccxt
-from pprint import pprint
-print('CCXT Version:', ccxt.__version__)
-exchange = ccxt.binance({
-    'enableRateLimit': True,
-})
-response = exchange.fapiPublicGetPremiumIndex()
-pprint(response)
-  
+    function setAlarm(targetPrice) {
+      // Fetch current price of cryptocurrency
+      fetch('https://api.coinmarketcap.com/v1/ticker/bitcoin/')
+        .then((response) => response.json())
+        .then((data) => {
+          const currentPrice = data[0].price_usd;
+          if (currentPrice > targetPrice) {
+            alarm.innerHTML = 'ALARM: Bitcoin price is above target';
+          } else if (currentPrice < targetPrice) {
+            alarm.innerHTML = 'ALARM: Bitcoin price is below target';
+          } else {
+            alarm.innerHTML = 'ALARM: Bitcoin price is at target';
+          }
+        });
+    }
   </script>
 </body>
 </html>
