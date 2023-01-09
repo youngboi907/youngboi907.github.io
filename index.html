@@ -69,10 +69,13 @@
     <input type="submit" value="Set Alarm">
   </form>
   <p id="alarm"></p>
+  <button id="dark-mode-btn">Dark Mode</button>
   <script>
     const form = document.querySelector('form');
     const alarm = document.querySelector('#alarm');
-
+    const darkModeBtn = document.querySelector('#dark-mode-btn');
+    
+    
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       const crypto = form.elements['crypto-select'].value;
@@ -94,6 +97,20 @@
           } else {
             alarm.innerHTML = `ALARM: ${crypto} price is at target`;
           }
+        });
+    }
+        
+    darkModeBtn.addEventListener('click', () => {
+      const body = document.querySelector('body');
+      if (body.style.backgroundColor === '#f0f0f0') {
+        body.style.backgroundColor = '#333333';
+      } else {
+        body.style.backgroundColor = '#f0f0f0';
+      }
+        
+        
+        
+        
         });
     }
   </script>
