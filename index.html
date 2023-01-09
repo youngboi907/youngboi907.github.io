@@ -6,6 +6,14 @@
 <body>
   <h1>Crypto Price Alarm</h1>
   <form>
+    <label for="crypto-select">Select cryptocurrency:</label><br>
+    <select id="crypto-select" name="crypto-select">
+      <option value="bitcoin">Bitcoin</option>
+      <option value="ethereum">Ethereum</option>
+      <option value="litecoin">Litecoin</option>
+      <option value="gala">Gala</option>
+      <option value="hnt">HNT</option>
+    </select><br>
     <label for="target-price">Enter target price:</label><br>
     <input type="text" id="target-price" name="target-price"><br>
     <input type="submit" value="Set Alarm">
@@ -17,22 +25,24 @@
 
     form.addEventListener('submit', (event) => {
       event.preventDefault();
+      const crypto = form.elements['crypto-select'].value;
       const targetPrice = form.elements['target-price'].value;
-      setAlarm(targetPrice);
+      setAlarm(crypto, targetPrice);
     });
 
-    function setAlarm(targetPrice) {
+    function setAlarm(crypto, targetPrice) {
       // Fetch current price of cryptocurrency
-      fetch('https://api.coinmarketcap.com/v1/ticker/bitcoin/')
+      const apiUrl = `https://api.coinmarketcap.com/v1/ticker/${crypto}/`;
+      fetch(apiUrl)
         .then((response) => response.json())
         .then((data) => {
           const currentPrice = data[0].price_usd;
           if (currentPrice > targetPrice) {
-            alarm.innerHTML = 'ALARM: Bitcoin price is above target';
+            alarm.innerHTML = `ALARM: ${crypto} price is above target`;
           } else if (currentPrice < targetPrice) {
-            alarm.innerHTML = 'ALARM: Bitcoin price is below target';
+            alarm.innerHTML = `ALARM: ${crypto} price is below target`;
           } else {
-            alarm.innerHTML = 'ALARM: Bitcoin price is at target';
+            alarm.innerHTML = `ALARM: ${crypto} price is at target`;
           }
         });
     }
