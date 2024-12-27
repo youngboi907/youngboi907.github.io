@@ -10,198 +10,127 @@
             font-family: Arial, sans-serif;
             background-color: #121212;
             color: #fff;
-            margin: 0;
             padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            text-align: center;
         }
         h1 {
             color: #ffcc00;
         }
         .controls {
             margin: 20px 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
         }
-        .controls select, .controls input {
+        .controls input, .controls select {
             padding: 10px;
-            font-size: 16px;
+            margin: 5px;
             border: none;
             border-radius: 5px;
-            background-color: #2a2a2a;
+            background: #2a2a2a;
             color: #fff;
         }
-        .chart-container {
-            width: 90%;
-            max-width: 1200px;
-            margin-bottom: 30px;
+        canvas {
+            margin: 20px auto;
+            display: block;
         }
     </style>
 </head>
 <body>
     <h1>BTC/USDT Order Book Depth</h1>
-
     <div class="controls">
-        <label for="multiplier">Custom Multiplier:</label>
-        <input id="multiplier" type="number" value="1" step="0.1" min="0.1">
-
-        <label for="timeframe">Time Frame:</label>
+        <label>Multiplier:</label>
+        <input type="number" id="multiplier" value="1" step="0.1" min="0.1">
+        <label>Timeframe:</label>
         <select id="timeframe">
-            <option value="1m">1 Minute</option>
-            <option value="5m">5 Minutes</option>
-            <option value="15m">15 Minutes</option>
-            <option value="1h">1 Hour</option>
-            <option value="4h">4 Hours</option>
+            <option value="60">1 Minute</option>
+            <option value="300">5 Minutes</option>
+            <option value="900">15 Minutes</option>
+            <option value="3600">1 Hour</option>
         </select>
     </div>
-
-    <div class="chart-container">
-        <canvas id="chart1"></canvas>
-    </div>
-    <div class="chart-container">
-        <canvas id="chart2"></canvas>
-    </div>
+    <canvas id="chart1"></canvas>
+    <canvas id="chart2"></canvas>
 
     <script>
-        const API_URL = "https://api.binance.com/api/v3/";
+        const API_URL = "https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=1000";
         const ctx1 = document.getElementById("chart1").getContext("2d");
         const ctx2 = document.getElementById("chart2").getContext("2d");
 
-        const chart1 = new Chart(ctx1, {
+        let chart1 = new Chart(ctx1, {
             type: "line",
             data: { labels: [], datasets: [] },
             options: {
-                responsive: true,
-                plugins: {
-                    legend: { labels: { color: "#fff" } }
-                },
                 scales: {
-                    x: {
-                        type: "time",
-                        time: { unit: "minute" },
-                        ticks: { color: "#fff" },
-                        title: { display: true, text: "Time", color: "#fff" }
-                    },
-                    y: {
-                        ticks: { color: "#fff" },
-                        title: { display: true, text: "Cumulative Volume", color: "#fff" }
-                    }
+                    x: { type: "time", time: { unit: "minute" } },
+                    y: { title: { display: true, text: "Cumulative Volume" } }
                 }
             }
         });
 
-        const chart2 = new Chart(ctx2, {
+        let chart2 = new Chart(ctx2, {
             type: "line",
             data: { labels: [], datasets: [] },
             options: {
-                responsive: true,
-                plugins: {
-                    legend: { labels: { color: "#fff" } }
-                },
                 scales: {
-                    x: {
-                        type: "time",
-                        time: { unit: "minute" },
-                        ticks: { color: "#fff" },
-                        title: { display: true, text: "Time", color: "#fff" }
-                    },
-                    y: {
-                        ticks: { color: "#fff" },
-                        title: { display: true, text: "Cumulative Volume", color: "#fff" }
-                    }
+                    x: { type: "time", time: { unit: "minute" } },
+                    y: { title: { display: true, text: "Cumulative Volume" } }
                 }
             }
         });
 
-        async function fetchOrderBook(symbol) {
-            const response = await fetch(`${API_URL}depth?symbol=${symbol}&limit=1000`);
-            return response.ok ? response.json() : null;
+        async function fetchOrderBook() {
+            const response = await fetch(API_URL);
+            if (!response.ok) {
+                console.error("Failed to fetch order book");
+                return null;
+            }
+            return await response.json();
         }
 
-        async function updateCharts(multiplier, interval) {
-            const orderBook = await fetchOrderBook("BTCUSDT");
+        function processOrderBook(orderBook, midPrice, rangeLow, rangeHigh) {
+            const bids = orderBook.bids
+                .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
+                .filter(bid => bid.price >= midPrice * rangeLow && bid.price <= midPrice * rangeHigh);
+
+            const asks = orderBook.asks
+                .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
+                .filter(ask => ask.price >= midPrice * rangeLow && ask.price <= midPrice * rangeHigh);
+
+            return { bids, asks };
+        }
+
+        async function updateCharts(multiplier) {
+            const orderBook = await fetchOrderBook();
             if (!orderBook) return;
 
-            const now = new Date();
             const topBid = parseFloat(orderBook.bids[0][0]);
             const topAsk = parseFloat(orderBook.asks[0][0]);
             const midPrice = (topBid + topAsk) / 2;
+            const now = new Date();
 
-            const bids1to2_5 = orderBook.bids
-                .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
-                .filter(bid => bid.price >= midPrice * 0.975 && bid.price <= midPrice * 0.99);
+            const range1 = processOrderBook(orderBook, midPrice, 0.975, 0.99);
+            const range2 = processOrderBook(orderBook, midPrice, 0.95, 0.975);
 
-            const asks1to2_5 = orderBook.asks
-                .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
-                .filter(ask => ask.price >= midPrice * 1.01 && ask.price <= midPrice * 1.025);
+            const color1 = range1.bids.reduce((a, b) => a + b.volume, 0) > multiplier
+                ? "rgba(0, 255, 0, 1)" : "rgba(255, 0, 0, 1)";
 
-            const bids2_5to5 = orderBook.bids
-                .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
-                .filter(bid => bid.price >= midPrice * 0.95 && bid.price < midPrice * 0.975);
+            const color2 = range2.bids.reduce((a, b) => a + b.volume, 0) > multiplier
+                ? "rgba(0, 255, 0, 1)" : "rgba(255, 0, 0, 1)";
 
-            const asks2_5to5 = orderBook.asks
-                .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
-                .filter(ask => ask.price >= midPrice * 1.025 && ask.price < midPrice * 1.05);
-
-            // Update Chart 1 (1%-2.5%)
             chart1.data.labels.push(now);
             chart1.data.datasets = [
-                {
-                    label: "Bids (1%-2.5%)",
-                    data: bids1to2_5.map(b => b.volume).slice(-interval),
-                    borderColor: bids1to2_5.some(b => b.volume > multiplier) ? "rgba(0, 255, 0, 1)" : "rgba(255, 0, 0, 1)",
-                    backgroundColor: "rgba(0, 255, 0, 0.2)",
-                    fill: true
-                },
-                {
-                    label: "Asks (1%-2.5%)",
-                    data: asks1to2_5.map(a => a.volume).slice(-interval),
-                    borderColor: asks1to2_5.some(a => a.volume > multiplier) ? "rgba(255, 0, 0, 1)" : "rgba(0, 255, 0, 1)",
-                    backgroundColor: "rgba(255, 0, 0, 0.2)",
-                    fill: true
-                }
+                { label: "Bids (1-2.5%)", data: range1.bids.map(b => b.volume), borderColor: color1 }
             ];
-
-            // Update Chart 2 (2.5%-5%)
             chart2.data.labels.push(now);
             chart2.data.datasets = [
-                {
-                    label: "Bids (2.5%-5%)",
-                    data: bids2_5to5.map(b => b.volume).slice(-interval),
-                    borderColor: bids2_5to5.some(b => b.volume > multiplier) ? "rgba(0, 255, 0, 1)" : "rgba(255, 0, 0, 1)",
-                    backgroundColor: "rgba(0, 255, 0, 0.2)",
-                    fill: true
-                },
-                {
-                    label: "Asks (2.5%-5%)",
-                    data: asks2_5to5.map(a => a.volume).slice(-interval),
-                    borderColor: asks2_5to5.some(a => a.volume > multiplier) ? "rgba(255, 0, 0, 1)" : "rgba(0, 255, 0, 1)",
-                    backgroundColor: "rgba(255, 0, 0, 0.2)",
-                    fill: true
-                }
+                { label: "Bids (2.5%-5%)", data: range2.bids.map(b => b.volume), borderColor: color2 }
             ];
-
             chart1.update();
             chart2.update();
         }
 
-        document.getElementById("multiplier").addEventListener("change", () => {
+        setInterval(() => {
             const multiplier = parseFloat(document.getElementById("multiplier").value) || 1;
-            const interval = parseInt(document.getElementById("timeframe").value);
-            updateCharts(multiplier, interval);
-        });
-
-        document.getElementById("timeframe").addEventListener("change", () => {
-            const multiplier = parseFloat(document.getElementById("multiplier").value) || 1;
-            const interval = parseInt(document.getElementById("timeframe").value);
-            updateCharts(multiplier, interval);
-        });
-
-        const defaultMultiplier = 1;
-        const defaultInterval = 60;
-        setInterval(() => updateCharts(defaultMultiplier, defaultInterval), 1000);
+            updateCharts(multiplier);
+        }, 1000);
     </script>
 </body>
 </html>
