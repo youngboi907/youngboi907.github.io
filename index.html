@@ -1,113 +1,105 @@
-l<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Spot Order Book (1-2.5%)</title>
+    <title>Binance Spot Order Book Depth</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             background-color: #121212;
             color: white;
             text-align: center;
-            padding: 20px;
-        }
-        .container {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-        }
-        .box {
-            background-color: #1e1e1e;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 10px;
-            width: 300px;
-            text-align: center;
-            border: 1px solid #444;
-        }
-        .box h2 {
             margin: 0;
+            padding: 20px;
+        }
+        table {
+            margin: 20px auto;
+            width: 90%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #333;
+        }
+        th {
+            background-color: #1e1e1e;
+        }
+        tr:nth-child(even) {
+            background-color: #1a1a1a;
+        }
+        .bids {
             color: #4caf50;
         }
-        .box p {
-            margin: 5px 0;
+        .asks {
+            color: #f44336;
         }
     </style>
 </head>
 <body>
-    <h1>Binance Spot Order Book (1-2.5%)</h1>
-    <div class="container">
-        <div class="box">
-            <h2>Total Bids (1%-2.5%)</h2>
-            <p id="bidsSum">Loading...</p>
-        </div>
-        <div class="box">
-            <h2>Total Asks (1%-2.5%)</h2>
-            <p id="asksSum">Loading...</p>
-        </div>
-    </div>
+    <h1>Binance Spot Order Book Depth</h1>
+    <p>BTC/USDT Order Book</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Price (USDT)</th>
+                <th>Quantity (BTC)</th>
+                <th>Type</th>
+            </tr>
+        </thead>
+        <tbody id="orderBookTable"></tbody>
+    </table>
 
     <script>
         async function fetchOrderBook(symbol) {
-            const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
-            if (!response.ok) throw new Error("Failed to fetch order book");
-            return response.json();
-        }
-
-        async function fetchSpotPrice(symbol) {
-            const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
-            if (!response.ok) throw new Error("Failed to fetch spot price");
-            const data = await response.json();
-            return parseFloat(data.price);
-        }
-
-        function calculateSum(orders, spotPrice, minPercent, maxPercent) {
-            return orders.reduce((sum, [price, qty]) => {
-                price = parseFloat(price);
-                qty = parseFloat(qty);
-                const deviation = (Math.abs(price - spotPrice) / spotPrice) * 100;
-
-                if (deviation >= minPercent && deviation <= maxPercent) {
-                    sum += price * qty;
-                }
-
-                return sum;
-            }, 0);
-        }
-
-        async function updateOrderBook() {
             try {
-                const symbol = "BTCUSDT";
-                const orderBook = await fetchOrderBook(symbol);
-                const spotPrice = await fetchSpotPrice(symbol);
-
-                const bidsSum = calculateSum(
-                    orderBook.bids,
-                    spotPrice,
-                    1, // Min percentage
-                    2.5 // Max percentage
-                );
-
-                const asksSum = calculateSum(
-                    orderBook.asks,
-                    spotPrice,
-                    1, // Min percentage
-                    2.5 // Max percentage
-                );
-
-                // Display the sums
-                document.getElementById("bidsSum").innerText = `${bidsSum.toFixed(2)} USDT`;
-                document.getElementById("asksSum").innerText = `${asksSum.toFixed(2)} USDT`;
+                const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=50`);
+                if (!response.ok) throw new Error("Failed to fetch order book");
+                return response.json();
             } catch (error) {
                 console.error("Error fetching order book:", error);
-                document.getElementById("bidsSum").innerText = "Error";
-                document.getElementById("asksSum").innerText = "Error";
+                return null;
             }
         }
 
+        function renderOrderBook(orderBook) {
+            const tableBody = document.getElementById("orderBookTable");
+            tableBody.innerHTML = ""; // Clear the table before rendering
+
+            if (!orderBook) {
+                tableBody.innerHTML = `<tr><td colspan="3">Error fetching data</td></tr>`;
+                return;
+            }
+
+            // Render Bids
+            orderBook.bids.forEach(([price, qty]) => {
+                const row = `<tr>
+                    <td class="bids">${parseFloat(price).toFixed(2)}</td>
+                    <td>${parseFloat(qty).toFixed(6)}</td>
+                    <td class="bids">Bid</td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+
+            // Render Asks
+            orderBook.asks.forEach(([price, qty]) => {
+                const row = `<tr>
+                    <td class="asks">${parseFloat(price).toFixed(2)}</td>
+                    <td>${parseFloat(qty).toFixed(6)}</td>
+                    <td class="asks">Ask</td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        async function updateOrderBook() {
+            const symbol = "BTCUSDT"; // Replace with your desired symbol
+            const orderBook = await fetchOrderBook(symbol);
+            renderOrderBook(orderBook);
+        }
+
         updateOrderBook();
-        setInterval(updateOrderBook, 10000); // Update every 10 seconds
+        setInterval(updateOrderBook, 5000); // Update every 5 seconds
     </script>
 </body>
 </html>
