@@ -8,7 +8,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: linear-gradient(to bottom right, #1e3c72, #2a5298);
+            background: black;
             color: #fff;
             margin: 0;
             padding: 0;
@@ -49,6 +49,8 @@
 <body>
     <h1>BTC/USDT Candlestick Chart with Condition Markers</h1>
     <div class="timeframe-buttons">
+        <button data-timeframe="5m">5 Minutes</button>
+        <button data-timeframe="30m">30 Minutes</button>
         <button data-timeframe="1h" class="active">1 Hour</button>
         <button data-timeframe="4h">4 Hours</button>
         <button data-timeframe="1d">1 Day</button>
@@ -61,25 +63,25 @@
             width: chartContainer.clientWidth,
             height: 500,
             layout: {
-                backgroundColor: '#1e3c72',
+                backgroundColor: '#000000',
                 textColor: '#ffffff',
             },
             grid: {
                 vertLines: {
-                    color: '#2a5298',
+                    visible: false,
                 },
                 horzLines: {
-                    color: '#2a5298',
+                    visible: false,
                 },
             },
             crosshair: {
                 mode: LightweightCharts.CrosshairMode.Normal,
             },
             priceScale: {
-                borderColor: '#cccccc',
+                borderColor: '#333333',
             },
             timeScale: {
-                borderColor: '#cccccc',
+                borderColor: '#333333',
             },
         });
 
@@ -96,6 +98,8 @@
 
         async function fetchCandlesAndConditions() {
             const intervalMap = {
+                '5m': '5m',
+                '30m': '30m',
                 '1h': '1h',
                 '4h': '4h',
                 '1d': '1d',
@@ -174,8 +178,8 @@
         // Initial load
         fetchCandlesAndConditions();
 
-        // Auto-refresh every 60 seconds
-        setInterval(fetchCandlesAndConditions, 60000);
+        // Auto-refresh every 2 seconds
+        setInterval(fetchCandlesAndConditions, 2000);
 
         // Responsive resizing
         window.addEventListener('resize', () => {
