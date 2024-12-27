@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance BTC/USDT Open Interest</title>
+    <title>Binance BTC/USDT Open Interest and Order Book</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,7 +11,7 @@
             padding: 0;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             height: 100vh;
             background-color: #f4f4f9;
         }
@@ -21,6 +21,9 @@
             background-color: #fff;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             border-radius: 10px;
+            width: 80%;
+            overflow-y: auto;
+            max-height: 90vh;
         }
         .header {
             font-size: 24px;
@@ -31,11 +34,29 @@
             color: #333;
             margin: 10px 0;
         }
+        .order-book {
+            margin-top: 20px;
+            text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .order-book table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .order-book th, .order-book td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
         .error {
             color: red;
         }
         .loading {
             color: #3498db;
+        }
+        .order-book th {
+            background-color: #f2f2f2;
         }
     </style>
 </head>
@@ -43,13 +64,32 @@
 
     <div class="container">
         <div class="header">
-            Binance BTC/USDT Open Interest
+            Binance BTC/USDT Open Interest and Order Book
         </div>
+        
+        <!-- Open Interest -->
         <div id="loading" class="loading">
             Loading data...
         </div>
         <div id="open-interest" class="data"></div>
         <div id="error" class="error"></div>
+        
+        <!-- Order Book -->
+        <div class="order-book">
+            <h3>Order Book</h3>
+            <div id="order-book-error" class="error"></div>
+            <table id="order-book">
+                <thead>
+                    <tr>
+                        <th>Bid Price</th>
+                        <th>Bid Quantity</th>
+                        <th>Ask Price</th>
+                        <th>Ask Quantity</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 
     <script>
@@ -72,8 +112,46 @@
             }
         }
 
+        async function fetchOrderBook() {
+            const url = 'https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=5';
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data && data.bids && data.asks) {
+                    displayOrderBook(data.bids, data.asks);
+                } else {
+                    throw new Error('Order book data is unavailable.');
+                }
+            } catch (error) {
+                document.getElementById('order-book-error').innerText = `Error: ${error.message}`;
+            }
+        }
+
+        function displayOrderBook(bids, asks) {
+            const tbody = document.getElementById('order-book').getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+
+            const maxEntries = Math.min(bids.length, asks.length, 5);
+
+            for (let i = 0; i < maxEntries; i++) {
+                const bid = bids[i];
+                const ask = asks[i];
+
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${bid[0]}</td>
+                    <td>${bid[1]}</td>
+                    <td>${ask[0]}</td>
+                    <td>${ask[1]}</td>
+                `;
+            }
+        }
+
         // Fetch data when the page loads
         fetchOpenInterest();
+        fetchOrderBook();
     </script>
 
 </body>
