@@ -25,7 +25,7 @@
             flex-direction: column;
             align-items: center;
         }
-        .controls input, .controls select {
+        .controls input {
             margin: 10px;
             padding: 10px;
             font-size: 16px;
@@ -49,52 +49,57 @@
         <input id="multiplier" type="number" value="50" min="1">
     </div>
     <div class="chart-container">
-        <h2>Condition Tracker (1% to 2.5%)</h2>
-        <canvas id="conditionChart1"></canvas>
-    </div>
-    <div class="chart-container">
-        <h2>Condition Tracker (2.5% to 5%)</h2>
-        <canvas id="conditionChart2"></canvas>
+        <canvas id="conditionChart"></canvas>
     </div>
 
     <script>
-        const chartData1 = {
-            labels: ["Bids > Multiplier x Asks", "Asks > Multiplier x Bids"],
+        const chartData = {
+            labels: [],
             datasets: [
                 {
-                    label: "Condition Count",
-                    data: [0, 0],
-                    backgroundColor: ["rgba(0, 255, 0, 0.5)", "rgba(255, 0, 0, 0.5)"],
-                    borderColor: ["rgba(0, 255, 0, 1)", "rgba(255, 0, 0, 1)"],
+                    label: "1%-2.5%: Bids > Multiplier × Asks",
+                    data: [],
+                    backgroundColor: "rgba(0, 255, 0, 0.5)",
+                    borderColor: "rgba(0, 255, 0, 1)",
+                    borderWidth: 1,
+                },
+                {
+                    label: "1%-2.5%: Asks > Multiplier × Bids",
+                    data: [],
+                    backgroundColor: "rgba(255, 0, 0, 0.5)",
+                    borderColor: "rgba(255, 0, 0, 1)",
+                    borderWidth: 1,
+                },
+                {
+                    label: "2.5%-5%: Bids > Multiplier × Asks",
+                    data: [],
+                    backgroundColor: "rgba(0, 128, 255, 0.5)",
+                    borderColor: "rgba(0, 128, 255, 1)",
+                    borderWidth: 1,
+                },
+                {
+                    label: "2.5%-5%: Asks > Multiplier × Bids",
+                    data: [],
+                    backgroundColor: "rgba(255, 165, 0, 0.5)",
+                    borderColor: "rgba(255, 165, 0, 1)",
                     borderWidth: 1,
                 }
             ]
         };
 
-        const chartData2 = {
-            labels: ["Bids > Multiplier x Asks", "Asks > Multiplier x Bids"],
-            datasets: [
-                {
-                    label: "Condition Count",
-                    data: [0, 0],
-                    backgroundColor: ["rgba(0, 255, 0, 0.5)", "rgba(255, 0, 0, 0.5)"],
-                    borderColor: ["rgba(0, 255, 0, 1)", "rgba(255, 0, 0, 1)"],
-                    borderWidth: 1,
-                }
-            ]
-        };
+        const ctx = document.getElementById("conditionChart").getContext("2d");
 
-        const ctx1 = document.getElementById("conditionChart1").getContext("2d");
-        const ctx2 = document.getElementById("conditionChart2").getContext("2d");
-
-        const conditionChart1 = new Chart(ctx1, {
+        const conditionChart = new Chart(ctx, {
             type: "bar",
-            data: chartData1,
+            data: chartData,
             options: {
                 responsive: true,
                 plugins: {
                     legend: {
-                        display: false,
+                        display: true,
+                        labels: {
+                            color: "#fff",
+                        }
                     },
                 },
                 scales: {
@@ -102,34 +107,14 @@
                         ticks: { color: "#fff" },
                     },
                     y: {
-                        title: { display: true, text: "Count", color: "#fff" },
+                        title: { display: true, text: "Condition Count", color: "#fff" },
                         ticks: { color: "#fff" },
                     },
                 },
             },
         });
 
-        const conditionChart2 = new Chart(ctx2, {
-            type: "bar",
-            data: chartData2,
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false,
-                    },
-                },
-                scales: {
-                    x: {
-                        ticks: { color: "#fff" },
-                    },
-                    y: {
-                        title: { display: true, text: "Count", color: "#fff" },
-                        ticks: { color: "#fff" },
-                    },
-                },
-            },
-        });
+        let historicalData = []; // To store historical data for 1-minute intervals
 
         async function fetchOrderBookAndUpdate() {
             const response = await fetch("https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=500");
@@ -153,16 +138,36 @@
             const volume2Bids = range2Bids.reduce((sum, bid) => sum + bid.quantity, 0);
             const volume2Asks = range2Asks.reduce((sum, ask) => sum + ask.quantity, 0);
 
-            // Update chart for 1%-2.5%
-            chartData1.datasets[0].data[0] = volume1Bids > multiplier * volume1Asks ? 1 : 0;
-            chartData1.datasets[0].data[1] = volume1Asks > multiplier * volume1Bids ? 1 : 0;
+            const result = {
+                timestamp: new Date().toLocaleTimeString(),
+                range1: {
+                    bids: volume1Bids > multiplier * volume1Asks ? 1 : 0,
+                    asks: volume1Asks > multiplier * volume1Bids ? 1 : 0,
+                },
+                range2: {
+                    bids: volume2Bids > multiplier * volume2Asks ? 1 : 0,
+                    asks: volume2Asks > multiplier * volume2Bids ? 1 : 0,
+                }
+            };
 
-            // Update chart for 2.5%-5%
-            chartData2.datasets[0].data[0] = volume2Bids > multiplier * volume2Asks ? 1 : 0;
-            chartData2.datasets[0].data[1] = volume2Asks > multiplier * volume2Bids ? 1 : 0;
+            historicalData.push(result);
 
-            conditionChart1.update();
-            conditionChart2.update();
+            // Limit historical data to the last 30 minutes
+            if (historicalData.length > 30) {
+                historicalData.shift();
+            }
+
+            updateChart();
+        }
+
+        function updateChart() {
+            chartData.labels = historicalData.map(data => data.timestamp);
+            chartData.datasets[0].data = historicalData.map(data => data.range1.bids);
+            chartData.datasets[1].data = historicalData.map(data => data.range1.asks);
+            chartData.datasets[2].data = historicalData.map(data => data.range2.bids);
+            chartData.datasets[3].data = historicalData.map(data => data.range2.asks);
+
+            conditionChart.update();
         }
 
         // Auto-refresh data every 2 seconds
