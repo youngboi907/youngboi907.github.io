@@ -11,17 +11,22 @@
             text-align: center;
         }
         canvas {
-            max-width: 600px;
+            max-width: 800px;
             margin: 20px auto;
         }
     </style>
 </head>
 <body>
     <h1>Binance Order Book Analysis</h1>
-    <p>Total Bids and Asks within 1% to 2.5% of Spot Price</p>
+    <p>Historical Bids and Asks (1% to 2.5% of Spot Price)</p>
     <canvas id="orderBookChart"></canvas>
     <script>
         let chart;
+        const historyData = {
+            timestamps: [],
+            bids: [],
+            asks: []
+        };
 
         async function fetchOrderBook(symbol) {
             const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
@@ -57,7 +62,7 @@
             return { totalBids, totalAsks };
         }
 
-        async function updateChart(chart, symbol, lowerPercent, upperPercent) {
+        async function updateChart(symbol, lowerPercent, upperPercent) {
             const spotPriceResponse = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const spotPriceData = await spotPriceResponse.json();
             const spotPrice = parseFloat(spotPriceData.price);
@@ -65,7 +70,23 @@
             const orderBook = await fetchOrderBook(symbol);
             const totals = calculateTotals(orderBook, spotPrice, lowerPercent, upperPercent);
 
-            chart.data.datasets[0].data = [totals.totalBids, totals.totalAsks];
+            // Add the new data point to history
+            const timestamp = new Date().toLocaleTimeString();
+            historyData.timestamps.push(timestamp);
+            historyData.bids.push(totals.totalBids);
+            historyData.asks.push(totals.totalAsks);
+
+            // Limit the history to the last 20 data points
+            if (historyData.timestamps.length > 20) {
+                historyData.timestamps.shift();
+                historyData.bids.shift();
+                historyData.asks.shift();
+            }
+
+            // Update the chart
+            chart.data.labels = historyData.timestamps;
+            chart.data.datasets[0].data = historyData.bids;
+            chart.data.datasets[1].data = historyData.asks;
             chart.update();
         }
 
@@ -76,26 +97,50 @@
 
             const ctx = document.getElementById('orderBookChart').getContext('2d');
             chart = new Chart(ctx, {
-                type: 'bar',
+                type: 'line',
                 data: {
-                    labels: ['Bids', 'Asks'],
-                    datasets: [{
-                        label: 'Total Value (USDT)',
-                        data: [0, 0], // Initial empty data
-                        backgroundColor: ['#4caf50', '#f44336'],
-                        borderWidth: 1
-                    }]
+                    labels: [], // Timestamps
+                    datasets: [
+                        {
+                            label: 'Bids (USDT)',
+                            data: [], // Historical bids
+                            borderColor: '#4caf50',
+                            backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                            borderWidth: 2,
+                            fill: true
+                        },
+                        {
+                            label: 'Asks (USDT)',
+                            data: [], // Historical asks
+                            borderColor: '#f44336',
+                            backgroundColor: 'rgba(244, 67, 54, 0.2)',
+                            borderWidth: 2,
+                            fill: true
+                        }
+                    ]
                 },
                 options: {
+                    responsive: true,
                     scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Timestamp'
+                            }
+                        },
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Total Value (USDT)'
+                            }
                         }
                     }
                 }
             });
 
-            setInterval(() => updateChart(chart, symbol, lowerPercent, upperPercent), 1000);
+            // Update the chart every second
+            setInterval(() => updateChart(symbol, lowerPercent, upperPercent), 1000);
         }
 
         initializeChart();
