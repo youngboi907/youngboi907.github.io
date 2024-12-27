@@ -3,22 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Order Book Chart</title>
+    <title>Live Binance Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
+            margin: 0;
+            padding: 0;
         }
         canvas {
-            max-width: 800px;
+            max-width: 900px;
             margin: 20px auto;
         }
     </style>
 </head>
 <body>
-    <h1>Binance Order Book Analysis</h1>
-    <p>Historical Bids and Asks (1% to 2.5% of Spot Price)</p>
+    <h1>Binance Live Order Book</h1>
+    <p>Live Total Bids and Asks with Historical Data</p>
     <canvas id="orderBookChart"></canvas>
     <script>
         let chart;
@@ -28,51 +30,42 @@
             asks: []
         };
 
+        // Fetch the order book data
         async function fetchOrderBook(symbol) {
             const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
             const data = await response.json();
             return data;
         }
 
+        // Fetch the spot price
         async function fetchSpotPrice(symbol) {
             const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const data = await response.json();
             return parseFloat(data.price);
         }
 
-        function calculateTotals(orderBook, spotPrice, lowerPercent, upperPercent) {
+        // Calculate total bids and asks
+        function calculateTotals(orderBook) {
             let totalBids = 0;
             let totalAsks = 0;
 
-            const lowerLimit = spotPrice * (1 - upperPercent / 100);
-            const upperLimit = spotPrice * (1 + upperPercent / 100);
-            const midLowerLimit = spotPrice * (1 - lowerPercent / 100);
-            const midUpperLimit = spotPrice * (1 + lowerPercent / 100);
-
             for (let [price, qty] of orderBook.bids) {
-                price = parseFloat(price);
-                qty = parseFloat(qty);
-                if (price >= lowerLimit && price <= midLowerLimit) {
-                    totalBids += price * qty;
-                }
+                totalBids += parseFloat(price) * parseFloat(qty);
             }
 
             for (let [price, qty] of orderBook.asks) {
-                price = parseFloat(price);
-                qty = parseFloat(qty);
-                if (price >= midUpperLimit && price <= upperLimit) {
-                    totalAsks += price * qty;
-                }
+                totalAsks += parseFloat(price) * parseFloat(qty);
             }
 
             return { totalBids, totalAsks };
         }
 
-        async function updateChart(symbol, lowerPercent, upperPercent) {
+        // Update the chart with live data
+        async function updateChart(symbol) {
             try {
                 const spotPrice = await fetchSpotPrice(symbol);
                 const orderBook = await fetchOrderBook(symbol);
-                const totals = calculateTotals(orderBook, spotPrice, lowerPercent, upperPercent);
+                const totals = calculateTotals(orderBook);
 
                 // Add the new data point to history
                 const timestamp = new Date().toLocaleTimeString();
@@ -97,10 +90,9 @@
             }
         }
 
+        // Initialize the chart
         async function initializeChart() {
             const symbol = 'BTCUSDT';
-            const lowerPercent = 1; // Lower bound: 1% of spot price
-            const upperPercent = 2.5; // Upper bound: 2.5% of spot price
 
             const ctx = document.getElementById('orderBookChart').getContext('2d');
             chart = new Chart(ctx, {
@@ -109,7 +101,7 @@
                     labels: [], // Timestamps
                     datasets: [
                         {
-                            label: 'Bids (USDT)',
+                            label: 'Total Bids (USDT)',
                             data: [], // Historical bids
                             borderColor: '#4caf50',
                             backgroundColor: 'rgba(76, 175, 80, 0.2)',
@@ -117,7 +109,7 @@
                             fill: true
                         },
                         {
-                            label: 'Asks (USDT)',
+                            label: 'Total Asks (USDT)',
                             data: [], // Historical asks
                             borderColor: '#f44336',
                             backgroundColor: 'rgba(244, 67, 54, 0.2)',
@@ -147,7 +139,7 @@
             });
 
             // Update the chart every second
-            setInterval(() => updateChart(symbol, lowerPercent, upperPercent), 1000);
+            setInterval(() => updateChart(symbol), 1000);
         }
 
         initializeChart();
