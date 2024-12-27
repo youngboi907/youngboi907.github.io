@@ -3,38 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Binance Order Book Sums</title>
+    <title>Binance Order Book</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #ffffff;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #121212; /* Dark background */
-            color: #ffffff; /* White text for contrast */
         }
-        .box {
+        h1 {
+            margin-top: 20px;
+        }
+        .range-box {
+            width: 80%;
+            max-width: 600px;
+            margin: 10px 0;
+            padding: 10px;
             background-color: #1e1e1e;
-            padding: 20px;
             border: 2px solid #4caf50;
             border-radius: 10px;
-            text-align: center;
-            margin: 10px 10px;
-            font-size: 20px;
-            width: 300px;
         }
-        .error {
-            color: #f44336;
+        .range-box h3 {
+            margin: 0 0 10px;
+            font-size: 18px;
         }
     </style>
 </head>
 <body>
-    <h1>Binance Order Book (1% - 2.5%)</h1>
-    <div class="box" id="bidsBox">Bids Sum: Loading...</div>
-    <div class="box" id="asksBox">Asks Sum: Loading...</div>
+    <h1>Binance Order Book Ranges</h1>
+    <div id="bidsContainer"></div>
+    <div id="asksContainer"></div>
+
     <script>
         async function fetchOrderBook(symbol) {
             try {
@@ -59,50 +62,75 @@
             }
         }
 
-        async function calculateSums() {
-            const symbol = 'BTCUSDT'; // Update to the desired trading pair
+        function calculateRanges(orders, spotPrice) {
+            const ranges = {
+                '0-1%': { total: 0, count: 0 },
+                '1-2.5%': { total: 0, count: 0 },
+                '2.5-5%': { total: 0, count: 0 },
+                '5-10%': { total: 0, count: 0 }
+            };
+
+            orders.forEach(([price, qty]) => {
+                const priceValue = parseFloat(price);
+                const qtyValue = parseFloat(qty);
+
+                if (priceValue >= spotPrice * 0.9 && priceValue <= spotPrice * 1.1) {
+                    if (priceValue <= spotPrice * 1.01) {
+                        ranges['0-1%'].total += priceValue * qtyValue;
+                        ranges['0-1%'].count++;
+                    } else if (priceValue <= spotPrice * 1.025) {
+                        ranges['1-2.5%'].total += priceValue * qtyValue;
+                        ranges['1-2.5%'].count++;
+                    } else if (priceValue <= spotPrice * 1.05) {
+                        ranges['2.5-5%'].total += priceValue * qtyValue;
+                        ranges['2.5-5%'].count++;
+                    } else if (priceValue <= spotPrice * 1.1) {
+                        ranges['5-10%'].total += priceValue * qtyValue;
+                        ranges['5-10%'].count++;
+                    }
+                }
+            });
+
+            return ranges;
+        }
+
+        async function updateOrderBook() {
+            const symbol = "BTCUSDT";
             const orderBook = await fetchOrderBook(symbol);
             const spotPrice = await fetchSpotPrice(symbol);
 
             if (!orderBook || !spotPrice) {
-                document.getElementById('bidsBox').textContent = "Error fetching data.";
-                document.getElementById('asksBox').textContent = "Error fetching data.";
-                document.getElementById('bidsBox').classList.add("error");
-                document.getElementById('asksBox').classList.add("error");
+                document.getElementById("bidsContainer").innerHTML = "<p>Error fetching data.</p>";
+                document.getElementById("asksContainer").innerHTML = "<p>Error fetching data.</p>";
                 return;
             }
 
-            const lowerLimit = spotPrice * 1.01; // 1% above spot price
-            const upperLimit = spotPrice * 1.025; // 2.5% above spot price
+            const bidRanges = calculateRanges(orderBook.bids, spotPrice);
+            const askRanges = calculateRanges(orderBook.asks, spotPrice);
 
-            let totalBids = 0;
-            let totalAsks = 0;
-
-            // Calculate total bids within the range
-            orderBook.bids.forEach(([price, qty]) => {
-                const priceValue = parseFloat(price);
-                const qtyValue = parseFloat(qty);
-                if (priceValue >= lowerLimit && priceValue <= upperLimit) {
-                    totalBids += priceValue * qtyValue;
-                }
-            });
-
-            // Calculate total asks within the range
-            orderBook.asks.forEach(([price, qty]) => {
-                const priceValue = parseFloat(price);
-                const qtyValue = parseFloat(qty);
-                if (priceValue >= lowerLimit && priceValue <= upperLimit) {
-                    totalAsks += priceValue * qtyValue;
-                }
-            });
-
-            document.getElementById('bidsBox').textContent = `Bids Sum: ${totalBids.toFixed(2)} USDT`;
-            document.getElementById('asksBox').textContent = `Asks Sum: ${totalAsks.toFixed(2)} USDT`;
+            displayRanges("Bids", bidRanges, "bidsContainer");
+            displayRanges("Asks", askRanges, "asksContainer");
         }
 
-        // Run the calculation initially and every 5 seconds
-        calculateSums();
-        setInterval(calculateSums, 5000);
+        function displayRanges(type, ranges, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `<h2>${type}</h2>`;
+            for (const range in ranges) {
+                const rangeData = ranges[range];
+                const rangeBox = `
+                    <div class="range-box">
+                        <h3>${range}</h3>
+                        <p>Total: ${rangeData.total.toFixed(2)} USDT</p>
+                        <p>Orders: ${rangeData.count}</p>
+                    </div>
+                `;
+                container.innerHTML += rangeBox;
+            }
+        }
+
+        // Update the data every 5 seconds
+        updateOrderBook();
+        setInterval(updateOrderBook, 5000);
     </script>
 </body>
 </html>
