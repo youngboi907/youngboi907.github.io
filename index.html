@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Book Depth Analysis</title>
+    <title>Binance Spot BTC/USDT Depth</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -33,7 +33,7 @@
     </style>
 </head>
 <body>
-    <h1>Order Book Depth (BTC/USDT)</h1>
+    <h1>Binance Spot BTC/USDT Order Book Depth</h1>
 
     <!-- Chart for order book depth -->
     <div class="chart-container">
@@ -48,39 +48,51 @@
         const depthChart = new Chart(ctx, {
             type: "bar",
             data: {
-                labels: ["1%-2.5% Bids", "1%-2.5% Asks", "2.5%-5% Bids", "2.5%-5% Asks"],
+                labels: [
+                    "1%-2.5% Bids", "1%-2.5% Asks",
+                    "2.5%-5% Bids", "2.5%-5% Asks",
+                    "5%-10% Bids", "5%-10% Asks"
+                ],
                 datasets: [
                     {
                         label: "Bids",
-                        data: [0, 0, 0, 0],
+                        data: [0, 0, 0, 0, 0, 0],
                         backgroundColor: [
                             "rgba(0, 255, 0, 0.5)", // 1%-2.5% Bids
-                            "rgba(0, 255, 0, 0)",    // Spacer for Asks
+                            "rgba(0, 255, 0, 0)",   // Spacer for Asks
                             "rgba(0, 200, 255, 0.5)", // 2.5%-5% Bids
-                            "rgba(0, 200, 255, 0)"   // Spacer for Asks
+                            "rgba(0, 200, 255, 0)", // Spacer for Asks
+                            "rgba(0, 150, 255, 0.5)", // 5%-10% Bids
+                            "rgba(0, 150, 255, 0)"  // Spacer for Asks
                         ],
                         borderColor: [
                             "rgba(0, 255, 0, 1)",
                             "rgba(0, 255, 0, 0)",
                             "rgba(0, 200, 255, 1)",
-                            "rgba(0, 200, 255, 0)"
+                            "rgba(0, 200, 255, 0)",
+                            "rgba(0, 150, 255, 1)",
+                            "rgba(0, 150, 255, 0)"
                         ],
                         borderWidth: 1
                     },
                     {
                         label: "Asks",
-                        data: [0, 0, 0, 0],
+                        data: [0, 0, 0, 0, 0, 0],
                         backgroundColor: [
-                            "rgba(255, 0, 0, 0)",   // Spacer for Bids
-                            "rgba(255, 0, 0, 0.5)", // 1%-2.5% Asks
-                            "rgba(255, 165, 0, 0)", // Spacer for Bids
-                            "rgba(255, 165, 0, 0.5)" // 2.5%-5% Asks
+                            "rgba(255, 0, 0, 0)",    // Spacer for Bids
+                            "rgba(255, 0, 0, 0.5)",  // 1%-2.5% Asks
+                            "rgba(255, 165, 0, 0)",  // Spacer for Bids
+                            "rgba(255, 165, 0, 0.5)", // 2.5%-5% Asks
+                            "rgba(255, 105, 0, 0)",  // Spacer for Bids
+                            "rgba(255, 105, 0, 0.5)"  // 5%-10% Asks
                         ],
                         borderColor: [
                             "rgba(255, 0, 0, 0)",
                             "rgba(255, 0, 0, 1)",
                             "rgba(255, 165, 0, 0)",
-                            "rgba(255, 165, 0, 1)"
+                            "rgba(255, 165, 0, 1)",
+                            "rgba(255, 105, 0, 0)",
+                            "rgba(255, 105, 0, 1)"
                         ],
                         borderWidth: 1
                     }
@@ -123,13 +135,15 @@
             // Define ranges
             const ranges = {
                 "1%-2.5%": { min: midPrice * 0.975, max: midPrice * 0.99 },
-                "2.5%-5%": { min: midPrice * 0.95, max: midPrice * 0.975 }
+                "2.5%-5%": { min: midPrice * 0.95, max: midPrice * 0.975 },
+                "5%-10%": { min: midPrice * 0.90, max: midPrice * 0.95 }
             };
 
             // Filter bids and asks within the ranges
             const depth = {
                 "1%-2.5%": { bids: 0, asks: 0 },
-                "2.5%-5%": { bids: 0, asks: 0 }
+                "2.5%-5%": { bids: 0, asks: 0 },
+                "5%-10%": { bids: 0, asks: 0 }
             };
 
             for (const [price, volume] of orderBook.bids) {
@@ -140,6 +154,8 @@
                     depth["1%-2.5%"].bids += volumeNum;
                 } else if (priceNum >= ranges["2.5%-5%"].min && priceNum <= ranges["2.5%-5%"].max) {
                     depth["2.5%-5%"].bids += volumeNum;
+                } else if (priceNum >= ranges["5%-10%"].min && priceNum <= ranges["5%-10%"].max) {
+                    depth["5%-10%"].bids += volumeNum;
                 }
             }
 
@@ -151,6 +167,8 @@
                     depth["1%-2.5%"].asks += volumeNum;
                 } else if (priceNum >= ranges["2.5%-5%"].min && priceNum <= ranges["2.5%-5%"].max) {
                     depth["2.5%-5%"].asks += volumeNum;
+                } else if (priceNum >= ranges["5%-10%"].min && priceNum <= ranges["5%-10%"].max) {
+                    depth["5%-10%"].asks += volumeNum;
                 }
             }
 
@@ -159,13 +177,17 @@
                 depth["1%-2.5%"].bids,
                 0,
                 depth["2.5%-5%"].bids,
+                0,
+                depth["5%-10%"].bids,
                 0
             ];
             depthChart.data.datasets[1].data = [
                 0,
                 depth["1%-2.5%"].asks,
                 0,
-                depth["2.5%-5%"].asks
+                depth["2.5%-5%"].asks,
+                0,
+                depth["5%-10%"].asks
             ];
 
             depthChart.update();
