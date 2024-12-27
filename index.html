@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Book Sum</title>
+    <title>Live Binance Order Book Sums</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -22,8 +22,9 @@
             border: 2px solid #4caf50;
             border-radius: 10px;
             text-align: center;
-            margin: 10px 0;
+            margin: 10px 10px;
             font-size: 20px;
+            width: 300px;
         }
         .error {
             color: #f44336;
@@ -31,62 +32,77 @@
     </style>
 </head>
 <body>
-    <h1>Order Book Sum (1% to 2.5%)</h1>
+    <h1>Binance Order Book (1% - 2.5%)</h1>
     <div class="box" id="bidsBox">Bids Sum: Loading...</div>
     <div class="box" id="asksBox">Asks Sum: Loading...</div>
     <script>
         async function fetchOrderBook(symbol) {
-            const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
-            return await response.json();
+            try {
+                const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
+                if (!response.ok) throw new Error("Failed to fetch order book");
+                return await response.json();
+            } catch (error) {
+                console.error("Error fetching order book:", error);
+                return null;
+            }
         }
 
         async function fetchSpotPrice(symbol) {
-            const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
-            const data = await response.json();
-            return parseFloat(data.price);
+            try {
+                const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+                if (!response.ok) throw new Error("Failed to fetch spot price");
+                const data = await response.json();
+                return parseFloat(data.price);
+            } catch (error) {
+                console.error("Error fetching spot price:", error);
+                return null;
+            }
         }
 
         async function calculateSums() {
-            try {
-                const symbol = 'BTCUSDT'; // Change the symbol if needed
-                const spotPrice = await fetchSpotPrice(symbol);
-                const orderBook = await fetchOrderBook(symbol);
+            const symbol = 'BTCUSDT'; // Update to the desired trading pair
+            const orderBook = await fetchOrderBook(symbol);
+            const spotPrice = await fetchSpotPrice(symbol);
 
-                const lowerLimit = spotPrice * 1.01; // 1% above spot price
-                const upperLimit = spotPrice * 1.025; // 2.5% above spot price
-
-                let totalBids = 0;
-                let totalAsks = 0;
-
-                for (let [price, qty] of orderBook.bids) {
-                    const priceValue = parseFloat(price);
-                    const qtyValue = parseFloat(qty);
-                    if (priceValue >= lowerLimit && priceValue <= upperLimit) {
-                        totalBids += priceValue * qtyValue;
-                    }
-                }
-
-                for (let [price, qty] of orderBook.asks) {
-                    const priceValue = parseFloat(price);
-                    const qtyValue = parseFloat(qty);
-                    if (priceValue >= lowerLimit && priceValue <= upperLimit) {
-                        totalAsks += priceValue * qtyValue;
-                    }
-                }
-
-                document.getElementById('bidsBox').textContent = `Bids Sum: ${totalBids.toFixed(2)} USDT`;
-                document.getElementById('asksBox').textContent = `Asks Sum: ${totalAsks.toFixed(2)} USDT`;
-            } catch (error) {
-                console.error("Error calculating sums:", error);
+            if (!orderBook || !spotPrice) {
                 document.getElementById('bidsBox').textContent = "Error fetching data.";
                 document.getElementById('asksBox').textContent = "Error fetching data.";
                 document.getElementById('bidsBox').classList.add("error");
                 document.getElementById('asksBox').classList.add("error");
+                return;
             }
+
+            const lowerLimit = spotPrice * 1.01; // 1% above spot price
+            const upperLimit = spotPrice * 1.025; // 2.5% above spot price
+
+            let totalBids = 0;
+            let totalAsks = 0;
+
+            // Calculate total bids within the range
+            orderBook.bids.forEach(([price, qty]) => {
+                const priceValue = parseFloat(price);
+                const qtyValue = parseFloat(qty);
+                if (priceValue >= lowerLimit && priceValue <= upperLimit) {
+                    totalBids += priceValue * qtyValue;
+                }
+            });
+
+            // Calculate total asks within the range
+            orderBook.asks.forEach(([price, qty]) => {
+                const priceValue = parseFloat(price);
+                const qtyValue = parseFloat(qty);
+                if (priceValue >= lowerLimit && priceValue <= upperLimit) {
+                    totalAsks += priceValue * qtyValue;
+                }
+            });
+
+            document.getElementById('bidsBox').textContent = `Bids Sum: ${totalBids.toFixed(2)} USDT`;
+            document.getElementById('asksBox').textContent = `Asks Sum: ${totalAsks.toFixed(2)} USDT`;
         }
 
+        // Run the calculation initially and every 5 seconds
         calculateSums();
-        setInterval(calculateSums, 5000); // Update every 5 seconds
+        setInterval(calculateSums, 5000);
     </script>
 </body>
 </html>
