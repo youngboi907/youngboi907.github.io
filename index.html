@@ -3,31 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Binance Order Book</title>
+    <title>Binance Live Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
             margin: 0;
             padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            margin: 10px 0;
         }
         canvas {
-            max-width: 900px;
-            margin: 20px auto;
+            max-width: 90vw;
+            max-height: 80vh;
         }
     </style>
 </head>
 <body>
     <h1>Binance Live Order Book</h1>
-    <p>Live Total Bids and Asks with Historical Data</p>
+    <p>Total Bids, Asks, and Delta (Difference)</p>
     <canvas id="orderBookChart"></canvas>
     <script>
         let chart;
         const historyData = {
             timestamps: [],
             bids: [],
-            asks: []
+            asks: [],
+            deltas: []
         };
 
         // Fetch the order book data
@@ -44,7 +53,7 @@
             return parseFloat(data.price);
         }
 
-        // Calculate total bids and asks
+        // Calculate total bids, asks, and delta
         function calculateTotals(orderBook) {
             let totalBids = 0;
             let totalAsks = 0;
@@ -57,7 +66,8 @@
                 totalAsks += parseFloat(price) * parseFloat(qty);
             }
 
-            return { totalBids, totalAsks };
+            const delta = totalBids - totalAsks;
+            return { totalBids, totalAsks, delta };
         }
 
         // Update the chart with live data
@@ -72,18 +82,21 @@
                 historyData.timestamps.push(timestamp);
                 historyData.bids.push(totals.totalBids);
                 historyData.asks.push(totals.totalAsks);
+                historyData.deltas.push(totals.delta);
 
                 // Limit the history to the last 20 data points
                 if (historyData.timestamps.length > 20) {
                     historyData.timestamps.shift();
                     historyData.bids.shift();
                     historyData.asks.shift();
+                    historyData.deltas.shift();
                 }
 
                 // Update the chart
                 chart.data.labels = historyData.timestamps;
                 chart.data.datasets[0].data = historyData.bids;
                 chart.data.datasets[1].data = historyData.asks;
+                chart.data.datasets[2].data = historyData.deltas;
                 chart.update();
             } catch (error) {
                 console.error("Error updating chart:", error);
@@ -115,23 +128,47 @@
                             backgroundColor: 'rgba(244, 67, 54, 0.2)',
                             borderWidth: 2,
                             fill: true
+                        },
+                        {
+                            label: 'Delta (Bids - Asks)',
+                            data: [], // Historical delta
+                            borderColor: '#2196f3',
+                            backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                            borderWidth: 2,
+                            fill: true
                         }
                     ]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         x: {
                             title: {
                                 display: true,
-                                text: 'Timestamp'
+                                text: 'Timestamp',
+                                font: {
+                                    size: 14
+                                }
                             }
                         },
                         y: {
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Total Value (USDT)'
+                                text: 'Total Value (USDT)',
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                font: {
+                                    size: 14
+                                }
                             }
                         }
                     }
