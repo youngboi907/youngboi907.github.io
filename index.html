@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Chart with Volume Delta</title>
+    <title>BTC/USDT Price and CVD Charts</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -11,25 +11,28 @@
             background-color: #121212;
             color: white;
             margin: 0;
-            padding: 0;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            justify-content: flex-start;
             text-align: center;
         }
         canvas {
             max-width: 90%;
-            max-height: 80%;
+            margin-bottom: 20px;
         }
         h1, select {
             margin: 10px 0;
         }
+        .chart-container {
+            width: 100%;
+            max-width: 1200px;
+        }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Chart with Volume Delta</h1>
+    <h1>BTC/USDT Price and Volume Delta Charts</h1>
     <label for="timeframe">Select Timeframe:</label>
     <select id="timeframe">
         <option value="5m">5 Minutes</option>
@@ -40,126 +43,6 @@
         <option value="1M">1 Month</option>
         <option value="2M">2 Months</option>
     </select>
-    <canvas id="btcChart"></canvas>
 
-    <script>
-        const symbol = "BTCUSDT";
-        let chart;
-
-        // Fetch Kline Data
-        async function fetchKlineData(interval, limit) {
-            const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-            const response = await fetch(url);
-            if (!response.ok) {
-                console.error("Failed to fetch data");
-                return null;
-            }
-
-            const data = await response.json();
-            const timestamps = [];
-            const prices = [];
-            const volumeDelta = [];
-            let cumulativeDelta = 0;
-
-            for (const [openTime, open, high, low, close, volume, , , , takerBuyBaseVolume] of data) {
-                timestamps.push(new Date(openTime).toLocaleString());
-                prices.push(parseFloat(close));
-                const delta = parseFloat(takerBuyBaseVolume) - (parseFloat(volume) - parseFloat(takerBuyBaseVolume));
-                cumulativeDelta += delta;
-                volumeDelta.push(cumulativeDelta);
-            }
-
-            return { timestamps, prices, volumeDelta };
-        }
-
-        // Initialize Chart
-        function initializeChart() {
-            const ctx = document.getElementById('btcChart').getContext('2d');
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: 'BTC/USDT Price',
-                            data: [],
-                            borderColor: '#4caf50',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            yAxisID: 'y1',
-                        },
-                        {
-                            label: 'Cumulative Volume Delta',
-                            data: [],
-                            borderColor: '#f44336',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            yAxisID: 'y2',
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: {
-                            title: { display: true, text: 'Time' }
-                        },
-                        y1: {
-                            type: 'linear',
-                            position: 'left',
-                            title: { display: true, text: 'Price (USDT)' }
-                        },
-                        y2: {
-                            type: 'linear',
-                            position: 'right',
-                            title: { display: true, text: 'Volume Delta' },
-                            grid: { drawOnChartArea: false }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            labels: { font: { size: 14 } }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Update Chart
-        async function updateChart(interval, limit) {
-            const data = await fetchKlineData(interval, limit);
-            if (!data) return;
-
-            const { timestamps, prices, volumeDelta } = data;
-
-            chart.data.labels = timestamps;
-            chart.data.datasets[0].data = prices;
-            chart.data.datasets[1].data = volumeDelta;
-            chart.update();
-        }
-
-        // Timeframe Selection
-        document.getElementById('timeframe').addEventListener('change', (event) => {
-            const value = event.target.value;
-            let interval, limit;
-
-            switch (value) {
-                case '5m': interval = '5m'; limit = 288; break; // 1 day
-                case '1h': interval = '1h'; limit = 720; break; // 30 days
-                case '4h': interval = '4h'; limit = 180; break; // 30 days
-                case '1d': interval = '1d'; limit = 60; break;  // 2 months
-                case '1w': interval = '1w'; limit = 60; break;  // 2 months
-                case '1M': interval = '1M'; limit = 12; break;  // 1 year
-                case '2M': interval = '1M'; limit = 24; break;  // 2 years
-                default: interval = '1h'; limit = 720; break;
-            }
-
-            updateChart(interval, limit);
-        });
-
-        // Initialize and Load Default Data
-        initializeChart();
-        updateChart('1h', 720); // Default: 1 Hour Interval, Last 30 Days
-    </script>
-</body>
-</html>
+    <div class="chart-container">
+        <h2>BTC/USDT Price
