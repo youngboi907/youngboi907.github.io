@@ -3,283 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Live Order Book (Bids-to-Asks Ratio)</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Bids-to-Asks Ratio</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
+            height: 100vh;
+            margin: 0;
             background-color: #121212; /* Dark background */
             color: #ffffff; /* White text for contrast */
         }
-        h1 {
-            margin: 10px 0;
-        }
-        p {
-            color: #b3b3b3;
-        }
-        .controls, .info {
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        select {
-            padding: 10px;
-            font-size: 16px;
-            margin-right: 10px;
-            background-color: #1e1e1e; /* Dark dropdown background */
-            color: #ffffff;
-            border: 1px solid #ffffff;
-        }
-        select:focus {
-            outline: none;
-            border-color: #4caf50;
-        }
         .box {
             background-color: #1e1e1e;
-            padding: 10px 20px;
-            border: 1px solid #ffffff;
-            border-radius: 5px;
-            display: inline-block;
-            font-size: 18px;
+            padding: 20px;
+            border: 2px solid #4caf50;
+            border-radius: 10px;
+            font-size: 24px;
+            text-align: center;
         }
-        canvas {
-            max-width: 90vw;
-            max-height: 80vh;
-            background-color: #1e1e1e; /* Chart background */
+        .error {
+            color: #f44336; /* Error message color */
         }
     </style>
 </head>
 <body>
-    <h1>Binance Live Order Book</h1>
-    <p>Total Bids, Asks, and Ratio in a 1%-2.5% Range</p>
-    <div class="controls">
-        <label for="timeframe">Select Timeframe:</label>
-        <select id="timeframe">
-            <option value="300">5 Minutes</option>
-            <option value="3600">1 Hour</option>
-            <option value="14400">4 Hours</option>
-            <option value="86400">1 Day</option>
-        </select>
-    </div>
-    <div class="info">
-        <span class="box" id="bidsToAsksRatio">Bids-to-Asks Ratio: --</span>
-    </div>
-    <canvas id="orderBookChart"></canvas>
+    <h1>Bids-to-Asks Ratio (1% to 2.5%)</h1>
+    <div class="box" id="ratioBox">Loading...</div>
     <script>
-        let chart;
-        const historyData = {
-            timestamps: [],
-            bids: [],
-            asks: [],
-            deltas: [],
-            buys: [],
-            sells: []
-        };
-        let currentTimeframe = 300; // Default: 5 minutes
-
-        // Fetch the order book data
         async function fetchOrderBook(symbol) {
             const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
-            const data = await response.json();
-            return data;
+            return await response.json();
         }
 
-        // Fetch the spot price
         async function fetchSpotPrice(symbol) {
             const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const data = await response.json();
             return parseFloat(data.price);
         }
 
-        // Calculate bids-to-asks ratio in 1%-2.5% range
-        function calculateBidsToAsksRatio(orderBook, spotPrice) {
-            const lowerLimit = spotPrice * 1.01; // 1% above spot price
-            const upperLimit = spotPrice * 1.025; // 2.5% above spot price
-
-            let bidsInRange = 0;
-            let asksInRange = 0;
-
-            for (let [price, qty] of orderBook.bids) {
-                const priceValue = parseFloat(price);
-                const qtyValue = parseFloat(qty);
-                if (priceValue >= lowerLimit && priceValue <= upperLimit) {
-                    bidsInRange += priceValue * qtyValue;
-                }
-            }
-
-            for (let [price, qty] of orderBook.asks) {
-                const priceValue = parseFloat(price);
-                const qtyValue = parseFloat(qty);
-                if (priceValue >= lowerLimit && priceValue <= upperLimit) {
-                    asksInRange += priceValue * qtyValue;
-                }
-            }
-
-            const ratio = bidsInRange / asksInRange || 0; // Avoid division by zero
-            return ratio.toFixed(2); // Limit to 2 decimal places
-        }
-
-        // Update the chart with live data
-        async function updateChart(symbol) {
+        async function calculateRatio() {
             try {
+                const symbol = 'BTCUSDT'; // Change symbol if needed
                 const spotPrice = await fetchSpotPrice(symbol);
                 const orderBook = await fetchOrderBook(symbol);
-                const ratio = calculateBidsToAsksRatio(orderBook, spotPrice);
 
-                // Update ratio display
-                document.getElementById('bidsToAsksRatio').textContent = `Bids-to-Asks Ratio: ${ratio}`;
+                const lowerLimit = spotPrice * 1.01; // 1% above spot price
+                const upperLimit = spotPrice * 1.025; // 2.5% above spot price
 
-                const totals = calculateTotals(orderBook);
+                let totalBids = 0;
+                let totalAsks = 0;
 
-                // Add the new data point to history
-                const timestamp = new Date().toLocaleTimeString();
-                historyData.timestamps.push(timestamp);
-                historyData.bids.push(totals.totalBids);
-                historyData.asks.push(totals.totalAsks);
-                historyData.deltas.push(totals.delta);
-                historyData.buys.push(totals.totalBuys);
-                historyData.sells.push(totals.totalSells);
-
-                // Limit the history based on the selected timeframe
-                const maxPoints = currentTimeframe / 5; // Assuming updates every 5 seconds
-                if (historyData.timestamps.length > maxPoints) {
-                    historyData.timestamps.shift();
-                    historyData.bids.shift();
-                    historyData.asks.shift();
-                    historyData.deltas.shift();
-                    historyData.buys.shift();
-                    historyData.sells.shift();
+                for (let [price, qty] of orderBook.bids) {
+                    const priceValue = parseFloat(price);
+                    const qtyValue = parseFloat(qty);
+                    if (priceValue >= lowerLimit && priceValue <= upperLimit) {
+                        totalBids += priceValue * qtyValue;
+                    }
                 }
 
-                // Update only chart data (no reinitialization)
-                chart.data.labels = historyData.timestamps;
-                chart.data.datasets[0].data = historyData.bids;
-                chart.data.datasets[1].data = historyData.asks;
-                chart.data.datasets[2].data = historyData.deltas;
-                chart.data.datasets[3].data = historyData.buys;
-                chart.data.datasets[4].data = historyData.sells;
+                for (let [price, qty] of orderBook.asks) {
+                    const priceValue = parseFloat(price);
+                    const qtyValue = parseFloat(qty);
+                    if (priceValue >= lowerLimit && priceValue <= upperLimit) {
+                        totalAsks += priceValue * qtyValue;
+                    }
+                }
 
-                chart.update('none'); // Update without animation
+                const ratio = totalBids / totalAsks || 0; // Avoid division by zero
+                const ratioBox = document.getElementById('ratioBox');
+                ratioBox.textContent = `Bids-to-Asks Ratio: ${ratio.toFixed(2)}`;
             } catch (error) {
-                console.error("Error updating chart:", error);
+                console.error("Error calculating ratio:", error);
+                const ratioBox = document.getElementById('ratioBox');
+                ratioBox.textContent = "Error fetching data.";
+                ratioBox.classList.add("error");
             }
         }
 
-        // Initialize the chart
-        async function initializeChart() {
-            const symbol = 'BTCUSDT';
-
-            const ctx = document.getElementById('orderBookChart').getContext('2d');
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [], // Timestamps
-                    datasets: [
-                        {
-                            label: 'Total Bids (USDT)',
-                            data: [],
-                            borderColor: '#4caf50',
-                            backgroundColor: 'rgba(76, 175, 80, 0.2)',
-                            borderWidth: 2,
-                            fill: true
-                        },
-                        {
-                            label: 'Total Asks (USDT)',
-                            data: [],
-                            borderColor: '#f44336',
-                            backgroundColor: 'rgba(244, 67, 54, 0.2)',
-                            borderWidth: 2,
-                            fill: true
-                        },
-                        {
-                            label: 'Delta (Bids - Asks)',
-                            data: [],
-                            borderColor: '#2196f3',
-                            backgroundColor: 'rgba(33, 150, 243, 0.2)',
-                            borderWidth: 2,
-                            fill: true
-                        },
-                        {
-                            label: 'Total Buys (Qty)',
-                            data: [],
-                            borderColor: '#ff9800',
-                            backgroundColor: 'rgba(255, 152, 0, 0.2)',
-                            borderWidth: 2,
-                            fill: true
-                        },
-                        {
-                            label: 'Total Sells (Qty)',
-                            data: [],
-                            borderColor: '#9c27b0',
-                            backgroundColor: 'rgba(156, 39, 176, 0.2)',
-                            borderWidth: 2,
-                            fill: true
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false, // Disable animations to reduce flickering
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Timestamp',
-                                color: '#ffffff',
-                                font: {
-                                    size: 14
-                                }
-                            },
-                            ticks: {
-                                color: '#ffffff'
-                            }
-                        },
-                        y: {
-                            type: 'logarithmic', // Set Y-axis to logarithmic scale
-                            title: {
-                                display: true,
-                                text: 'Value / Quantity (Log Scale)',
-                                color: '#ffffff',
-                                font: {
-                                    size: 14
-                                }
-                            },
-                            ticks: {
-                                color: '#ffffff',
-                                callback: (value) => value.toExponential(2) // Format ticks as exponential
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#ffffff',
-                                font: {
-                                    size: 14
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Update the chart every 5 seconds
-            setInterval(() => updateChart(symbol), 5000);
-        }
-
-        // Handle timeframe selection
-        document.getElementById('timeframe').addEventListener('change', (event) => {
-            currentTimeframe = parseInt(event.target.value);
-        });
-
-        initializeChart();
+        calculateRatio();
+        setInterval(calculateRatio, 5000); // Update every 5 seconds
     </script>
 </body>
 </html>
