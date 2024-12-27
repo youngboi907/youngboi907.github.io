@@ -31,7 +31,7 @@
             align-items: center;
             justify-content: space-around;
             width: 100%;
-            height: 80vh;
+            height: 100vh;
         }
     </style>
 </head>
@@ -47,13 +47,15 @@
     </select>
     <div id="charts">
         <canvas id="priceChart"></canvas>
-        <canvas id="deltaChart"></canvas>
+        <canvas id="spotDeltaChart"></canvas>
+        <canvas id="futuresDeltaChart"></canvas>
     </div>
 
     <script>
         const symbol = "BTCUSDT";
-        let priceChart, deltaChart;
+        let priceChart, spotDeltaChart, futuresDeltaChart;
 
+        // Fetch Kline data (price and volume)
         async function fetchKlineData(interval, limit) {
             const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
             const response = await fetch(url);
@@ -66,39 +68,44 @@
             return { timestamps, prices };
         }
 
+        // Fetch Spot or Futures Volume Delta
         async function fetchVolumeDelta(interval, limit, isFutures = false) {
             const url = isFutures 
-                ? `https://fapi.binance.com/fapi/v1/trades?symbol=${symbol}&limit=${limit}` 
-                : `https://api.binance.com/api/v3/trades?symbol=${symbol}&limit=${limit}`;
+                ? `https://fapi.binance.com/fapi/v1/aggTrades?symbol=${symbol}&limit=${limit}` 
+                : `https://api.binance.com/api/v3/aggTrades?symbol=${symbol}&limit=${limit}`;
             const response = await fetch(url);
             const data = await response.json();
-            let positiveDelta = 0, negativeDelta = 0;
+            const timestamps = [], deltas = [];
             data.forEach(trade => {
-                const volume = parseFloat(trade.qty);
-                if (isFutures ? trade.m : trade.isBuyerMaker) {
-                    negativeDelta += volume;
-                } else {
-                    positiveDelta += volume;
-                }
+                const volume = parseFloat(trade.q);
+                const timestamp = new Date(trade.T).toLocaleString();
+                const delta = trade.m ? -volume : volume; // Negative for sell, positive for buy
+                timestamps.push(timestamp);
+                deltas.push(delta);
             });
-            return positiveDelta - negativeDelta;
+            return { timestamps, deltas };
         }
 
         async function updateCharts(interval, limit) {
             try {
                 const { timestamps, prices } = await fetchKlineData(interval, limit);
-                const spotDelta = await fetchVolumeDelta(interval, limit);
-                const futuresDelta = await fetchVolumeDelta(interval, limit, true);
+                const { timestamps: spotTimestamps, deltas: spotDeltas } = await fetchVolumeDelta(interval, limit);
+                const { timestamps: futuresTimestamps, deltas: futuresDeltas } = await fetchVolumeDelta(interval, limit, true);
 
                 // Update Price Chart
                 priceChart.data.labels = timestamps;
                 priceChart.data.datasets[0].data = prices;
                 priceChart.update();
 
-                // Update Delta Chart
-                deltaChart.data.labels = ["Spot Delta", "Futures Delta"];
-                deltaChart.data.datasets[0].data = [spotDelta, futuresDelta];
-                deltaChart.update();
+                // Update Spot Delta Chart
+                spotDeltaChart.data.labels = spotTimestamps;
+                spotDeltaChart.data.datasets[0].data = spotDeltas;
+                spotDeltaChart.update();
+
+                // Update Futures Delta Chart
+                futuresDeltaChart.data.labels = futuresTimestamps;
+                futuresDeltaChart.data.datasets[0].data = futuresDeltas;
+                futuresDeltaChart.update();
             } catch (error) {
                 console.error("Error updating charts:", error);
             }
@@ -106,7 +113,8 @@
 
         function initializeCharts() {
             const priceCtx = document.getElementById("priceChart").getContext("2d");
-            const deltaCtx = document.getElementById("deltaChart").getContext("2d");
+            const spotDeltaCtx = document.getElementById("spotDeltaChart").getContext("2d");
+            const futuresDeltaCtx = document.getElementById("futuresDeltaChart").getContext("2d");
 
             // Price Chart
             priceChart = new Chart(priceCtx, {
@@ -132,21 +140,43 @@
                 }
             });
 
-            // Volume Delta Chart
-            deltaChart = new Chart(deltaCtx, {
+            // Spot Delta Chart
+            spotDeltaChart = new Chart(spotDeltaCtx, {
                 type: "bar",
                 data: {
-                    labels: ["Spot Delta", "Futures Delta"],
+                    labels: [],
                     datasets: [{
-                        label: "Volume Delta",
+                        label: "Spot Volume Delta",
                         data: [],
-                        backgroundColor: ["#4caf50", "#f44336"]
+                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336"
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
+                        x: { title: { display: true, text: "Time" } },
+                        y: { title: { display: true, text: "Volume Delta" } }
+                    }
+                }
+            });
+
+            // Futures Delta Chart
+            futuresDeltaChart = new Chart(futuresDeltaCtx, {
+                type: "bar",
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: "Futures Volume Delta",
+                        data: [],
+                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: "Time" } },
                         y: { title: { display: true, text: "Volume Delta" } }
                     }
                 }
