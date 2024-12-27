@@ -74,20 +74,20 @@
                 const priceValue = parseFloat(price);
                 const qtyValue = parseFloat(qty);
 
-                if (priceValue >= spotPrice * 0.9 && priceValue <= spotPrice * 1.1) {
-                    if (priceValue <= spotPrice * 1.01) {
-                        ranges['0-1%'].total += priceValue * qtyValue;
-                        ranges['0-1%'].count++;
-                    } else if (priceValue <= spotPrice * 1.025) {
-                        ranges['1-2.5%'].total += priceValue * qtyValue;
-                        ranges['1-2.5%'].count++;
-                    } else if (priceValue <= spotPrice * 1.05) {
-                        ranges['2.5-5%'].total += priceValue * qtyValue;
-                        ranges['2.5-5%'].count++;
-                    } else if (priceValue <= spotPrice * 1.1) {
-                        ranges['5-10%'].total += priceValue * qtyValue;
-                        ranges['5-10%'].count++;
-                    }
+                const deviation = Math.abs((priceValue - spotPrice) / spotPrice) * 100;
+
+                if (deviation <= 1) {
+                    ranges['0-1%'].total += priceValue * qtyValue;
+                    ranges['0-1%'].count++;
+                } else if (deviation > 1 && deviation <= 2.5) {
+                    ranges['1-2.5%'].total += priceValue * qtyValue;
+                    ranges['1-2.5%'].count++;
+                } else if (deviation > 2.5 && deviation <= 5) {
+                    ranges['2.5-5%'].total += priceValue * qtyValue;
+                    ranges['2.5-5%'].count++;
+                } else if (deviation > 5 && deviation <= 10) {
+                    ranges['5-10%'].total += priceValue * qtyValue;
+                    ranges['5-10%'].count++;
                 }
             });
 
