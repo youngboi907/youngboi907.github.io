@@ -74,9 +74,12 @@
                 const priceValue = parseFloat(price);
                 const qtyValue = parseFloat(qty);
 
-                const deviation = Math.abs((priceValue - spotPrice) / spotPrice) * 100;
+                // Calculate deviation in percentage
+                const deviation = ((priceValue - spotPrice) / spotPrice) * 100;
 
-                if (deviation <= 1) {
+                console.log(`Price: ${priceValue}, Deviation: ${deviation.toFixed(2)}%`);
+
+                if (deviation >= 0 && deviation <= 1) {
                     ranges['0-1%'].total += priceValue * qtyValue;
                     ranges['0-1%'].count++;
                 } else if (deviation > 1 && deviation <= 2.5) {
@@ -91,6 +94,7 @@
                 }
             });
 
+            console.log("Calculated Ranges:", ranges);
             return ranges;
         }
 
