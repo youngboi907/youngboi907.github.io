@@ -10,8 +10,6 @@
             font-family: Arial, sans-serif;
             background-color: #121212;
             color: white;
-            margin: 0;
-            padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -23,180 +21,92 @@
             max-width: 90%;
             max-height: 80%;
         }
-        h1, select, input {
+        h1, select {
             margin: 10px 0;
         }
     </style>
 </head>
 <body>
     <h1>BTC/USDT Price & Volume Delta</h1>
-    <label for="timeframe">Select Time Frame:</label>
-    <select id="timeframe">
-        <option value="1h">Last 1 Hour</option>
-        <option value="4h">Last 4 Hours</option>
-        <option value="1d">Last 1 Day</option>
-        <option value="7d">Last 7 Days</option>
-        <option value="30d">Last 30 Days</option>
-        <option value="custom">Custom</option>
-    </select>
-    <input type="datetime-local" id="startTime" style="display: none;">
-    <input type="datetime-local" id="endTime" style="display: none;">
-    <button id="applyCustomTime" style="display: none;">Apply</button>
-    <canvas id="btcChart"></canvas>
+    <canvas id="btcChart" width="800" height="400"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
-        let chart;
 
-        // Fetch historical kline data
-        async function fetchKlineData(symbol, interval, limit, startTime, endTime) {
-            let url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-            if (startTime && endTime) {
-                url += `&startTime=${startTime}&endTime=${endTime}`;
-            }
+        async function fetchKlineData(interval, limit) {
+            const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
             const response = await fetch(url);
-            if (!response.ok) throw new Error("Failed to fetch historical data");
+            if (!response.ok) {
+                console.error("Failed to fetch data");
+                return null;
+            }
             const data = await response.json();
 
             const timestamps = [];
             const prices = [];
             const volumeDelta = [];
 
-            for (const [openTime, open, high, low, close, volume, closeTime, quoteAssetVolume, numTrades, takerBuyBaseVolume] of data) {
+            for (const [openTime, open, high, low, close, volume, , , , takerBuyBaseVolume] of data) {
                 timestamps.push(new Date(openTime).toLocaleString());
-                prices.push({ x: new Date(openTime), y: [parseFloat(open), parseFloat(high), parseFloat(low), parseFloat(close)] });
+                prices.push(parseFloat(close));
 
                 const delta = parseFloat(takerBuyBaseVolume) - (parseFloat(volume) - parseFloat(takerBuyBaseVolume));
                 volumeDelta.push(delta);
             }
 
+            console.log({ timestamps, prices, volumeDelta });
             return { timestamps, prices, volumeDelta };
         }
 
-        // Initialize the chart
-        function initializeChart() {
+        async function createChart() {
+            const { timestamps, prices, volumeDelta } = await fetchKlineData('1h', 50);
+
+            if (!timestamps || !prices || !volumeDelta) return;
+
             const ctx = document.getElementById('btcChart').getContext('2d');
-            chart = new Chart(ctx, {
+            new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: [],
+                    labels: timestamps,
                     datasets: [
                         {
-                            type: 'candlestick',
                             label: 'BTC/USDT Price',
-                            data: [],
+                            data: prices,
+                            type: 'line',
                             borderColor: '#4caf50',
-                            borderWidth: 2,
                             yAxisID: 'y1',
                         },
                         {
-                            type: 'bar',
                             label: 'Volume Delta',
-                            data: [],
+                            data: volumeDelta,
                             backgroundColor: '#2196f3',
                             yAxisID: 'y2',
-                        }
-                    ]
+                        },
+                    ],
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
                     scales: {
                         x: {
-                            title: {
-                                display: true,
-                                text: 'Time',
-                                font: { size: 14 }
-                            }
+                            title: { display: true, text: 'Time' },
                         },
                         y1: {
                             type: 'linear',
                             position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Price (USDT)',
-                                font: { size: 14 }
-                            }
+                            title: { display: true, text: 'Price (USDT)' },
                         },
                         y2: {
                             type: 'linear',
                             position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Volume Delta',
-                                font: { size: 14 }
-                            },
-                            grid: {
-                                drawOnChartArea: false // Keeps y2 grid separate
-                            }
-                        }
+                            title: { display: true, text: 'Volume Delta' },
+                            grid: { drawOnChartArea: false },
+                        },
                     },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                font: {
-                                    size: 14
-                                }
-                            }
-                        }
-                    }
-                }
+                },
             });
         }
 
-        // Update the chart with new data
-        async function updateChart(interval, limit, startTime, endTime) {
-            try {
-                const { timestamps, prices, volumeDelta } = await fetchKlineData(symbol, interval, limit, startTime, endTime);
-                chart.data.labels = timestamps;
-                chart.data.datasets[0].data = prices;
-                chart.data.datasets[1].data = volumeDelta;
-                chart.update();
-            } catch (error) {
-                console.error("Error updating chart:", error);
-            }
-        }
-
-        // Timeframe selector handling
-        document.getElementById('timeframe').addEventListener('change', (event) => {
-            const value = event.target.value;
-            let interval, limit, startTime, endTime;
-
-            document.getElementById('startTime').style.display = 'none';
-            document.getElementById('endTime').style.display = 'none';
-            document.getElementById('applyCustomTime').style.display = 'none';
-
-            switch (value) {
-                case '1h': interval = '1m'; limit = 60; break;
-                case '4h': interval = '5m'; limit = 48; break;
-                case '1d': interval = '15m'; limit = 96; break;
-                case '7d': interval = '1h'; limit = 168; break;
-                case '30d': interval = '4h'; limit = 180; break;
-                case 'custom':
-                    document.getElementById('startTime').style.display = 'inline';
-                    document.getElementById('endTime').style.display = 'inline';
-                    document.getElementById('applyCustomTime').style.display = 'inline';
-                    return;
-            }
-
-            updateChart(interval, limit);
-        });
-
-        // Custom timeframe handling
-        document.getElementById('applyCustomTime').addEventListener('click', () => {
-            const startTime = new Date(document.getElementById('startTime').value).getTime();
-            const endTime = new Date(document.getElementById('endTime').value).getTime();
-
-            if (startTime && endTime && startTime < endTime) {
-                updateChart('1h', 1000, startTime, endTime);
-            } else {
-                alert('Invalid custom time range!');
-            }
-        });
-
-        // Initialize everything
-        initializeChart();
-        updateChart('1m', 60); // Default: Last 1 hour
+        createChart();
     </script>
 </body>
 </html>
