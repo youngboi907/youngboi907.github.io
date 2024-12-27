@@ -3,191 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Order Book Depth</title>
+    <title>Binance Order Book Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #fff;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
-        h1 {
-            color: #ffcc00;
             text-align: center;
-            margin: 10px 0;
-        }
-        .controls {
-            margin: 10px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .controls label, .controls select {
-            margin: 5px;
-            font-size: 16px;
-        }
-        .controls select {
-            padding: 8px;
-            border-radius: 5px;
-            border: none;
-            background-color: #2a2a2a;
-            color: #fff;
-        }
-        .chart-container {
-            width: 95%;
-            max-width: 1200px;
-            height: 80%;
         }
         canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
+            max-width: 600px;
+            margin: 20px auto;
         }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Order Book Depth (1-2.5%)</h1>
-    <div class="controls">
-        <label for="timeframe">Select Timeframe:</label>
-        <select id="timeframe">
-            <option value="1m">1 Minute</option>
-            <option value="5m">5 Minutes</option>
-            <option value="15m">15 Minutes</option>
-            <option value="1h">1 Hour</option>
-            <option value="4h">4 Hours</option>
-            <option value="1d">1 Day</option>
-        </select>
-    </div>
-    <div class="chart-container">
-        <canvas id="orderBookChart"></canvas>
-    </div>
-
+    <h1>Binance Order Book Analysis</h1>
+    <p>Total Bids and Asks within 1% to 2.5% of Spot Price</p>
+    <canvas id="orderBookChart"></canvas>
     <script>
-        const chartData = {
-            labels: [],
-            datasets: [
-                {
-                    label: "Total Bids (1-2.5%)",
-                    data: [],
-                    borderColor: "rgba(0, 255, 0, 1)",
-                    backgroundColor: "rgba(0, 255, 0, 0.2)",
-                    fill: true,
-                    tension: 0.4
-                },
-                {
-                    label: "Total Asks (1-2.5%)",
-                    data: [],
-                    borderColor: "rgba(255, 0, 0, 1)",
-                    backgroundColor: "rgba(255, 0, 0, 0.2)",
-                    fill: true,
-                    tension: 0.4
-                }
-            ]
-        };
+        let chart;
 
-        const ctx = document.getElementById("orderBookChart").getContext("2d");
-        const orderBookChart = new Chart(ctx, {
-            type: "line",
-            data: chartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: { color: "#fff" }
-                    }
-                },
-                scales: {
-                    x: {
-                        title: { display: true, text: "Timestamp", color: "#fff" },
-                        ticks: { color: "#fff" }
-                    },
-                    y: {
-                        title: { display: true, text: "Quantity", color: "#fff" },
-                        ticks: { color: "#fff" }
-                    }
-                }
-            }
-        });
-
-        async function fetchOrderBookDepth() {
-            const url = "https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=500";
-            const response = await fetch(url);
+        async function fetchOrderBook(symbol) {
+            const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
             const data = await response.json();
             return data;
         }
 
-        function calculateDepth(data, range) {
-            const midPrice =
-                (parseFloat(data.bids[0][0]) + parseFloat(data.asks[0][0])) / 2;
-            const lowerBound = midPrice * (1 - range);
-            const upperBound = midPrice * (1 + range);
+        function calculateTotals(orderBook, spotPrice, lowerPercent, upperPercent) {
+            let totalBids = 0;
+            let totalAsks = 0;
 
-            const totalBids = data.bids
-                .filter(([price]) => price >= lowerBound && price < upperBound)
-                .reduce((total, [, volume]) => total + parseFloat(volume), 0);
+            const lowerLimit = spotPrice * (1 - upperPercent / 100);
+            const upperLimit = spotPrice * (1 + upperPercent / 100);
+            const midLowerLimit = spotPrice * (1 - lowerPercent / 100);
+            const midUpperLimit = spotPrice * (1 + lowerPercent / 100);
 
-            const totalAsks = data.asks
-                .filter(([price]) => price <= upperBound && price > lowerBound)
-                .reduce((total, [, volume]) => total + parseFloat(volume), 0);
+            for (let [price, qty] of orderBook.bids) {
+                price = parseFloat(price);
+                qty = parseFloat(qty);
+                if (price >= lowerLimit && price <= midLowerLimit) {
+                    totalBids += price * qty;
+                }
+            }
+
+            for (let [price, qty] of orderBook.asks) {
+                price = parseFloat(price);
+                qty = parseFloat(qty);
+                if (price >= midUpperLimit && price <= upperLimit) {
+                    totalAsks += price * qty;
+                }
+            }
 
             return { totalBids, totalAsks };
         }
 
-        async function updateChart() {
-            try {
-                const data = await fetchOrderBookDepth();
-                const timestamp = new Date().toLocaleTimeString();
+        async function updateChart(chart, symbol, lowerPercent, upperPercent) {
+            const spotPriceResponse = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+            const spotPriceData = await spotPriceResponse.json();
+            const spotPrice = parseFloat(spotPriceData.price);
 
-                const { totalBids, totalAsks } = calculateDepth(data, 0.025);
+            const orderBook = await fetchOrderBook(symbol);
+            const totals = calculateTotals(orderBook, spotPrice, lowerPercent, upperPercent);
 
-                chartData.labels.push(timestamp);
-                chartData.datasets[0].data.push(totalBids);
-                chartData.datasets[1].data.push(totalAsks);
+            chart.data.datasets[0].data = [totals.totalBids, totals.totalAsks];
+            chart.update();
+        }
 
-                if (chartData.labels.length > 50) {
-                    chartData.labels.shift();
-                    chartData.datasets[0].data.shift();
-                    chartData.datasets[1].data.shift();
+        async function initializeChart() {
+            const symbol = 'BTCUSDT';
+            const lowerPercent = 1;
+            const upperPercent = 2.5;
+
+            const ctx = document.getElementById('orderBookChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Bids', 'Asks'],
+                    datasets: [{
+                        label: 'Total Value (USDT)',
+                        data: [0, 0], // Initial empty data
+                        backgroundColor: ['#4caf50', '#f44336'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
                 }
+            });
 
-                orderBookChart.update();
-            } catch (error) {
-                console.error("Error fetching order book data:", error);
-            }
+            setInterval(() => updateChart(chart, symbol, lowerPercent, upperPercent), 1000);
         }
 
-        document.getElementById("timeframe").addEventListener("change", (event) => {
-            const timeframe = event.target.value;
-            clearInterval(refreshInterval);
-            startAutoRefresh(timeframe);
-        });
-
-        let refreshInterval;
-        function startAutoRefresh(timeframe) {
-            const refreshRate = {
-                "1m": 1000,
-                "5m": 5000,
-                "15m": 15000,
-                "1h": 60000,
-                "4h": 240000,
-                "1d": 1440000
-            }[timeframe] || 1000;
-
-            refreshInterval = setInterval(() => {
-                updateChart();
-            }, refreshRate);
-        }
-
-        // Start with default timeframe
-        startAutoRefresh("1m");
+        initializeChart();
     </script>
 </body>
 </html>
