@@ -38,6 +38,7 @@
             width: 90%;
             max-width: 1200px;
             height: 80vh;
+            margin-bottom: 50px;
         }
     </style>
 </head>
@@ -57,11 +58,16 @@
         </select>
     </div>
     <div class="chart-container">
-        <canvas id="conditionChart"></canvas>
+        <h2>Condition Tracker (1% to 2.5%)</h2>
+        <canvas id="conditionChart1"></canvas>
+    </div>
+    <div class="chart-container">
+        <h2>Condition Tracker (2.5% to 5%)</h2>
+        <canvas id="conditionChart2"></canvas>
     </div>
 
     <script>
-        const chartData = {
+        const chartData1 = {
             labels: [],
             datasets: [
                 {
@@ -79,10 +85,54 @@
             ]
         };
 
-        const ctx = document.getElementById("conditionChart").getContext("2d");
-        const conditionChart = new Chart(ctx, {
+        const chartData2 = {
+            labels: [],
+            datasets: [
+                {
+                    label: "Bids > Multiplier x Asks",
+                    data: [],
+                    backgroundColor: "rgba(0, 255, 0, 0.5)",
+                    borderColor: "rgba(0, 255, 0, 1)",
+                },
+                {
+                    label: "Asks > Multiplier x Bids",
+                    data: [],
+                    backgroundColor: "rgba(255, 0, 0, 0.5)",
+                    borderColor: "rgba(255, 0, 0, 1)",
+                }
+            ]
+        };
+
+        const ctx1 = document.getElementById("conditionChart1").getContext("2d");
+        const ctx2 = document.getElementById("conditionChart2").getContext("2d");
+
+        const conditionChart1 = new Chart(ctx1, {
             type: "bar",
-            data: chartData,
+            data: chartData1,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: "top",
+                        labels: { color: "#fff" }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: "Timestamp", color: "#fff" },
+                        ticks: { color: "#fff" }
+                    },
+                    y: {
+                        title: { display: true, text: "Condition Met", color: "#fff" },
+                        ticks: { color: "#fff" }
+                    }
+                }
+            }
+        });
+
+        const conditionChart2 = new Chart(ctx2, {
+            type: "bar",
+            data: chartData2,
             options: {
                 responsive: true,
                 plugins: {
@@ -122,50 +172,69 @@
             const limit = 500; // Binance's max historical limit
             const data = await fetchHistoricalData(interval, limit);
 
-            chartData.labels = [];
-            chartData.datasets[0].data = [];
-            chartData.datasets[1].data = [];
+            // Clear old data
+            chartData1.labels = [];
+            chartData1.datasets[0].data = [];
+            chartData1.datasets[1].data = [];
+            chartData2.labels = [];
+            chartData2.datasets[0].data = [];
+            chartData2.datasets[1].data = [];
 
             for (const candle of data) {
                 const midPrice = (candle.high + candle.low) / 2;
 
-                // Simulated logic for 1%-2.5% conditions
-                const bidVolume = Math.random() * 100; // Replace with real bid data
-                const askVolume = Math.random() * 10;  // Replace with real ask data
+                // Simulated logic for 1%-2.5% and 2.5%-5% conditions
+                const bidVolume1 = Math.random() * 100; // Replace with real bid data
+                const askVolume1 = Math.random() * 10;  // Replace with real ask data
+                const bidVolume2 = Math.random() * 100; // Replace with real bid data
+                const askVolume2 = Math.random() * 10;  // Replace with real ask data
 
-                chartData.labels.push(candle.timestamp);
+                chartData1.labels.push(candle.timestamp);
+                chartData2.labels.push(candle.timestamp);
 
-                if (bidVolume > multiplier * askVolume) {
-                    chartData.datasets[0].data.push(1);
-                    chartData.datasets[1].data.push(0);
-                } else if (askVolume > multiplier * bidVolume) {
-                    chartData.datasets[0].data.push(0);
-                    chartData.datasets[1].data.push(1);
+                // 1% to 2.5%
+                if (bidVolume1 > multiplier * askVolume1) {
+                    chartData1.datasets[0].data.push(1);
+                    chartData1.datasets[1].data.push(0);
+                } else if (askVolume1 > multiplier * bidVolume1) {
+                    chartData1.datasets[0].data.push(0);
+                    chartData1.datasets[1].data.push(1);
                 } else {
-                    chartData.datasets[0].data.push(0);
-                    chartData.datasets[1].data.push(0);
+                    chartData1.datasets[0].data.push(0);
+                    chartData1.datasets[1].data.push(0);
+                }
+
+                // 2.5% to 5%
+                if (bidVolume2 > multiplier * askVolume2) {
+                    chartData2.datasets[0].data.push(1);
+                    chartData2.datasets[1].data.push(0);
+                } else if (askVolume2 > multiplier * bidVolume2) {
+                    chartData2.datasets[0].data.push(0);
+                    chartData2.datasets[1].data.push(1);
+                } else {
+                    chartData2.datasets[0].data.push(0);
+                    chartData2.datasets[1].data.push(0);
                 }
             }
 
-            conditionChart.update();
+            conditionChart1.update();
+            conditionChart2.update();
         }
 
         document.getElementById("timeframe").addEventListener("change", async (e) => {
             const timeframe = e.target.value;
             const multiplier = parseFloat(document.getElementById("multiplier").value) || 50;
-            const binanceInterval = { "1m": "1d", "1w": "1h", "1d": "30m", "4h": "15m", "1h": "5m", "5m": "1m" }[timeframe];
-            await analyzeHistoricalData(binanceInterval, multiplier);
+            await analyzeHistoricalData(timeframe, multiplier);
         });
 
         document.getElementById("multiplier").addEventListener("change", async () => {
             const timeframe = document.getElementById("timeframe").value;
             const multiplier = parseFloat(document.getElementById("multiplier").value) || 50;
-            const binanceInterval = { "1m": "1d", "1w": "1h", "1d": "30m", "4h": "15m", "1h": "5m", "5m": "1m" }[timeframe];
-            await analyzeHistoricalData(binanceInterval, multiplier);
+            await analyzeHistoricalData(timeframe, multiplier);
         });
 
         // Default load: 1 Day timeframe
-        analyzeHistoricalData("30m", 50);
+        analyzeHistoricalData("1d", 50);
     </script>
 </body>
 </html>
