@@ -62,23 +62,6 @@
         <canvas id="ratioChart1"></canvas>
     </div>
 
-    <!-- Controls for 2.5%-5% Range -->
-    <div class="controls">
-        <h2>2.5%-5% Range</h2>
-        <label for="timeframe2">Select Timeframe:</label>
-        <select id="timeframe2">
-            <option value="1m">5 Minutes</option>
-            <option value="15m">1 Hour</option>
-            <option value="1h">4 Hours</option>
-            <option value="1d">1 Day</option>
-        </select>
-        <label for="multiplier2">Set Multiplier (Default: 100):</label>
-        <input id="multiplier2" type="number" value="100" min="1">
-    </div>
-    <div class="chart-container">
-        <canvas id="ratioChart2"></canvas>
-    </div>
-
     <!-- BTC/USDT Price Chart -->
     <div class="chart-container">
         <h2>BTC/USDT Price Chart</h2>
@@ -86,8 +69,47 @@
     </div>
 
     <script>
+        // Plugin for dynamically changing line colors based on value
+        const dynamicLineColorPlugin = {
+            id: 'dynamicLineColor',
+            beforeDatasetDraw(chart) {
+                const { ctx, data, scales } = chart;
+                const dataset = chart.data.datasets[0];
+                const xScale = scales.x;
+                const yScale = scales.y;
+                const points = dataset.data;
+
+                ctx.save();
+                ctx.beginPath();
+
+                for (let i = 0; i < points.length - 1; i++) {
+                    const currentValue = points[i];
+                    const nextValue = points[i + 1];
+                    const currentX = xScale.getPixelForValue(i);
+                    const nextX = xScale.getPixelForValue(i + 1);
+                    const currentY = yScale.getPixelForValue(currentValue);
+                    const nextY = yScale.getPixelForValue(nextValue);
+
+                    // Choose color based on the value
+                    ctx.strokeStyle = currentValue > 1 ? "rgba(0, 255, 0, 1)" : "rgba(255, 0, 0, 1)";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(currentX, currentY);
+                    ctx.lineTo(nextX, nextY);
+                    ctx.stroke();
+                }
+                ctx.restore();
+
+                // Prevent default rendering of the dataset (prevents a single-colored line)
+                return false;
+            }
+        };
+
+        // Register the plugin
+        Chart.register(dynamicLineColorPlugin);
+
         // Helper function to initialize line charts
-        function initializeLineChart(ctx, label, color) {
+        function initializeLineChart(ctx, label) {
             return new Chart(ctx, {
                 type: "line",
                 data: {
@@ -96,10 +118,7 @@
                         {
                             label: label,
                             data: [],
-                            borderColor: color,
-                            backgroundColor: color + "33", // Transparent fill
-                            borderWidth: 2,
-                            tension: 0.3
+                            borderWidth: 0 // No default line rendering
                         }
                     ]
                 },
@@ -121,7 +140,8 @@
                             ticks: { color: "#fff" }
                         }
                     }
-                }
+                },
+                plugins: [dynamicLineColorPlugin]
             });
         }
 
@@ -140,7 +160,7 @@
         }
 
         // Analyze historical data for Bid/Ask ratios
-        async function analyzeBidAskRatios(chart, interval, multiplier, range) {
+        async function analyzeBidAskRatios(chart, interval, multiplier) {
             const data = await fetchHistoricalData(interval);
 
             chart.data.labels = [];
@@ -149,17 +169,11 @@
             for (const candle of data) {
                 const midPrice = (candle.high + candle.low) / 2;
 
-                // Simulated bid/ask volumes based on range (replace with actual data fetching logic)
-                let bidVolume, askVolume;
-                if (range === "1-2.5%") {
-                    bidVolume = Math.random() * 100; // Replace with real bid volume for 1%-2.5%
-                    askVolume = Math.random() * 10;  // Replace with real ask volume for 1%-2.5%
-                } else if (range === "2.5-5%") {
-                    bidVolume = Math.random() * 200; // Replace with real bid volume for 2.5%-5%
-                    askVolume = Math.random() * 20;  // Replace with real ask volume for 2.5%-5%
-                }
+                // Simulated bid/ask volumes (replace with actual data fetching logic)
+                const bidVolume = Math.random() * 100;
+                const askVolume = Math.random() * 10;
+                const ratio = bidVolume / askVolume;
 
-                const ratio = bidVolume / askVolume; // Calculate Bid/Ask ratio
                 chart.data.labels.push(candle.timestamp);
                 chart.data.datasets[0].data.push(ratio);
             }
@@ -176,7 +190,7 @@
 
             for (const candle of data) {
                 chart.data.labels.push(candle.timestamp);
-                chart.data.datasets[0].data.push(candle.close); // Add closing price
+                chart.data.datasets[0].data.push(candle.close);
             }
 
             chart.update();
@@ -184,42 +198,26 @@
 
         // Initialize charts
         const ctx1 = document.getElementById("ratioChart1").getContext("2d");
-        const ctx2 = document.getElementById("ratioChart2").getContext("2d");
-        const ctx3 = document.getElementById("priceChart").getContext("2d");
-        const ratioChart1 = initializeLineChart(ctx1, "Bid/Ask Ratio (1%-2.5%)", "rgba(0, 255, 255, 1)");
-        const ratioChart2 = initializeLineChart(ctx2, "Bid/Ask Ratio (2.5%-5%)", "rgba(255, 165, 0, 1)");
-        const priceChart = initializeLineChart(ctx3, "BTC/USDT Price", "rgba(0, 255, 0, 1)");
+        const ctx2 = document.getElementById("priceChart").getContext("2d");
+        const ratioChart1 = initializeLineChart(ctx1, "Bid/Ask Ratio (1%-2.5%)");
+        const priceChart = initializeLineChart(ctx2, "BTC/USDT Price");
 
         // Event listeners for timeframe and multiplier changes
         document.getElementById("timeframe1").addEventListener("change", async () => {
             const interval = document.getElementById("timeframe1").value;
             const multiplier = parseFloat(document.getElementById("multiplier1").value) || 50;
-            await analyzeBidAskRatios(ratioChart1, interval, multiplier, "1-2.5%");
+            await analyzeBidAskRatios(ratioChart1, interval, multiplier);
             await analyzeBTCPrice(priceChart, interval);
         });
 
         document.getElementById("multiplier1").addEventListener("change", async () => {
             const interval = document.getElementById("timeframe1").value;
             const multiplier = parseFloat(document.getElementById("multiplier1").value) || 50;
-            await analyzeBidAskRatios(ratioChart1, interval, multiplier, "1-2.5%");
-        });
-
-        document.getElementById("timeframe2").addEventListener("change", async () => {
-            const interval = document.getElementById("timeframe2").value;
-            const multiplier = parseFloat(document.getElementById("multiplier2").value) || 100;
-            await analyzeBidAskRatios(ratioChart2, interval, multiplier, "2.5-5%");
-            await analyzeBTCPrice(priceChart, interval);
-        });
-
-        document.getElementById("multiplier2").addEventListener("change", async () => {
-            const interval = document.getElementById("timeframe2").value;
-            const multiplier = parseFloat(document.getElementById("multiplier2").value) || 100;
-            await analyzeBidAskRatios(ratioChart2, interval, multiplier, "2.5-5%");
+            await analyzeBidAskRatios(ratioChart1, interval, multiplier);
         });
 
         // Default load
-        analyzeBidAskRatios(ratioChart1, "1m", 50, "1-2.5%");
-        analyzeBidAskRatios(ratioChart2, "1m", 100, "2.5-5%");
+        analyzeBidAskRatios(ratioChart1, "1m", 50);
         analyzeBTCPrice(priceChart, "1m");
     </script>
 </body>
