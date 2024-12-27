@@ -3,40 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Order Book</title>
+    <title>Binance Order Book Debug</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
             background-color: #121212;
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        h1 {
-            margin-top: 20px;
+            color: white;
+            text-align: center;
+            padding: 20px;
         }
         .range-box {
-            width: 80%;
-            max-width: 600px;
-            margin: 10px 0;
+            margin: 10px auto;
             padding: 10px;
+            border: 1px solid #4caf50;
+            border-radius: 5px;
             background-color: #1e1e1e;
-            border: 2px solid #4caf50;
-            border-radius: 10px;
-        }
-        .range-box h3 {
-            margin: 0 0 10px;
-            font-size: 18px;
+            width: 80%;
         }
     </style>
 </head>
 <body>
-    <h1>Binance Order Book Ranges</h1>
-    <div id="bidsContainer"></div>
-    <div id="asksContainer"></div>
+    <h1>Order Book Ranges</h1>
+    <div id="output"></div>
 
     <script>
         async function fetchOrderBook(symbol) {
@@ -64,77 +52,63 @@
 
         function calculateRanges(orders, spotPrice) {
             const ranges = {
-                '0-1%': { total: 0, count: 0 },
-                '1-2.5%': { total: 0, count: 0 },
-                '2.5-5%': { total: 0, count: 0 },
-                '5-10%': { total: 0, count: 0 }
+                '0-1%': 0,
+                '1-2.5%': 0,
+                '2.5-5%': 0,
+                '5-10%': 0,
             };
 
             orders.forEach(([price, qty]) => {
                 const priceValue = parseFloat(price);
                 const qtyValue = parseFloat(qty);
-
-                // Calculate deviation in percentage
                 const deviation = ((priceValue - spotPrice) / spotPrice) * 100;
 
-                console.log(`Price: ${priceValue}, Deviation: ${deviation.toFixed(2)}%`);
-
                 if (deviation >= 0 && deviation <= 1) {
-                    ranges['0-1%'].total += priceValue * qtyValue;
-                    ranges['0-1%'].count++;
+                    ranges['0-1%'] += priceValue * qtyValue;
                 } else if (deviation > 1 && deviation <= 2.5) {
-                    ranges['1-2.5%'].total += priceValue * qtyValue;
-                    ranges['1-2.5%'].count++;
+                    ranges['1-2.5%'] += priceValue * qtyValue;
                 } else if (deviation > 2.5 && deviation <= 5) {
-                    ranges['2.5-5%'].total += priceValue * qtyValue;
-                    ranges['2.5-5%'].count++;
+                    ranges['2.5-5%'] += priceValue * qtyValue;
                 } else if (deviation > 5 && deviation <= 10) {
-                    ranges['5-10%'].total += priceValue * qtyValue;
-                    ranges['5-10%'].count++;
+                    ranges['5-10%'] += priceValue * qtyValue;
                 }
             });
 
-            console.log("Calculated Ranges:", ranges);
             return ranges;
         }
 
-        async function updateOrderBook() {
+        async function updateData() {
             const symbol = "BTCUSDT";
             const orderBook = await fetchOrderBook(symbol);
             const spotPrice = await fetchSpotPrice(symbol);
 
             if (!orderBook || !spotPrice) {
-                document.getElementById("bidsContainer").innerHTML = "<p>Error fetching data.</p>";
-                document.getElementById("asksContainer").innerHTML = "<p>Error fetching data.</p>";
+                document.getElementById("output").innerHTML = "<p>Error fetching data.</p>";
                 return;
             }
 
             const bidRanges = calculateRanges(orderBook.bids, spotPrice);
             const askRanges = calculateRanges(orderBook.asks, spotPrice);
 
-            displayRanges("Bids", bidRanges, "bidsContainer");
-            displayRanges("Asks", askRanges, "asksContainer");
+            displayRanges("Bids", bidRanges);
+            displayRanges("Asks", askRanges);
         }
 
-        function displayRanges(type, ranges, containerId) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = `<h2>${type}</h2>`;
+        function displayRanges(type, ranges) {
+            const container = document.getElementById("output");
+            container.innerHTML += `<h2>${type}</h2>`;
             for (const range in ranges) {
-                const rangeData = ranges[range];
-                const rangeBox = `
+                container.innerHTML += `
                     <div class="range-box">
-                        <h3>${range}</h3>
-                        <p>Total: ${rangeData.total.toFixed(2)} USDT</p>
-                        <p>Orders: ${rangeData.count}</p>
+                        <strong>${range}:</strong> ${ranges[range].toFixed(2)} USDT
                     </div>
                 `;
-                container.innerHTML += rangeBox;
             }
         }
 
-        // Update the data every 5 seconds
-        updateOrderBook();
-        setInterval(updateOrderBook, 5000);
+        // Fetch and update data
+        updateData();
+        setInterval(updateData, 10000);
     </script>
 </body>
 </html>
