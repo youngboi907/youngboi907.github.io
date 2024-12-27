@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Chart with Condition Markers</title>
+    <title>BTC/USDT Condition History</title>
     <script src="https://cdn.jsdelivr.net/npm/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         body {
@@ -44,10 +44,35 @@
             height: 500px;
             margin: 0 auto;
         }
+        #history-box {
+            width: 90%;
+            margin: 20px auto;
+            padding: 10px;
+            background: #1a1a1a;
+            border-radius: 5px;
+            border: 1px solid #333;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        #history-box h2 {
+            color: #ffcc00;
+            margin-bottom: 10px;
+        }
+        #history-box ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #history-box ul li {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #333;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Candlestick Chart with Condition Markers</h1>
+    <h1>BTC/USDT Condition History</h1>
     <div class="timeframe-buttons">
         <button data-timeframe="5m">5 Minutes</button>
         <button data-timeframe="30m">30 Minutes</button>
@@ -56,9 +81,16 @@
         <button data-timeframe="1d">1 Day</button>
     </div>
     <div id="chart-container"></div>
+    <div id="history-box">
+        <h2>Condition Met History</h2>
+        <ul id="history-list">
+            <!-- Condition history will be dynamically populated here -->
+        </ul>
+    </div>
 
     <script>
         const chartContainer = document.getElementById('chart-container');
+        const historyList = document.getElementById('history-list');
         const chart = LightweightCharts.createChart(chartContainer, {
             width: chartContainer.clientWidth,
             height: 500,
@@ -121,15 +153,14 @@
 
                 candleSeries.setData(candles);
 
-                const markers = await detectConditions(candles);
-                candleSeries.setMarkers(markers);
+                await detectConditions(candles);
             } catch (error) {
                 console.error('Error fetching candle data:', error);
             }
         }
 
         async function detectConditions(candles) {
-            const markers = [];
+            historyList.innerHTML = ''; // Clear existing history
             for (const candle of candles) {
                 try {
                     const orderBookUrl = "https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=500";
@@ -148,19 +179,15 @@
                     const askVolume = askRange.reduce((sum, ask) => sum + ask.quantity, 0);
 
                     if (bidVolume > 50 * askVolume) {
-                        markers.push({
-                            time: candle.time,
-                            position: 'aboveBar',
-                            color: 'green',
-                            shape: 'circle',
-                            text: 'Condition Met',
-                        });
+                        const timestamp = new Date(candle.time * 1000).toLocaleString();
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `Condition met at ${timestamp}`;
+                        historyList.appendChild(listItem);
                     }
                 } catch (error) {
                     console.error('Error detecting condition:', error);
                 }
             }
-            return markers;
         }
 
         // Timeframe buttons
