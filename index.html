@@ -14,11 +14,19 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             background-color: #f9f9f9;
         }
         h1 {
             margin: 10px 0;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        select {
+            padding: 10px;
+            font-size: 16px;
+            margin-right: 10px;
         }
         canvas {
             max-width: 90vw;
@@ -29,6 +37,15 @@
 <body>
     <h1>Binance Live Order Book</h1>
     <p>Total Bids, Asks, and Delta (Difference)</p>
+    <div class="controls">
+        <label for="timeframe">Select Timeframe:</label>
+        <select id="timeframe">
+            <option value="300">5 Minutes</option>
+            <option value="3600">1 Hour</option>
+            <option value="14400">4 Hours</option>
+            <option value="86400">1 Day</option>
+        </select>
+    </div>
     <canvas id="orderBookChart"></canvas>
     <script>
         let chart;
@@ -38,6 +55,7 @@
             asks: [],
             deltas: []
         };
+        let currentTimeframe = 300; // Default timeframe: 5 minutes
 
         // Fetch the order book data
         async function fetchOrderBook(symbol) {
@@ -84,8 +102,9 @@
                 historyData.asks.push(totals.totalAsks);
                 historyData.deltas.push(totals.delta);
 
-                // Limit the history to the last 20 data points
-                if (historyData.timestamps.length > 20) {
+                // Limit the history based on the selected timeframe
+                const maxPoints = currentTimeframe / 5; // Assuming data updates every 5 seconds
+                if (historyData.timestamps.length > maxPoints) {
                     historyData.timestamps.shift();
                     historyData.bids.shift();
                     historyData.asks.shift();
@@ -175,9 +194,14 @@
                 }
             });
 
-            // Update the chart every second
-            setInterval(() => updateChart(symbol), 1000);
+            // Update the chart every 5 seconds
+            setInterval(() => updateChart(symbol), 5000);
         }
+
+        // Handle timeframe changes
+        document.getElementById('timeframe').addEventListener('change', (event) => {
+            currentTimeframe = parseInt(event.target.value);
+        });
 
         initializeChart();
     </script>
