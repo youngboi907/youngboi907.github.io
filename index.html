@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Bid/Ask Tracker</title>
+    <title>BTC/USDT Order Book Analysis</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -11,6 +11,7 @@
             background-color: #121212;
             color: #fff;
             margin: 0;
+            padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -25,7 +26,7 @@
             flex-direction: column;
             align-items: center;
         }
-        .controls select {
+        .controls label, .controls input, .controls select {
             margin: 10px;
             padding: 10px;
             font-size: 16px;
@@ -37,15 +38,15 @@
         .chart-container {
             width: 90%;
             max-width: 1200px;
-            height: 70vh;
-            margin-bottom: 40px;
+            height: 400px;
+            margin: 20px 0;
         }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Bid/Ask Tracker</h1>
+    <h1>BTC/USDT Order Book Analysis</h1>
 
-    <!-- Timeframe Selector -->
+    <!-- Timeframe and Multiplier Controls -->
     <div class="controls">
         <label for="timeframe">Select Timeframe:</label>
         <select id="timeframe">
@@ -54,23 +55,17 @@
             <option value="4h">4 Hours</option>
             <option value="1d">1 Day</option>
         </select>
+
+        <label for="multiplier1">Set Multiplier for 1%-2.5% Range:</label>
+        <input id="multiplier1" type="number" value="50" min="1">
+
+        <label for="multiplier2">Set Multiplier for 2.5%-5% Range:</label>
+        <input id="multiplier2" type="number" value="100" min="1">
     </div>
 
-    <!-- Controls for 1%-2.5% Range -->
-    <div class="controls">
-        <h2>1%-2.5% Range</h2>
-        <label for="multiplier1">Set Multiplier (Default: 50):</label>
-        <input id="multiplier1" type="number" value="50" min="1">
-    </div>
+    <!-- Bid/Ask Ratio Charts -->
     <div class="chart-container">
         <canvas id="ratioChart1"></canvas>
-    </div>
-
-    <!-- Controls for 2.5%-5% Range -->
-    <div class="controls">
-        <h2>2.5%-5% Range</h2>
-        <label for="multiplier2">Set Multiplier (Default: 100):</label>
-        <input id="multiplier2" type="number" value="100" min="1">
     </div>
     <div class="chart-container">
         <canvas id="ratioChart2"></canvas>
@@ -78,105 +73,62 @@
 
     <!-- BTC/USDT Price Chart -->
     <div class="chart-container">
-        <h2>BTC/USDT Price Chart</h2>
         <canvas id="priceChart"></canvas>
     </div>
 
     <script>
         const API_URL = "https://api.binance.com/api/v3/";
 
-        // Helper function to initialize a chart
-        function initializeLineChart(ctx, label) {
+        // Helper function to initialize a line chart
+        function initializeChart(ctx, label) {
             return new Chart(ctx, {
                 type: "line",
                 data: {
-                    labels: [], // Placeholder labels
-                    datasets: [
-                        {
-                            label: label,
-                            data: [],
-                            borderColor: "rgba(0, 255, 0, 1)",
-                            borderWidth: 2,
-                            fill: false
-                        }
-                    ]
+                    labels: [],
+                    datasets: [{
+                        label: label,
+                        data: [],
+                        borderColor: "rgba(0, 255, 0, 1)", // Default green color
+                        borderWidth: 2,
+                        fill: false
+                    }]
                 },
                 options: {
                     responsive: true,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            labels: { color: "#fff" }
-                        }
-                    },
                     scales: {
                         x: {
                             title: { display: true, text: "Timestamp", color: "#fff" },
                             ticks: { color: "#fff" }
                         },
                         y: {
-                            title: { display: true, text: "Value", color: "#fff" },
+                            title: { display: true, text: "Ratio", color: "#fff" },
                             ticks: { color: "#fff" }
                         }
+                    },
+                    plugins: {
+                        legend: { display: true, labels: { color: "#fff" } }
                     }
                 }
             });
         }
 
-        // Fetch Binance Spot Order Book Data
+        // Initialize Charts
+        const ctx1 = document.getElementById("ratioChart1").getContext("2d");
+        const ctx2 = document.getElementById("ratioChart2").getContext("2d");
+        const ctx3 = document.getElementById("priceChart").getContext("2d");
+
+        const ratioChart1 = initializeChart(ctx1, "Bid/Ask Ratio (1%-2.5%)");
+        const ratioChart2 = initializeChart(ctx2, "Bid/Ask Ratio (2.5%-5%)");
+        const priceChart = initializeChart(ctx3, "BTC/USDT Price");
+
+        // Fetch Order Book Data
         async function fetchOrderBook(symbol) {
-            try {
-                const response = await fetch(`${API_URL}depth?symbol=${symbol}&limit=1000`);
-                if (!response.ok) {
-                    console.error("Error fetching order book:", response.statusText);
-                    return null;
-                }
-                return await response.json();
-            } catch (error) {
-                console.error("Error fetching order book:", error);
-                return null;
-            }
+            const response = await fetch(`${API_URL}depth?symbol=${symbol}&limit=1000`);
+            return response.ok ? response.json() : null;
         }
 
-        // Analyze and Filter Order Book Data
-        async function analyzeOrderBook(symbol, chart, percentageRange, multiplier) {
-            const orderBook = await fetchOrderBook(symbol);
-            if (!orderBook) return;
-
-            // Calculate mid-price
-            const topBid = parseFloat(orderBook.bids[0][0]);
-            const topAsk = parseFloat(orderBook.asks[0][0]);
-            const midPrice = (topBid + topAsk) / 2;
-
-            // Filter Bids and Asks within the percentage range
-            const minPrice = midPrice * (1 - percentageRange / 100);
-            const maxPrice = midPrice * (1 + percentageRange / 100);
-
-            const filteredBids = orderBook.bids.filter(([price]) => price >= minPrice && price <= maxPrice);
-            const filteredAsks = orderBook.asks.filter(([price]) => price >= minPrice && price <= maxPrice);
-
-            // Calculate total volumes
-            const bidVolume = filteredBids.reduce((sum, [, volume]) => sum + parseFloat(volume), 0);
-            const askVolume = filteredAsks.reduce((sum, [, volume]) => sum + parseFloat(volume), 0);
-
-            // Calculate Bid/Ask Ratio
-            const ratio = bidVolume / (askVolume * multiplier);
-
-            // Update Chart
-            const timestamp = new Date().toLocaleTimeString();
-            chart.data.labels.push(timestamp);
-            chart.data.datasets[0].data.push(ratio);
-
-            if (chart.data.labels.length > 50) { // Limit data points to 50
-                chart.data.labels.shift();
-                chart.data.datasets[0].data.shift();
-            }
-
-            chart.update();
-        }
-
-        // Update BTC Price Chart
-        async function updatePriceChart(chart) {
+        // Analyze Order Book and Update Charts
+        async function analyzeOrderBook(range, multiplier, chart) {
             const orderBook = await fetchOrderBook("BTCUSDT");
             if (!orderBook) return;
 
@@ -184,9 +136,21 @@
             const topAsk = parseFloat(orderBook.asks[0][0]);
             const midPrice = (topBid + topAsk) / 2;
 
+            const minPrice = midPrice * (1 - range / 100);
+            const maxPrice = midPrice * (1 + range / 100);
+
+            const filteredBids = orderBook.bids.filter(([price]) => price >= minPrice && price <= maxPrice);
+            const filteredAsks = orderBook.asks.filter(([price]) => price >= minPrice && price <= maxPrice);
+
+            const bidVolume = filteredBids.reduce((sum, [, volume]) => sum + parseFloat(volume), 0);
+            const askVolume = filteredAsks.reduce((sum, [, volume]) => sum + parseFloat(volume), 0);
+
+            const ratio = bidVolume / (askVolume * multiplier);
             const timestamp = new Date().toLocaleTimeString();
+
             chart.data.labels.push(timestamp);
-            chart.data.datasets[0].data.push(midPrice);
+            chart.data.datasets[0].data.push(ratio);
+            chart.data.datasets[0].borderColor = ratio > 1 ? "rgba(0, 255, 0, 1)" : "rgba(255, 0, 0, 1)";
 
             if (chart.data.labels.length > 50) {
                 chart.data.labels.shift();
@@ -196,39 +160,48 @@
             chart.update();
         }
 
-        // Initialize Charts
-        const ctx1 = document.getElementById("ratioChart1").getContext("2d");
-        const ctx2 = document.getElementById("ratioChart2").getContext("2d");
-        const ctx3 = document.getElementById("priceChart").getContext("2d");
+        // Update BTC/USDT Price Chart
+        async function updatePriceChart() {
+            const orderBook = await fetchOrderBook("BTCUSDT");
+            if (!orderBook) return;
 
-        const ratioChart1 = initializeLineChart(ctx1, "Bid/Ask Ratio (1%-2.5%)");
-        const ratioChart2 = initializeLineChart(ctx2, "Bid/Ask Ratio (2.5%-5%)");
-        const priceChart = initializeLineChart(ctx3, "BTC/USDT Price");
+            const topBid = parseFloat(orderBook.bids[0][0]);
+            const topAsk = parseFloat(orderBook.asks[0][0]);
+            const midPrice = (topBid + topAsk) / 2;
 
-        // Fetch and Update Data Periodically
+            const timestamp = new Date().toLocaleTimeString();
+            priceChart.data.labels.push(timestamp);
+            priceChart.data.datasets[0].data.push(midPrice);
+
+            if (priceChart.data.labels.length > 50) {
+                priceChart.data.labels.shift();
+                priceChart.data.datasets[0].data.shift();
+            }
+
+            priceChart.update();
+        }
+
+        // Main Update Loop
         async function updateData() {
-            const timeframe = document.getElementById("timeframe").value;
             const multiplier1 = parseFloat(document.getElementById("multiplier1").value) || 50;
             const multiplier2 = parseFloat(document.getElementById("multiplier2").value) || 100;
 
-            await analyzeOrderBook("BTCUSDT", ratioChart1, 2.5, multiplier1);
-            await analyzeOrderBook("BTCUSDT", ratioChart2, 5, multiplier2);
-            await updatePriceChart(priceChart);
+            await analyzeOrderBook(2.5, multiplier1, ratioChart1);
+            await analyzeOrderBook(5, multiplier2, ratioChart2);
+            await updatePriceChart();
         }
 
-        // Listen for timeframe changes
+        // Timeframe Selector
         document.getElementById("timeframe").addEventListener("change", () => {
             clearInterval(intervalId);
-
             const timeframe = document.getElementById("timeframe").value;
             const interval = { "5m": 300000, "1h": 3600000, "4h": 14400000, "1d": 86400000 }[timeframe];
-            
             intervalId = setInterval(updateData, interval);
-            updateData(); // Update immediately on timeframe change
+            updateData(); // Immediate update
         });
 
-        // Start with default timeframe
-        let intervalId = setInterval(updateData, 300000); // Default to 5 minutes
+        // Default Update Interval
+        let intervalId = setInterval(updateData, 300000);
         updateData();
     </script>
 </body>
