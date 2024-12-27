@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Order Book (1% - 2.5% Range)</title>
+    <title>Binance Order Book CVD</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -18,46 +19,18 @@
             height: 100vh;
             text-align: center;
         }
+        canvas {
+            max-width: 90%;
+            max-height: 80%;
+        }
         h1 {
-            margin-bottom: 20px;
-        }
-        #data-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-        .data-box {
-            background-color: #1e1e1e;
-            padding: 15px 20px;
-            border-radius: 10px;
-            border: 1px solid #333;
-            width: 300px;
-            text-align: center;
-        }
-        .data-box h2 {
-            margin: 0 0 10px;
-            font-size: 18px;
-        }
-        .data-box p {
-            margin: 0;
-            font-size: 24px;
-            font-weight: bold;
+            margin: 20px 0;
         }
     </style>
 </head>
 <body>
-    <h1>Binance Order Book (1% - 2.5% Range)</h1>
-    <div id="data-container">
-        <div class="data-box">
-            <h2>Sum of Bids (1% to 2.5%)</h2>
-            <p id="bids-sum">Loading...</p>
-        </div>
-        <div class="data-box">
-            <h2>Sum of Asks (1% to 2.5%)</h2>
-            <p id="asks-sum">Loading...</p>
-        </div>
-    </div>
+    <h1>Binance Order Book Cumulative Volume Delta</h1>
+    <canvas id="cvdChart"></canvas>
 
     <script>
         async function fetchOrderBook(symbol) {
@@ -66,54 +39,91 @@
             return response.json();
         }
 
-        async function fetchSpotPrice(symbol) {
-            const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
-            if (!response.ok) throw new Error("Failed to fetch spot price");
-            const data = await response.json();
-            return parseFloat(data.price);
-        }
+        function calculateCVD(orderBook) {
+            let cumulativeDelta = 0;
+            const cvdData = [];
+            const prices = [];
 
-        function calculateSumInRange(orderData, spotPrice, lowerPercent, upperPercent, isBid = true) {
-            const lowerBound = spotPrice * (1 + lowerPercent / 100);
-            const upperBound = spotPrice * (1 + upperPercent / 100);
+            // Combine bids and asks, sort by price
+            const combinedOrders = [
+                ...orderBook.bids.map(([price, qty]) => ({ price: parseFloat(price), qty: parseFloat(qty), side: 'bid' })),
+                ...orderBook.asks.map(([price, qty]) => ({ price: parseFloat(price), qty: parseFloat(qty), side: 'ask' }))
+            ].sort((a, b) => b.price - a.price); // Sort in descending order of price
 
-            return orderData.reduce((sum, [price, qty]) => {
-                price = parseFloat(price);
-                qty = parseFloat(qty);
-
-                if (isBid) {
-                    if (price >= lowerBound && price < upperBound) {
-                        sum += price * qty;
-                    }
+            // Calculate cumulative volume delta
+            combinedOrders.forEach(order => {
+                if (order.side === 'bid') {
+                    cumulativeDelta += order.qty; // Add bid volume
                 } else {
-                    if (price <= upperBound && price > lowerBound) {
-                        sum += price * qty;
-                    }
+                    cumulativeDelta -= order.qty; // Subtract ask volume
                 }
-                return sum;
-            }, 0);
+                cvdData.push(cumulativeDelta);
+                prices.push(order.price);
+            });
+
+            return { cvdData, prices };
         }
 
-        async function updateData() {
+        async function updateCVDChart(chart, symbol) {
             try {
-                const symbol = "BTCUSDT";
-                const spotPrice = await fetchSpotPrice(symbol);
                 const orderBook = await fetchOrderBook(symbol);
+                const { cvdData, prices } = calculateCVD(orderBook);
 
-                const bidsSum = calculateSumInRange(orderBook.bids, spotPrice, -2.5, -1, true);
-                const asksSum = calculateSumInRange(orderBook.asks, spotPrice, 1, 2.5, false);
-
-                document.getElementById("bids-sum").textContent = bidsSum.toFixed(2) + " USDT";
-                document.getElementById("asks-sum").textContent = asksSum.toFixed(2) + " USDT";
+                chart.data.labels = prices;
+                chart.data.datasets[0].data = cvdData;
+                chart.update();
             } catch (error) {
-                console.error("Error updating data:", error);
-                document.getElementById("bids-sum").textContent = "Error";
-                document.getElementById("asks-sum").textContent = "Error";
+                console.error("Error updating CVD chart:", error);
             }
         }
 
-        setInterval(updateData, 5000); // Update every 5 seconds
-        updateData(); // Initial load
+        async function initializeCVDChart() {
+            const symbol = "BTCUSDT";
+
+            const ctx = document.getElementById('cvdChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [], // Prices
+                    datasets: [
+                        {
+                            label: 'Cumulative Volume Delta',
+                            data: [], // CVD values
+                            borderColor: '#4caf50',
+                            backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                            borderWidth: 2,
+                            fill: true,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Price (USDT)',
+                                font: { size: 14 }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Cumulative Volume Delta',
+                                font: { size: 14 }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Update the chart every 5 seconds
+            setInterval(() => updateCVDChart(chart, symbol), 5000);
+            await updateCVDChart(chart, symbol); // Initial update
+        }
+
+        initializeCVDChart();
     </script>
 </body>
 </html>
