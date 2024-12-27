@@ -74,17 +74,19 @@
     <script>
         const API_URL = "https://api.binance.com/api/v3/";
 
-        // Initialize Charts
+        // Helper function to initialize a chart
         function initializeLineChart(ctx, label) {
             return new Chart(ctx, {
                 type: "line",
                 data: {
-                    labels: [],
+                    labels: ["Initializing..."], // Placeholder label
                     datasets: [
                         {
                             label: label,
-                            data: [],
-                            borderWidth: 0 // Prevent default rendering (use custom plugin)
+                            data: [0], // Placeholder data
+                            borderColor: "rgba(0, 255, 0, 1)",
+                            borderWidth: 2,
+                            fill: false
                         }
                     ]
                 },
@@ -106,20 +108,29 @@
                             ticks: { color: "#fff" }
                         }
                     }
-                },
-                plugins: [dynamicLineColorPlugin]
+                }
             });
         }
 
         // Fetch Binance Spot Order Book Data
         async function fetchOrderBook(symbol) {
-            const response = await fetch(`${API_URL}depth?symbol=${symbol}&limit=1000`);
-            return response.json();
+            try {
+                const response = await fetch(`${API_URL}depth?symbol=${symbol}&limit=1000`);
+                if (!response.ok) {
+                    console.error("Error fetching order book:", response.statusText);
+                    return null;
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("Error fetching order book:", error);
+                return null;
+            }
         }
 
         // Analyze and Filter Order Book Data
         async function analyzeOrderBook(symbol, chart, percentageRange, multiplier) {
             const orderBook = await fetchOrderBook(symbol);
+            if (!orderBook) return;
 
             // Calculate mid-price
             const topBid = parseFloat(orderBook.bids[0][0]);
@@ -156,8 +167,8 @@
         // Update BTC Price Chart
         async function updatePriceChart(chart) {
             const orderBook = await fetchOrderBook("BTCUSDT");
+            if (!orderBook) return;
 
-            // Use the latest mid-price as a proxy for BTC price
             const topBid = parseFloat(orderBook.bids[0][0]);
             const topAsk = parseFloat(orderBook.asks[0][0]);
             const midPrice = (topBid + topAsk) / 2;
