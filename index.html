@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Order Book Debug</title>
+    <title>Binance Spot Order Book</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,103 +12,120 @@
             text-align: center;
             padding: 20px;
         }
-        .range-box {
-            margin: 10px auto;
-            padding: 10px;
-            border: 1px solid #4caf50;
-            border-radius: 5px;
-            background-color: #1e1e1e;
+        table {
             width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background-color: #1e1e1e;
+            border: 1px solid #444;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #444;
+        }
+        th {
+            background-color: #333;
         }
     </style>
 </head>
 <body>
-    <h1>Order Book Ranges</h1>
-    <div id="output"></div>
+    <h1>Binance Spot Order Book (0-10%)</h1>
+    <div id="orderBook">
+        <p>Loading data...</p>
+    </div>
 
     <script>
         async function fetchOrderBook(symbol) {
-            try {
-                const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
-                if (!response.ok) throw new Error("Failed to fetch order book");
-                return await response.json();
-            } catch (error) {
-                console.error("Error fetching order book:", error);
-                return null;
-            }
+            const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
+            if (!response.ok) throw new Error("Failed to fetch order book");
+            return response.json();
         }
 
         async function fetchSpotPrice(symbol) {
-            try {
-                const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
-                if (!response.ok) throw new Error("Failed to fetch spot price");
-                const data = await response.json();
-                return parseFloat(data.price);
-            } catch (error) {
-                console.error("Error fetching spot price:", error);
-                return null;
-            }
+            const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+            if (!response.ok) throw new Error("Failed to fetch spot price");
+            const data = await response.json();
+            return parseFloat(data.price);
         }
 
-        function calculateRanges(orders, spotPrice) {
-            const ranges = {
-                '0-1%': 0,
-                '1-2.5%': 0,
-                '2.5-5%': 0,
-                '5-10%': 0,
-            };
-
-            orders.forEach(([price, qty]) => {
-                const priceValue = parseFloat(price);
-                const qtyValue = parseFloat(qty);
-                const deviation = ((priceValue - spotPrice) / spotPrice) * 100;
-
-                if (deviation >= 0 && deviation <= 1) {
-                    ranges['0-1%'] += priceValue * qtyValue;
-                } else if (deviation > 1 && deviation <= 2.5) {
-                    ranges['1-2.5%'] += priceValue * qtyValue;
-                } else if (deviation > 2.5 && deviation <= 5) {
-                    ranges['2.5-5%'] += priceValue * qtyValue;
-                } else if (deviation > 5 && deviation <= 10) {
-                    ranges['5-10%'] += priceValue * qtyValue;
-                }
+        function filterByRange(orders, spotPrice, range) {
+            return orders.filter(([price]) => {
+                const deviation = (Math.abs(price - spotPrice) / spotPrice) * 100;
+                return deviation >= 0 && deviation <= range;
             });
-
-            return ranges;
         }
 
-        async function updateData() {
-            const symbol = "BTCUSDT";
-            const orderBook = await fetchOrderBook(symbol);
-            const spotPrice = await fetchSpotPrice(symbol);
+        async function updateOrderBook() {
+            try {
+                const symbol = "BTCUSDT";
+                const orderBook = await fetchOrderBook(symbol);
+                const spotPrice = await fetchSpotPrice(symbol);
 
-            if (!orderBook || !spotPrice) {
-                document.getElementById("output").innerHTML = "<p>Error fetching data.</p>";
-                return;
+                const bids = filterByRange(
+                    orderBook.bids.map(([price, qty]) => [parseFloat(price), parseFloat(qty)]),
+                    spotPrice,
+                    10
+                );
+
+                const asks = filterByRange(
+                    orderBook.asks.map(([price, qty]) => [parseFloat(price), parseFloat(qty)]),
+                    spotPrice,
+                    10
+                );
+
+                displayOrderBook(bids, asks);
+            } catch (error) {
+                console.error("Error fetching order book:", error);
+                document.getElementById("orderBook").innerHTML = `<p>Error loading data.</p>`;
             }
-
-            const bidRanges = calculateRanges(orderBook.bids, spotPrice);
-            const askRanges = calculateRanges(orderBook.asks, spotPrice);
-
-            displayRanges("Bids", bidRanges);
-            displayRanges("Asks", askRanges);
         }
 
-        function displayRanges(type, ranges) {
-            const container = document.getElementById("output");
-            container.innerHTML += `<h2>${type}</h2>`;
-            for (const range in ranges) {
-                container.innerHTML += `
-                    <div class="range-box">
-                        <strong>${range}:</strong> ${ranges[range].toFixed(2)} USDT
-                    </div>
+        function displayOrderBook(bids, asks) {
+            const container = document.getElementById("orderBook");
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th colspan="2">Bids (0-10%)</th>
+                            <th colspan="2">Asks (0-10%)</th>
+                        </tr>
+                        <tr>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${generateTableRows(bids, asks)}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function generateTableRows(bids, asks) {
+            const maxRows = Math.max(bids.length, asks.length);
+            let rows = "";
+
+            for (let i = 0; i < maxRows; i++) {
+                const bid = bids[i] || ["-", "-"];
+                const ask = asks[i] || ["-", "-"];
+                rows += `
+                    <tr>
+                        <td>${bid[0]}</td>
+                        <td>${bid[1]}</td>
+                        <td>${ask[0]}</td>
+                        <td>${ask[1]}</td>
+                    </tr>
                 `;
             }
+
+            return rows;
         }
 
-        // Fetch and update data
-        updateData();
-        setInterval(updateData, 10000);
+        updateOrderBook();
+        setInterval(updateOrderBook, 10000); // Update every 10 seconds
     </script>
 </body>
 </html>
