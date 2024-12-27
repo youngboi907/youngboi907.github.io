@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Live Order Book (Log Scale)</title>
+    <title>Binance Live Order Book (Optimized)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -48,7 +48,7 @@
 </head>
 <body>
     <h1>Binance Live Order Book</h1>
-    <p>Total Bids, Asks, Buys, Sells, and Delta (Logarithmic Scale)</p>
+    <p>Total Bids, Asks, Buys, Sells, and Delta</p>
     <div class="controls">
         <label for="timeframe">Select Timeframe:</label>
         <select id="timeframe">
@@ -125,14 +125,15 @@
                     historyData.sells.shift();
                 }
 
-                // Update the chart
+                // Update only chart data (no reinitialization)
                 chart.data.labels = historyData.timestamps;
                 chart.data.datasets[0].data = historyData.bids;
                 chart.data.datasets[1].data = historyData.asks;
                 chart.data.datasets[2].data = historyData.deltas;
                 chart.data.datasets[3].data = historyData.buys;
                 chart.data.datasets[4].data = historyData.sells;
-                chart.update();
+
+                chart.update('none'); // Update without animation
             } catch (error) {
                 console.error("Error updating chart:", error);
             }
@@ -193,6 +194,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: false, // Disable animations to reduce flickering
                     scales: {
                         x: {
                             title: {
@@ -208,11 +210,10 @@
                             }
                         },
                         y: {
-                            type: 'logarithmic', // Logarithmic scale
-                            beginAtZero: false,
+                            beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Value / Quantity (Log Scale)',
+                                text: 'Value / Quantity',
                                 color: '#ffffff',
                                 font: {
                                     size: 14
