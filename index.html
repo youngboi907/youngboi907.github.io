@@ -48,18 +48,21 @@
     <!-- Controls for 1%-2.5% Range -->
     <div class="controls">
         <h2>1%-2.5% Range</h2>
-        <label for="timeframe1">Select Timeframe:</label>
-        <select id="timeframe1">
-            <option value="1m">5 Minutes</option>
-            <option value="15m">1 Hour</option>
-            <option value="1h">4 Hours</option>
-            <option value="1d">1 Day</option>
-        </select>
         <label for="multiplier1">Set Multiplier (Default: 50):</label>
         <input id="multiplier1" type="number" value="50" min="1">
     </div>
     <div class="chart-container">
         <canvas id="ratioChart1"></canvas>
+    </div>
+
+    <!-- Controls for 2.5%-5% Range -->
+    <div class="controls">
+        <h2>2.5%-5% Range</h2>
+        <label for="multiplier2">Set Multiplier (Default: 100):</label>
+        <input id="multiplier2" type="number" value="100" min="1">
+    </div>
+    <div class="chart-container">
+        <canvas id="ratioChart2"></canvas>
     </div>
 
     <!-- BTC/USDT Price Chart -->
@@ -69,46 +72,9 @@
     </div>
 
     <script>
-        // Plugin for dynamically changing line colors based on value
-        const dynamicLineColorPlugin = {
-            id: 'dynamicLineColor',
-            beforeDatasetDraw(chart) {
-                const { ctx, data, scales } = chart;
-                const dataset = chart.data.datasets[0];
-                const xScale = scales.x;
-                const yScale = scales.y;
-                const points = dataset.data;
+        const API_URL = "https://api.binance.com/api/v3/";
 
-                ctx.save();
-                ctx.beginPath();
-
-                for (let i = 0; i < points.length - 1; i++) {
-                    const currentValue = points[i];
-                    const nextValue = points[i + 1];
-                    const currentX = xScale.getPixelForValue(i);
-                    const nextX = xScale.getPixelForValue(i + 1);
-                    const currentY = yScale.getPixelForValue(currentValue);
-                    const nextY = yScale.getPixelForValue(nextValue);
-
-                    // Choose color based on the value
-                    ctx.strokeStyle = currentValue > 1 ? "rgba(0, 255, 0, 1)" : "rgba(255, 0, 0, 1)";
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(currentX, currentY);
-                    ctx.lineTo(nextX, nextY);
-                    ctx.stroke();
-                }
-                ctx.restore();
-
-                // Prevent default rendering of the dataset (prevents a single-colored line)
-                return false;
-            }
-        };
-
-        // Register the plugin
-        Chart.register(dynamicLineColorPlugin);
-
-        // Helper function to initialize line charts
+        // Initialize Charts
         function initializeLineChart(ctx, label) {
             return new Chart(ctx, {
                 type: "line",
@@ -118,7 +84,7 @@
                         {
                             label: label,
                             data: [],
-                            borderWidth: 0 // No default line rendering
+                            borderWidth: 0 // Prevent default rendering (use custom plugin)
                         }
                     ]
                 },
@@ -145,80 +111,84 @@
             });
         }
 
-        // Fetch historical data
-        async function fetchHistoricalData(interval) {
-            const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=500`;
-            const response = await fetch(url);
-            const data = await response.json();
-            return data.map(candle => ({
-                timestamp: new Date(candle[0]).toLocaleString(),
-                high: parseFloat(candle[2]),
-                low: parseFloat(candle[3]),
-                close: parseFloat(candle[4]),
-                volume: parseFloat(candle[5])
-            }));
+        // Fetch Binance Spot Order Book Data
+        async function fetchOrderBook(symbol) {
+            const response = await fetch(`${API_URL}depth?symbol=${symbol}&limit=1000`);
+            return response.json();
         }
 
-        // Analyze historical data for Bid/Ask ratios
-        async function analyzeBidAskRatios(chart, interval, multiplier) {
-            const data = await fetchHistoricalData(interval);
+        // Analyze and Filter Order Book Data
+        async function analyzeOrderBook(symbol, chart, percentageRange, multiplier) {
+            const orderBook = await fetchOrderBook(symbol);
 
-            chart.data.labels = [];
-            chart.data.datasets[0].data = [];
+            // Calculate mid-price
+            const topBid = parseFloat(orderBook.bids[0][0]);
+            const topAsk = parseFloat(orderBook.asks[0][0]);
+            const midPrice = (topBid + topAsk) / 2;
 
-            for (const candle of data) {
-                const midPrice = (candle.high + candle.low) / 2;
+            // Filter Bids and Asks within the percentage range
+            const minPrice = midPrice * (1 - percentageRange / 100);
+            const maxPrice = midPrice * (1 + percentageRange / 100);
 
-                // Simulated bid/ask volumes (replace with actual data fetching logic)
-                const bidVolume = Math.random() * 100;
-                const askVolume = Math.random() * 10;
-                const ratio = bidVolume / askVolume;
+            const filteredBids = orderBook.bids.filter(([price]) => price >= minPrice && price <= maxPrice);
+            const filteredAsks = orderBook.asks.filter(([price]) => price >= minPrice && price <= maxPrice);
 
-                chart.data.labels.push(candle.timestamp);
-                chart.data.datasets[0].data.push(ratio);
+            // Calculate total volumes
+            const bidVolume = filteredBids.reduce((sum, [, volume]) => sum + parseFloat(volume), 0);
+            const askVolume = filteredAsks.reduce((sum, [, volume]) => sum + parseFloat(volume), 0);
+
+            // Calculate Bid/Ask Ratio
+            const ratio = bidVolume / (askVolume * multiplier);
+
+            // Update Chart
+            const timestamp = new Date().toLocaleTimeString();
+            chart.data.labels.push(timestamp);
+            chart.data.datasets[0].data.push(ratio);
+
+            if (chart.data.labels.length > 50) { // Limit data points to 50
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
             }
 
             chart.update();
         }
 
-        // Analyze historical data for BTC/USDT Price
-        async function analyzeBTCPrice(chart, interval) {
-            const data = await fetchHistoricalData(interval);
+        // Update BTC Price Chart
+        async function updatePriceChart(chart) {
+            const orderBook = await fetchOrderBook("BTCUSDT");
 
-            chart.data.labels = [];
-            chart.data.datasets[0].data = [];
+            // Use the latest mid-price as a proxy for BTC price
+            const topBid = parseFloat(orderBook.bids[0][0]);
+            const topAsk = parseFloat(orderBook.asks[0][0]);
+            const midPrice = (topBid + topAsk) / 2;
 
-            for (const candle of data) {
-                chart.data.labels.push(candle.timestamp);
-                chart.data.datasets[0].data.push(candle.close);
+            const timestamp = new Date().toLocaleTimeString();
+            chart.data.labels.push(timestamp);
+            chart.data.datasets[0].data.push(midPrice);
+
+            if (chart.data.labels.length > 50) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
             }
 
             chart.update();
         }
 
-        // Initialize charts
+        // Initialize Charts
         const ctx1 = document.getElementById("ratioChart1").getContext("2d");
-        const ctx2 = document.getElementById("priceChart").getContext("2d");
+        const ctx2 = document.getElementById("ratioChart2").getContext("2d");
+        const ctx3 = document.getElementById("priceChart").getContext("2d");
+
         const ratioChart1 = initializeLineChart(ctx1, "Bid/Ask Ratio (1%-2.5%)");
-        const priceChart = initializeLineChart(ctx2, "BTC/USDT Price");
+        const ratioChart2 = initializeLineChart(ctx2, "Bid/Ask Ratio (2.5%-5%)");
+        const priceChart = initializeLineChart(ctx3, "BTC/USDT Price");
 
-        // Event listeners for timeframe and multiplier changes
-        document.getElementById("timeframe1").addEventListener("change", async () => {
-            const interval = document.getElementById("timeframe1").value;
-            const multiplier = parseFloat(document.getElementById("multiplier1").value) || 50;
-            await analyzeBidAskRatios(ratioChart1, interval, multiplier);
-            await analyzeBTCPrice(priceChart, interval);
-        });
-
-        document.getElementById("multiplier1").addEventListener("change", async () => {
-            const interval = document.getElementById("timeframe1").value;
-            const multiplier = parseFloat(document.getElementById("multiplier1").value) || 50;
-            await analyzeBidAskRatios(ratioChart1, interval, multiplier);
-        });
-
-        // Default load
-        analyzeBidAskRatios(ratioChart1, "1m", 50);
-        analyzeBTCPrice(priceChart, "1m");
+        // Fetch and Update Data Periodically
+        setInterval(async () => {
+            await analyzeOrderBook("BTCUSDT", ratioChart1, 2.5, parseFloat(document.getElementById("multiplier1").value) || 50);
+            await analyzeOrderBook("BTCUSDT", ratioChart2, 5, parseFloat(document.getElementById("multiplier2").value) || 100);
+            await updatePriceChart(priceChart);
+        }, 5000); // Update every 5 seconds
     </script>
 </body>
 </html>
