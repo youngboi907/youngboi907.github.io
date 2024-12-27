@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Condition Tracker: BTC/USDT</title>
+    <title>BTC/USDT Condition Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,15 +13,13 @@
             margin: 0;
             padding: 0;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             flex-direction: column;
+            align-items: center;
         }
         h1 {
             color: #ffcc00;
             text-align: center;
-            margin-bottom: 20px;
+            margin: 20px 20px 10px;
         }
         .condition-box {
             width: 300px;
@@ -32,6 +31,7 @@
             font-size: 20px;
             font-weight: bold;
             text-align: center;
+            margin: 20px 0;
         }
         .green {
             background-color: rgba(0, 255, 0, 0.8);
@@ -45,6 +45,11 @@
             background-color: rgba(255, 255, 255, 0.2);
             color: #fff;
         }
+        .chart-container {
+            width: 80%;
+            max-width: 800px;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
@@ -52,8 +57,68 @@
     <div id="condition-box" class="condition-box neutral">
         Loading data...
     </div>
+    <div class="chart-container">
+        <canvas id="conditionChart"></canvas>
+    </div>
 
     <script>
+        // Chart data structure
+        let chartData = {
+            labels: [], // Timestamps
+            datasets: [
+                {
+                    label: "Bids > 50x Asks",
+                    data: [],
+                    backgroundColor: "rgba(0, 255, 0, 0.5)",
+                    borderColor: "rgba(0, 255, 0, 1)",
+                    borderWidth: 1
+                },
+                {
+                    label: "Asks > 50x Bids",
+                    data: [],
+                    backgroundColor: "rgba(255, 0, 0, 0.5)",
+                    borderColor: "rgba(255, 0, 0, 1)",
+                    borderWidth: 1
+                }
+            ]
+        };
+
+        // Initialize Chart.js
+        const ctx = document.getElementById("conditionChart").getContext("2d");
+        const conditionChart = new Chart(ctx, {
+            type: "bar",
+            data: chartData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: "top",
+                        labels: {
+                            color: "#fff"
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Timestamp",
+                            color: "#fff"
+                        },
+                        ticks: { color: "#fff" }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: "Condition Met Count",
+                            color: "#fff"
+                        },
+                        ticks: { color: "#fff" }
+                    }
+                }
+            }
+        });
+
         async function fetchOrderBook() {
             const response = await fetch("https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=500");
             const data = await response.json();
@@ -75,17 +140,36 @@
 
         function updateConditionBox(totalBidVolume, totalAskVolume) {
             const conditionBox = document.getElementById("condition-box");
+            const timestamp = new Date().toLocaleTimeString();
 
             if (totalBidVolume > 50 * totalAskVolume) {
                 conditionBox.textContent = "Bids > 50x Asks";
                 conditionBox.className = "condition-box green";
+                addToChart("Bids > 50x Asks", timestamp);
             } else if (totalAskVolume > 50 * totalBidVolume) {
                 conditionBox.textContent = "Asks > 50x Bids";
                 conditionBox.className = "condition-box red";
+                addToChart("Asks > 50x Bids", timestamp);
             } else {
                 conditionBox.textContent = "No significant difference";
                 conditionBox.className = "condition-box neutral";
             }
+        }
+
+        function addToChart(condition, timestamp) {
+            if (!chartData.labels.includes(timestamp)) {
+                chartData.labels.push(timestamp);
+
+                if (condition === "Bids > 50x Asks") {
+                    chartData.datasets[0].data.push(1);
+                    chartData.datasets[1].data.push(0);
+                } else if (condition === "Asks > 50x Bids") {
+                    chartData.datasets[0].data.push(0);
+                    chartData.datasets[1].data.push(1);
+                }
+            }
+
+            conditionChart.update();
         }
 
         setInterval(fetchOrderBook, 2000); // Fetch data every 2 seconds
