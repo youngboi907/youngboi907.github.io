@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BTC/USDT Condition Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -122,6 +123,7 @@
                             unit: "minute",
                         },
                         ticks: { color: "#fff" },
+                        title: { display: true, text: "Time", color: "#fff" },
                     },
                     y: {
                         title: { display: true, text: "Condition Count", color: "#fff" },
@@ -193,7 +195,7 @@
                 return diff <= timeframeInSeconds;
             });
 
-            chartData.labels = displayedData.map(data => data.timestamp);
+            chartData.labels = displayedData.map(data => data.timestamp.toISOString());
             chartData.datasets[0].data = displayedData.map(data => data.range1.bids);
             chartData.datasets[1].data = displayedData.map(data => data.range1.asks);
             chartData.datasets[2].data = displayedData.map(data => data.range2.bids);
