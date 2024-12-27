@@ -6,7 +6,7 @@
     <title>Binance BTC/USDT Order Book</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
@@ -14,53 +14,47 @@
             align-items: flex-start;
             background: linear-gradient(135deg, #6a11cb, #2575fc);
             color: #fff;
+            min-height: 100vh;
         }
         .container {
-            width: 90%;
             max-width: 1200px;
-            margin: 20px;
-            background: #fff;
+            width: 100%;
             padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background: #fff;
             color: #333;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }
         h1 {
             text-align: center;
             color: #2575fc;
-        }
-        .order-section {
-            margin-top: 20px;
-        }
-        .order-section h2 {
-            font-size: 20px;
-            color: #3498db;
-            margin-bottom: 10px;
-        }
-        .order-section table {
-            width: 100%;
-            border-collapse: collapse;
             margin-bottom: 20px;
         }
-        .order-section th, .order-section td {
-            text-align: center;
-            border: 1px solid #ddd;
-            padding: 8px;
+        .order-section {
+            margin-bottom: 30px;
         }
-        .order-section th {
+        .order-section h2 {
+            color: #3498db;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
             background-color: #3498db;
             color: white;
         }
-        .order-section tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        .order-section tr:nth-child(odd) {
-            background-color: #f1f1f1;
-        }
         .error {
             color: red;
-            font-size: 16px;
             text-align: center;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -68,7 +62,6 @@
     <div class="container">
         <h1>Binance BTC/USDT Order Book</h1>
         <div id="error" class="error"></div>
-
         <div id="order-sections"></div>
     </div>
 
@@ -81,24 +74,18 @@
 
         async function fetchMarketPrice() {
             const url = 'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT';
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                return parseFloat(data.price);
-            } catch (error) {
-                throw new Error('Error fetching market price');
-            }
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Failed to fetch market price");
+            const data = await response.json();
+            return parseFloat(data.price);
         }
 
         async function fetchOrderBook() {
             const url = 'https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=1000';
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                throw new Error('Error fetching order book');
-            }
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Failed to fetch order book");
+            const data = await response.json();
+            return data;
         }
 
         function filterOrders(orders, marketPrice, minPercent, maxPercent, type) {
@@ -119,20 +106,14 @@
                 <h3>Bids</h3>
                 <table>
                     <thead>
-                        <tr>
-                            <th>Price</th>
-                            <th>Quantity</th>
-                        </tr>
+                        <tr><th>Price</th><th>Quantity</th></tr>
                     </thead>
                     <tbody id="bids-${label.replace(/[^a-zA-Z0-9]/g, '')}"></tbody>
                 </table>
                 <h3>Asks</h3>
                 <table>
                     <thead>
-                        <tr>
-                            <th>Price</th>
-                            <th>Quantity</th>
-                        </tr>
+                        <tr><th>Price</th><th>Quantity</th></tr>
                     </thead>
                     <tbody id="asks-${label.replace(/[^a-zA-Z0-9]/g, '')}"></tbody>
                 </table>
@@ -142,7 +123,7 @@
 
         async function displayOrderBook() {
             const errorDiv = document.getElementById('error');
-            errorDiv.textContent = ''; // Clear previous errors
+            errorDiv.textContent = ""; // Clear previous errors
 
             try {
                 const marketPrice = await fetchMarketPrice();
@@ -165,14 +146,14 @@
 
         function initialize() {
             const orderSections = document.getElementById('order-sections');
-            orderSections.innerHTML = ''; // Clear previous data
+            orderSections.innerHTML = ""; // Clear previous sections
 
             ranges.forEach(range => {
                 const section = createSection(range.label);
                 orderSections.appendChild(section);
             });
 
-            // Initial Data Fetch
+            // Initial data fetch
             displayOrderBook();
 
             // Auto-refresh data every 2 seconds
