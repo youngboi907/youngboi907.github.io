@@ -45,6 +45,12 @@
 <body>
     <h1>BTC/USDT Bid/Ask Tracker</h1>
 
+    <!-- Timeframe Selector -->
+    <div class="controls">
+        <label for="timeframe">Set Update Interval (Seconds):</label>
+        <input id="timeframe" type="number" value="5" min="1">
+    </div>
+
     <!-- Controls for 1%-2.5% Range -->
     <div class="controls">
         <h2>1%-2.5% Range</h2>
@@ -195,11 +201,24 @@
         const priceChart = initializeLineChart(ctx3, "BTC/USDT Price");
 
         // Fetch and Update Data Periodically
-        setInterval(async () => {
-            await analyzeOrderBook("BTCUSDT", ratioChart1, 2.5, parseFloat(document.getElementById("multiplier1").value) || 50);
-            await analyzeOrderBook("BTCUSDT", ratioChart2, 5, parseFloat(document.getElementById("multiplier2").value) || 100);
-            await updatePriceChart(priceChart);
-        }, 5000); // Update every 5 seconds
+        let intervalId = null;
+
+        function startUpdating() {
+            if (intervalId) clearInterval(intervalId);
+
+            const timeframe = parseInt(document.getElementById("timeframe").value, 10) || 5;
+            intervalId = setInterval(async () => {
+                await analyzeOrderBook("BTCUSDT", ratioChart1, 2.5, parseFloat(document.getElementById("multiplier1").value) || 50);
+                await analyzeOrderBook("BTCUSDT", ratioChart2, 5, parseFloat(document.getElementById("multiplier2").value) || 100);
+                await updatePriceChart(priceChart);
+            }, timeframe * 1000); // Convert seconds to milliseconds
+        }
+
+        // Listen for timeframe changes
+        document.getElementById("timeframe").addEventListener("change", startUpdating);
+
+        // Start with default interval
+        startUpdating();
     </script>
 </body>
 </html>
