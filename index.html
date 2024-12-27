@@ -1,83 +1,167 @@
-const fetch = require("node-fetch");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC/USDT Combined Volume Delta</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            margin: 10px;
+        }
+        canvas {
+            max-width: 90%;
+            margin-top: 20px;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>BTC/USDT Price & Combined Volume Delta</h1>
+    <div class="chart-container">
+        <canvas id="priceChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="deltaChart"></canvas>
+    </div>
 
-// Fetch trade data from multiple exchanges
-async function fetchTradeData(exchange) {
-    let url = '';
-    switch (exchange) {
-        case 'binance':
-            url = 'https://api.binance.com/api/v3/trades?symbol=BTCUSDT&limit=500';
-            break;
-        case 'bybit':
-            url = 'https://api.bybit.com/v2/public/trading-records?symbol=BTCUSDT&limit=500';
-            break;
-        case 'kraken':
-            url = 'https://api.kraken.com/0/public/Trades?pair=XBTUSDT';
-            break;
-        case 'bitstamp':
-            url = 'https://www.bitstamp.net/api/v2/transactions/btcusd/';
-            break;
-        default:
-            throw new Error("Unsupported exchange");
-    }
+    <script>
+        const exchanges = [
+            { name: "Binance", url: "https://api.binance.com/api/v3/trades?symbol=BTCUSDT&limit=500", parser: parseBinance },
+            { name: "Bybit", url: "https://api.bybit.com/v2/public/trading-records?symbol=BTCUSDT&limit=500", parser: parseBybit },
+            { name: "Kraken", url: "https://api.kraken.com/0/public/Trades?pair=XBTUSDT", parser: parseKraken },
+            { name: "Bitstamp", url: "https://www.bitstamp.net/api/v2/transactions/btcusd/", parser: parseBitstamp }
+        ];
 
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch data from ${exchange}`);
-    return await response.json();
-}
+        let priceChart, deltaChart;
 
-// Calculate volume delta
-function calculateDelta(tradeData, exchange) {
-    let buyVolume = 0;
-    let sellVolume = 0;
-
-    if (exchange === 'binance' || exchange === 'bybit') {
-        for (const trade of tradeData) {
-            if (trade.isBuyerMaker === false) {
-                buyVolume += parseFloat(trade.qty);
-            } else {
-                sellVolume += parseFloat(trade.qty);
+        // Fetch and parse data for each exchange
+        async function fetchData(exchange) {
+            try {
+                const response = await fetch(exchange.url);
+                if (!response.ok) throw new Error(`Failed to fetch data from ${exchange.name}`);
+                const data = await response.json();
+                return exchange.parser(data);
+            } catch (error) {
+                console.error(`Error fetching data from ${exchange.name}:`, error);
+                return { buyVolume: 0, sellVolume: 0 };
             }
         }
-    } else if (exchange === 'kraken') {
-        for (const [price, volume, side] of tradeData.result.XXBTZUSD) {
-            if (side === "b") {
-                buyVolume += parseFloat(volume);
-            } else {
-                sellVolume += parseFloat(volume);
+
+        // Parsers for each exchange
+        function parseBinance(data) {
+            let buyVolume = 0, sellVolume = 0;
+            data.forEach(trade => {
+                const volume = parseFloat(trade.qty);
+                trade.isBuyerMaker ? sellVolume += volume : buyVolume += volume;
+            });
+            return { buyVolume, sellVolume };
+        }
+
+        function parseBybit(data) {
+            let buyVolume = 0, sellVolume = 0;
+            data.result.forEach(trade => {
+                const volume = parseFloat(trade.qty);
+                trade.side === "Buy" ? buyVolume += volume : sellVolume += volume;
+            });
+            return { buyVolume, sellVolume };
+        }
+
+        function parseKraken(data) {
+            let buyVolume = 0, sellVolume = 0;
+            data.result.XXBTZUSD.forEach(([price, volume, side]) => {
+                side === "b" ? buyVolume += parseFloat(volume) : sellVolume += parseFloat(volume);
+            });
+            return { buyVolume, sellVolume };
+        }
+
+        function parseBitstamp(data) {
+            let buyVolume = 0, sellVolume = 0;
+            data.forEach(trade => {
+                const volume = parseFloat(trade.amount);
+                trade.type === "0" ? buyVolume += volume : sellVolume += volume;
+            });
+            return { buyVolume, sellVolume };
+        }
+
+        // Aggregate data from all exchanges
+        async function aggregateVolumeDelta() {
+            let totalBuyVolume = 0, totalSellVolume = 0;
+
+            for (const exchange of exchanges) {
+                const { buyVolume, sellVolume } = await fetchData(exchange);
+                totalBuyVolume += buyVolume;
+                totalSellVolume += sellVolume;
+            }
+
+            return totalBuyVolume - totalSellVolume;
+        }
+
+        // Fetch BTC/USDT price (for demo purpose, static)
+        async function fetchPriceData() {
+            // Simulate price data
+            const prices = Array.from({ length: 30 }, (_, i) => 50000 + Math.random() * 1000);
+            const timestamps = Array.from({ length: 30 }, (_, i) => `Time ${i}`);
+            return { prices, timestamps };
+        }
+
+        // Initialize the charts
+        function initializeCharts() {
+            const priceCtx = document.getElementById("priceChart").getContext("2d");
+            const deltaCtx = document.getElementById("deltaChart").getContext("2d");
+
+            priceChart = new Chart(priceCtx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'BTC/USDT Price', data: [], borderColor: '#4caf50', borderWidth: 2 }] },
+                options: { responsive: true, scales: { x: { title: { display: true, text: 'Time' } }, y: { title: { display: true, text: 'Price (USDT)' } } } }
+            });
+
+            deltaChart = new Chart(deltaCtx, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Volume Delta', data: [], backgroundColor: [] }] },
+                options: { responsive: true, scales: { x: { title: { display: true, text: 'Time' } }, y: { title: { display: true, text: 'Delta Volume' } } } }
+            });
+        }
+
+        // Update the charts
+        async function updateCharts() {
+            try {
+                const { prices, timestamps } = await fetchPriceData();
+                const delta = await aggregateVolumeDelta();
+
+                // Update price chart
+                priceChart.data.labels = timestamps;
+                priceChart.data.datasets[0].data = prices;
+                priceChart.update();
+
+                // Update volume delta chart
+                deltaChart.data.labels = timestamps;
+                deltaChart.data.datasets[0].data = Array(timestamps.length).fill(delta);
+                deltaChart.data.datasets[0].backgroundColor = delta >= 0 ? 'green' : 'red';
+                deltaChart.update();
+            } catch (error) {
+                console.error("Error updating charts:", error);
             }
         }
-    } else if (exchange === 'bitstamp') {
-        for (const trade of tradeData) {
-            if (trade.type === "0") {
-                buyVolume += parseFloat(trade.amount);
-            } else {
-                sellVolume += parseFloat(trade.amount);
-            }
-        }
-    }
 
-    return buyVolume - sellVolume;
-}
-
-// Aggregate delta across exchanges
-async function aggregateVolumeDelta() {
-    const exchanges = ['binance', 'bybit', 'kraken', 'bitstamp'];
-    let totalDelta = 0;
-
-    for (const exchange of exchanges) {
-        try {
-            const tradeData = await fetchTradeData(exchange);
-            const delta = calculateDelta(tradeData, exchange);
-            console.log(`${exchange}: Volume Delta = ${delta}`);
-            totalDelta += delta;
-        } catch (error) {
-            console.error(`Error fetching or processing data for ${exchange}:`, error);
-        }
-    }
-
-    console.log(`Aggregated Volume Delta: ${totalDelta}`);
-    return totalDelta;
-}
-
-// Execute
-aggregateVolumeDelta();
+        // Initialize and periodically update
+        initializeCharts();
+        updateCharts();
+        setInterval(updateCharts, 60000); // Update every 60 seconds
+    </script>
+</body>
+</html>
