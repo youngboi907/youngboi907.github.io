@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Condition Tracker</title>
+    <title>BTC/USDT Bid/Ask Ratio Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -43,8 +43,9 @@
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Condition Tracker</h1>
+    <h1>BTC/USDT Bid/Ask Ratio Tracker</h1>
 
+    <!-- Controls for 1%-2.5% Range -->
     <div class="controls">
         <h2>1%-2.5% Range</h2>
         <label for="timeframe1">Select Timeframe:</label>
@@ -58,9 +59,10 @@
         <input id="multiplier1" type="number" value="50" min="1">
     </div>
     <div class="chart-container">
-        <canvas id="conditionChart1"></canvas>
+        <canvas id="ratioChart1"></canvas>
     </div>
 
+    <!-- Controls for 2.5%-5% Range -->
     <div class="controls">
         <h2>2.5%-5% Range</h2>
         <label for="timeframe2">Select Timeframe:</label>
@@ -74,28 +76,24 @@
         <input id="multiplier2" type="number" value="100" min="1">
     </div>
     <div class="chart-container">
-        <canvas id="conditionChart2"></canvas>
+        <canvas id="ratioChart2"></canvas>
     </div>
 
     <script>
-        // Helper to initialize a chart
-        function initializeChart(ctx, label1, label2) {
+        // Helper function to initialize line charts
+        function initializeLineChart(ctx, label) {
             return new Chart(ctx, {
-                type: "bar",
+                type: "line",
                 data: {
                     labels: [],
                     datasets: [
                         {
-                            label: label1,
+                            label: label,
                             data: [],
-                            backgroundColor: "rgba(0, 255, 0, 0.5)",
-                            borderColor: "rgba(0, 255, 0, 1)"
-                        },
-                        {
-                            label: label2,
-                            data: [],
-                            backgroundColor: "rgba(255, 0, 0, 0.5)",
-                            borderColor: "rgba(255, 0, 0, 1)"
+                            borderColor: "rgba(0, 255, 255, 1)",
+                            backgroundColor: "rgba(0, 255, 255, 0.2)",
+                            borderWidth: 2,
+                            tension: 0.3
                         }
                     ]
                 },
@@ -103,7 +101,7 @@
                     responsive: true,
                     plugins: {
                         legend: {
-                            position: "top",
+                            display: true,
                             labels: { color: "#fff" }
                         }
                     },
@@ -113,7 +111,7 @@
                             ticks: { color: "#fff" }
                         },
                         y: {
-                            title: { display: true, text: "Condition Met", color: "#fff" },
+                            title: { display: true, text: "Bid/Ask Ratio", color: "#fff" },
                             ticks: { color: "#fff" }
                         }
                     }
@@ -135,85 +133,68 @@
             }));
         }
 
-        // Analyze historical data
-        async function analyzeHistoricalData(chart, interval, multiplier, range) {
+        // Analyze historical data for Bid/Ask ratios
+        async function analyzeBidAskRatios(chart, interval, multiplier, range) {
             const data = await fetchHistoricalData(interval);
 
             chart.data.labels = [];
             chart.data.datasets[0].data = [];
-            chart.data.datasets[1].data = [];
 
             for (const candle of data) {
                 const midPrice = (candle.high + candle.low) / 2;
 
-                // Logic for the specified range
-                const bidVolume = Math.random() * 100; // Replace with real bid data
-                const askVolume = Math.random() * 10;  // Replace with real ask data
-
-                chart.data.labels.push(candle.timestamp);
-
+                // Simulated bid/ask volumes based on range (replace with actual data fetching logic)
+                let bidVolume, askVolume;
                 if (range === "1-2.5%") {
-                    if (bidVolume > multiplier * askVolume) {
-                        chart.data.datasets[0].data.push(1);
-                        chart.data.datasets[1].data.push(0);
-                    } else if (askVolume > multiplier * bidVolume) {
-                        chart.data.datasets[0].data.push(0);
-                        chart.data.datasets[1].data.push(1);
-                    } else {
-                        chart.data.datasets[0].data.push(0);
-                        chart.data.datasets[1].data.push(0);
-                    }
+                    bidVolume = Math.random() * 100; // Replace with real bid volume for 1%-2.5%
+                    askVolume = Math.random() * 10;  // Replace with real ask volume for 1%-2.5%
                 } else if (range === "2.5-5%") {
-                    if (bidVolume > multiplier * askVolume) {
-                        chart.data.datasets[0].data.push(1);
-                        chart.data.datasets[1].data.push(0);
-                    } else if (askVolume > multiplier * bidVolume) {
-                        chart.data.datasets[0].data.push(0);
-                        chart.data.datasets[1].data.push(1);
-                    } else {
-                        chart.data.datasets[0].data.push(0);
-                        chart.data.datasets[1].data.push(0);
-                    }
+                    bidVolume = Math.random() * 200; // Replace with real bid volume for 2.5%-5%
+                    askVolume = Math.random() * 20;  // Replace with real ask volume for 2.5%-5%
                 }
+
+                const ratio = bidVolume / askVolume; // Calculate Bid/Ask ratio
+                chart.data.labels.push(candle.timestamp);
+                chart.data.datasets[0].data.push(ratio);
             }
 
             chart.update();
         }
 
         // Initialize charts
-        const ctx1 = document.getElementById("conditionChart1").getContext("2d");
-        const ctx2 = document.getElementById("conditionChart2").getContext("2d");
-        const conditionChart1 = initializeChart(ctx1, "Bids > Multiplier x Asks", "Asks > Multiplier x Bids");
-        const conditionChart2 = initializeChart(ctx2, "Bids > Multiplier x Asks", "Asks > Multiplier x Bids");
+        const ctx1 = document.getElementById("ratioChart1").getContext("2d");
+        const ctx2 = document.getElementById("ratioChart2").getContext("2d");
+        const ratioChart1 = initializeLineChart(ctx1, "Bid/Ask Ratio (1%-2.5%)");
+        const ratioChart2 = initializeLineChart(ctx2, "Bid/Ask Ratio (2.5%-5%)");
 
-        // Event listeners for timeframe and multiplier
+        // Event listeners for timeframe and multiplier changes
         document.getElementById("timeframe1").addEventListener("change", async () => {
             const interval = document.getElementById("timeframe1").value;
             const multiplier = parseFloat(document.getElementById("multiplier1").value) || 50;
-            await analyzeHistoricalData(conditionChart1, interval, multiplier, "1-2.5%");
+            await analyzeBidAskRatios(ratioChart1, interval, multiplier, "1-2.5%");
         });
 
         document.getElementById("multiplier1").addEventListener("change", async () => {
             const interval = document.getElementById("timeframe1").value;
             const multiplier = parseFloat(document.getElementById("multiplier1").value) || 50;
-            await analyzeHistoricalData(conditionChart1, interval, multiplier, "1-2.5%");
+            await analyzeBidAskRatios(ratioChart1, interval, multiplier, "1-2.5%");
         });
 
         document.getElementById("timeframe2").addEventListener("change", async () => {
             const interval = document.getElementById("timeframe2").value;
             const multiplier = parseFloat(document.getElementById("multiplier2").value) || 100;
-            await analyzeHistoricalData(conditionChart2, interval, multiplier, "2.5-5%");
+            await analyzeBidAskRatios(ratioChart2, interval, multiplier, "2.5-5%");
         });
 
         document.getElementById("multiplier2").addEventListener("change", async () => {
             const interval = document.getElementById("timeframe2").value;
             const multiplier = parseFloat(document.getElementById("multiplier2").value) || 100;
-            await analyzeHistoricalData(conditionChart2, interval, multiplier, "2.5-5%");
+            await analyzeBidAskRatios(ratioChart2, interval, multiplier, "2.5-5%");
         });
 
         // Default load
-        analyzeHistoricalData(conditionChart1, "1m", 50, "1-2.5%");
-        analyzeHistoricalData(conditionChart2, "1m", 100, "2.5-5%");
+        analyzeBidAskRatios(ratioChart1, "1m", 50, "1-2.5%");
+        analyzeBidAskRatios(ratioChart2, "1m", 100, "2.5-5%");
     </script>
 </body>
 </html>
