@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Binance BTC/USDT Order Book with Auto-Refresh</title>
     <style>
-        /* Global Styling */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
@@ -28,7 +27,6 @@
             margin-top: 50px;
             color: #333;
         }
-
         .header {
             font-size: 28px;
             font-weight: bold;
@@ -36,80 +34,44 @@
             text-align: center;
             margin-bottom: 30px;
         }
-
-        /* Order Book Section */
-        .order-book {
-            text-align: left;
-        }
-
         .order-book h3 {
             font-size: 22px;
             color: #2ecc71;
             margin-bottom: 10px;
         }
-
         .order-book table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
         }
-
         .order-book th, .order-book td {
             padding: 12px;
             border: 1px solid #ddd;
             text-align: center;
         }
-
         .order-book th {
             background-color: #2ecc71;
             color: #fff;
         }
-
         .order-book tr:nth-child(even) {
             background-color: #f9f9f9;
         }
-
         .order-book tr:nth-child(odd) {
             background-color: #f1f1f1;
         }
-
-        .order-book td {
-            color: #333;
-        }
-
         .loading, .error {
             font-size: 18px;
             color: #ff4757;
             margin-top: 15px;
             font-weight: bold;
         }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .container {
-                width: 90%;
-            }
-            .header {
-                font-size: 24px;
-            }
-            .order-book h3 {
-                font-size: 20px;
-            }
-            .order-book th, .order-book td {
-                font-size: 14px;
-                padding: 8px;
-            }
-        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <div class="header">
-            Binance BTC/USDT Order Book (1% - 2.5%)
-        </div>
+        <div class="header">Binance BTC/USDT Order Book (1% - 2.5%)</div>
         
-        <!-- Order Book Section -->
         <div class="order-book">
             <h3>Order Book</h3>
             <div id="order-book-error" class="error"></div>
@@ -173,7 +135,7 @@
             const tbody = document.getElementById('order-book').getElementsByTagName('tbody')[0];
             tbody.innerHTML = '';
 
-            const maxEntries = Math.min(bids.length, asks.length);
+            const maxEntries = Math.max(bids.length, asks.length);
 
             for (let i = 0; i < maxEntries; i++) {
                 const bid = bids[i] || [];
@@ -193,9 +155,8 @@
             setInterval(fetchOrderBook, interval);
         }
 
-        // Start fetching data when the page loads and set auto-refresh
         fetchOrderBook();
-        startAutoRefresh(2000); // Auto-refresh every 2 seconds
+        startAutoRefresh(2000);
     </script>
 
 </body>
