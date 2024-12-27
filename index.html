@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Spot BTC/USDT Depth</title>
+    <title>Binance Spot BTC/USDT Order Book Depth</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -18,24 +18,39 @@
         }
         h1 {
             color: #ffcc00;
-            margin: 20px 0;
+            margin: 20px 20px 10px;
+        }
+        .controls {
+            margin: 20px;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            gap: 10px;
         }
         .chart-container {
             width: 90%;
             max-width: 1200px;
-            height: 400px;
+            height: 500px;
             margin: 20px 0;
-        }
-        .info {
-            font-size: 16px;
-            margin: 10px 0;
         }
     </style>
 </head>
 <body>
     <h1>Binance Spot BTC/USDT Order Book Depth</h1>
 
-    <!-- Chart for order book depth -->
+    <!-- Timeframe Selector -->
+    <div class="controls">
+        <label for="timeframe">Select Timeframe:</label>
+        <select id="timeframe">
+            <option value="1m">1 Minute</option>
+            <option value="5m">5 Minutes</option>
+            <option value="1h">1 Hour</option>
+            <option value="4h">4 Hours</option>
+            <option value="1d">1 Day</option>
+        </select>
+    </div>
+
+    <!-- Chart Container -->
     <div class="chart-container">
         <canvas id="depthChart"></canvas>
     </div>
@@ -43,56 +58,27 @@
     <script>
         const API_URL = "https://api.binance.com/api/v3/";
 
-        // Initialize chart for order book depth
+        // Initialize Chart
         const ctx = document.getElementById("depthChart").getContext("2d");
         const depthChart = new Chart(ctx, {
             type: "bar",
             data: {
-                labels: [
-                    "1%-2.5% Bids", "1%-2.5% Asks",
-                    "2.5%-5% Bids", "2.5%-5% Asks",
-                    "5%-10% Bids", "5%-10% Asks"
-                ],
+                labels: ["1%-2.5% Bids", "1%-2.5% Asks", "2.5%-5% Bids", "2.5%-5% Asks"],
                 datasets: [
                     {
-                        label: "Bids",
-                        data: [0, 0, 0, 0, 0, 0],
+                        label: "Order Book Depth",
+                        data: [0, 0, 0, 0],
                         backgroundColor: [
                             "rgba(0, 255, 0, 0.5)", // 1%-2.5% Bids
-                            "rgba(0, 255, 0, 0)",   // Spacer for Asks
+                            "rgba(255, 0, 0, 0.5)", // 1%-2.5% Asks
                             "rgba(0, 200, 255, 0.5)", // 2.5%-5% Bids
-                            "rgba(0, 200, 255, 0)", // Spacer for Asks
-                            "rgba(0, 150, 255, 0.5)", // 5%-10% Bids
-                            "rgba(0, 150, 255, 0)"  // Spacer for Asks
+                            "rgba(255, 165, 0, 0.5)" // 2.5%-5% Asks
                         ],
                         borderColor: [
                             "rgba(0, 255, 0, 1)",
-                            "rgba(0, 255, 0, 0)",
-                            "rgba(0, 200, 255, 1)",
-                            "rgba(0, 200, 255, 0)",
-                            "rgba(0, 150, 255, 1)",
-                            "rgba(0, 150, 255, 0)"
-                        ],
-                        borderWidth: 1
-                    },
-                    {
-                        label: "Asks",
-                        data: [0, 0, 0, 0, 0, 0],
-                        backgroundColor: [
-                            "rgba(255, 0, 0, 0)",    // Spacer for Bids
-                            "rgba(255, 0, 0, 0.5)",  // 1%-2.5% Asks
-                            "rgba(255, 165, 0, 0)",  // Spacer for Bids
-                            "rgba(255, 165, 0, 0.5)", // 2.5%-5% Asks
-                            "rgba(255, 105, 0, 0)",  // Spacer for Bids
-                            "rgba(255, 105, 0, 0.5)"  // 5%-10% Asks
-                        ],
-                        borderColor: [
-                            "rgba(255, 0, 0, 0)",
                             "rgba(255, 0, 0, 1)",
-                            "rgba(255, 165, 0, 0)",
-                            "rgba(255, 165, 0, 1)",
-                            "rgba(255, 105, 0, 0)",
-                            "rgba(255, 105, 0, 1)"
+                            "rgba(0, 200, 255, 1)",
+                            "rgba(255, 165, 0, 1)"
                         ],
                         borderWidth: 1
                     }
@@ -123,7 +109,7 @@
             return response.ok ? response.json() : null;
         }
 
-        // Update Chart with Order Book Depth Data
+        // Update Depth Data
         async function updateDepthData() {
             const orderBook = await fetchOrderBook("BTCUSDT");
             if (!orderBook) return;
@@ -135,15 +121,13 @@
             // Define ranges
             const ranges = {
                 "1%-2.5%": { min: midPrice * 0.975, max: midPrice * 0.99 },
-                "2.5%-5%": { min: midPrice * 0.95, max: midPrice * 0.975 },
-                "5%-10%": { min: midPrice * 0.90, max: midPrice * 0.95 }
+                "2.5%-5%": { min: midPrice * 0.95, max: midPrice * 0.975 }
             };
 
-            // Filter bids and asks within the ranges
+            // Calculate Depth Volumes
             const depth = {
                 "1%-2.5%": { bids: 0, asks: 0 },
-                "2.5%-5%": { bids: 0, asks: 0 },
-                "5%-10%": { bids: 0, asks: 0 }
+                "2.5%-5%": { bids: 0, asks: 0 }
             };
 
             for (const [price, volume] of orderBook.bids) {
@@ -154,8 +138,6 @@
                     depth["1%-2.5%"].bids += volumeNum;
                 } else if (priceNum >= ranges["2.5%-5%"].min && priceNum <= ranges["2.5%-5%"].max) {
                     depth["2.5%-5%"].bids += volumeNum;
-                } else if (priceNum >= ranges["5%-10%"].min && priceNum <= ranges["5%-10%"].max) {
-                    depth["5%-10%"].bids += volumeNum;
                 }
             }
 
@@ -167,37 +149,31 @@
                     depth["1%-2.5%"].asks += volumeNum;
                 } else if (priceNum >= ranges["2.5%-5%"].min && priceNum <= ranges["2.5%-5%"].max) {
                     depth["2.5%-5%"].asks += volumeNum;
-                } else if (priceNum >= ranges["5%-10%"].min && priceNum <= ranges["5%-10%"].max) {
-                    depth["5%-10%"].asks += volumeNum;
                 }
             }
 
-            // Update chart data
+            // Update Chart Data
             depthChart.data.datasets[0].data = [
                 depth["1%-2.5%"].bids,
-                0,
-                depth["2.5%-5%"].bids,
-                0,
-                depth["5%-10%"].bids,
-                0
-            ];
-            depthChart.data.datasets[1].data = [
-                0,
                 depth["1%-2.5%"].asks,
-                0,
-                depth["2.5%-5%"].asks,
-                0,
-                depth["5%-10%"].asks
+                depth["2.5%-5%"].bids,
+                depth["2.5%-5%"].asks
             ];
 
             depthChart.update();
         }
 
-        // Update data every second
-        setInterval(updateDepthData, 1000);
+        // Timeframe Selector Change Handler
+        document.getElementById("timeframe").addEventListener("change", (e) => {
+            const selectedTimeframe = e.target.value;
 
-        // Initial data load
+            // Simulate timeframe functionality (real data aggregation requires a backend or websocket feed)
+            console.log(`Selected timeframe: ${selectedTimeframe}`);
+        });
+
+        // Initial Data Load and Auto Update
         updateDepthData();
+        setInterval(updateDepthData, 1000); // Update every second
     </script>
 </body>
 </html>
