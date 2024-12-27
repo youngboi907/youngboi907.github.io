@@ -35,7 +35,7 @@
 <body>
     <h1>Order Book Depth (BTC/USDT)</h1>
 
-    <!-- Chart for 1%-2.5% and 2.5%-5% depth -->
+    <!-- Chart for order book depth -->
     <div class="chart-container">
         <canvas id="depthChart"></canvas>
     </div>
@@ -48,24 +48,43 @@
         const depthChart = new Chart(ctx, {
             type: "bar",
             data: {
-                labels: ["1%-2.5% (Bids)", "1%-2.5% (Asks)", "2.5%-5% (Bids)", "2.5%-5% (Asks)"],
-                datasets: [{
-                    label: "Order Book Depth (BTC/USDT)",
-                    data: [0, 0, 0, 0],
-                    backgroundColor: [
-                        "rgba(0, 255, 0, 0.5)", // 1%-2.5% Bids
-                        "rgba(255, 0, 0, 0.5)", // 1%-2.5% Asks
-                        "rgba(0, 200, 255, 0.5)", // 2.5%-5% Bids
-                        "rgba(255, 165, 0, 0.5)"  // 2.5%-5% Asks
-                    ],
-                    borderColor: [
-                        "rgba(0, 255, 0, 1)",
-                        "rgba(255, 0, 0, 1)",
-                        "rgba(0, 200, 255, 1)",
-                        "rgba(255, 165, 0, 1)"
-                    ],
-                    borderWidth: 1
-                }]
+                labels: ["1%-2.5% Bids", "1%-2.5% Asks", "2.5%-5% Bids", "2.5%-5% Asks"],
+                datasets: [
+                    {
+                        label: "Bids",
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            "rgba(0, 255, 0, 0.5)", // 1%-2.5% Bids
+                            "rgba(0, 255, 0, 0)",    // Spacer for Asks
+                            "rgba(0, 200, 255, 0.5)", // 2.5%-5% Bids
+                            "rgba(0, 200, 255, 0)"   // Spacer for Asks
+                        ],
+                        borderColor: [
+                            "rgba(0, 255, 0, 1)",
+                            "rgba(0, 255, 0, 0)",
+                            "rgba(0, 200, 255, 1)",
+                            "rgba(0, 200, 255, 0)"
+                        ],
+                        borderWidth: 1
+                    },
+                    {
+                        label: "Asks",
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            "rgba(255, 0, 0, 0)",   // Spacer for Bids
+                            "rgba(255, 0, 0, 0.5)", // 1%-2.5% Asks
+                            "rgba(255, 165, 0, 0)", // Spacer for Bids
+                            "rgba(255, 165, 0, 0.5)" // 2.5%-5% Asks
+                        ],
+                        borderColor: [
+                            "rgba(255, 0, 0, 0)",
+                            "rgba(255, 0, 0, 1)",
+                            "rgba(255, 165, 0, 0)",
+                            "rgba(255, 165, 0, 1)"
+                        ],
+                        borderWidth: 1
+                    }
+                ]
             },
             options: {
                 responsive: true,
@@ -138,8 +157,14 @@
             // Update chart data
             depthChart.data.datasets[0].data = [
                 depth["1%-2.5%"].bids,
-                depth["1%-2.5%"].asks,
+                0,
                 depth["2.5%-5%"].bids,
+                0
+            ];
+            depthChart.data.datasets[1].data = [
+                0,
+                depth["1%-2.5%"].asks,
+                0,
                 depth["2.5%-5%"].asks
             ];
 
