@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Bid/Ask Ratio Tracker</title>
+    <title>BTC/USDT Bid/Ask Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -43,7 +43,7 @@
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Bid/Ask Ratio Tracker</h1>
+    <h1>BTC/USDT Bid/Ask Tracker</h1>
 
     <!-- Controls for 1%-2.5% Range -->
     <div class="controls">
@@ -79,9 +79,15 @@
         <canvas id="ratioChart2"></canvas>
     </div>
 
+    <!-- BTC/USDT Price Chart -->
+    <div class="chart-container">
+        <h2>BTC/USDT Price Chart</h2>
+        <canvas id="priceChart"></canvas>
+    </div>
+
     <script>
         // Helper function to initialize line charts
-        function initializeLineChart(ctx, label) {
+        function initializeLineChart(ctx, label, color) {
             return new Chart(ctx, {
                 type: "line",
                 data: {
@@ -90,8 +96,8 @@
                         {
                             label: label,
                             data: [],
-                            borderColor: "rgba(0, 255, 255, 1)",
-                            backgroundColor: "rgba(0, 255, 255, 0.2)",
+                            borderColor: color,
+                            backgroundColor: color + "33", // Transparent fill
                             borderWidth: 2,
                             tension: 0.3
                         }
@@ -111,7 +117,7 @@
                             ticks: { color: "#fff" }
                         },
                         y: {
-                            title: { display: true, text: "Bid/Ask Ratio", color: "#fff" },
+                            title: { display: true, text: "Value", color: "#fff" },
                             ticks: { color: "#fff" }
                         }
                     }
@@ -161,17 +167,35 @@
             chart.update();
         }
 
+        // Analyze historical data for BTC/USDT Price
+        async function analyzeBTCPrice(chart, interval) {
+            const data = await fetchHistoricalData(interval);
+
+            chart.data.labels = [];
+            chart.data.datasets[0].data = [];
+
+            for (const candle of data) {
+                chart.data.labels.push(candle.timestamp);
+                chart.data.datasets[0].data.push(candle.close); // Add closing price
+            }
+
+            chart.update();
+        }
+
         // Initialize charts
         const ctx1 = document.getElementById("ratioChart1").getContext("2d");
         const ctx2 = document.getElementById("ratioChart2").getContext("2d");
-        const ratioChart1 = initializeLineChart(ctx1, "Bid/Ask Ratio (1%-2.5%)");
-        const ratioChart2 = initializeLineChart(ctx2, "Bid/Ask Ratio (2.5%-5%)");
+        const ctx3 = document.getElementById("priceChart").getContext("2d");
+        const ratioChart1 = initializeLineChart(ctx1, "Bid/Ask Ratio (1%-2.5%)", "rgba(0, 255, 255, 1)");
+        const ratioChart2 = initializeLineChart(ctx2, "Bid/Ask Ratio (2.5%-5%)", "rgba(255, 165, 0, 1)");
+        const priceChart = initializeLineChart(ctx3, "BTC/USDT Price", "rgba(0, 255, 0, 1)");
 
         // Event listeners for timeframe and multiplier changes
         document.getElementById("timeframe1").addEventListener("change", async () => {
             const interval = document.getElementById("timeframe1").value;
             const multiplier = parseFloat(document.getElementById("multiplier1").value) || 50;
             await analyzeBidAskRatios(ratioChart1, interval, multiplier, "1-2.5%");
+            await analyzeBTCPrice(priceChart, interval);
         });
 
         document.getElementById("multiplier1").addEventListener("change", async () => {
@@ -184,6 +208,7 @@
             const interval = document.getElementById("timeframe2").value;
             const multiplier = parseFloat(document.getElementById("multiplier2").value) || 100;
             await analyzeBidAskRatios(ratioChart2, interval, multiplier, "2.5-5%");
+            await analyzeBTCPrice(priceChart, interval);
         });
 
         document.getElementById("multiplier2").addEventListener("change", async () => {
@@ -195,6 +220,7 @@
         // Default load
         analyzeBidAskRatios(ratioChart1, "1m", 50, "1-2.5%");
         analyzeBidAskRatios(ratioChart2, "1m", 100, "2.5-5%");
+        analyzeBTCPrice(priceChart, "1m");
     </script>
 </body>
 </html>
