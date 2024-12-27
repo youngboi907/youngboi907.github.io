@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Candle Chart with Timeframe Selector</title>
+    <title>BTC/USDT Candle Chart with Condition Markers</title>
     <script src="https://cdn.jsdelivr.net/npm/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         body {
@@ -47,7 +47,7 @@
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Candle Chart</h1>
+    <h1>BTC/USDT Candle Chart with Condition Markers</h1>
     <div class="timeframe-buttons">
         <button data-timeframe="1h" class="active">1 Hour</button>
         <button data-timeframe="4h">4 Hours</button>
@@ -92,13 +92,15 @@
             wickUpColor: '#00ff00',
         });
 
-        async function fetchCandles(timeframe) {
+        let selectedTimeframe = '1h'; // Default timeframe
+
+        async function fetchCandlesAndCondition() {
             const intervalMap = {
                 '1h': '1h',
                 '4h': '4h',
                 '1d': '1d',
             };
-            const interval = intervalMap[timeframe];
+            const interval = intervalMap[selectedTimeframe];
             const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=100`;
 
             try {
@@ -114,9 +116,47 @@
                 }));
 
                 candleSeries.setData(candles);
+
+                // Fetch order book data and detect conditions
+                const markers = await fetchConditionMarkers(candles);
+                candleSeries.setMarkers(markers);
             } catch (error) {
                 console.error('Error fetching candle data:', error);
             }
+        }
+
+        async function fetchConditionMarkers(candles) {
+            const markers = [];
+            for (const candle of candles) {
+                try {
+                    const response = await fetch("https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=500");
+                    const orderBook = await response.json();
+
+                    const bids = orderBook.bids.map(order => ({ price: parseFloat(order[0]), quantity: parseFloat(order[1]) }));
+                    const asks = orderBook.asks.map(order => ({ price: parseFloat(order[0]), quantity: parseFloat(order[1]) }));
+
+                    const midPrice = (bids[0].price + asks[0].price) / 2;
+
+                    const rangeBids = bids.filter(bid => bid.price >= midPrice * 0.975 && bid.price < midPrice * 0.99);
+                    const rangeAsks = asks.filter(ask => ask.price <= midPrice * 1.025 && ask.price > midPrice * 1.01);
+
+                    const totalBidVolume = rangeBids.reduce((sum, bid) => sum + bid.quantity, 0);
+                    const totalAskVolume = rangeAsks.reduce((sum, ask) => sum + ask.quantity, 0);
+
+                    if (totalBidVolume > 50 * totalAskVolume) {
+                        markers.push({
+                            time: candle.time,
+                            position: 'aboveBar',
+                            color: 'green',
+                            shape: 'circle',
+                            text: 'Condition Met',
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error fetching order book:', error);
+                }
+            }
+            return markers;
         }
 
         // Handle timeframe selection
@@ -127,14 +167,19 @@
                 buttons.forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
 
-                // Fetch new candles
-                const timeframe = button.getAttribute('data-timeframe');
-                fetchCandles(timeframe);
+                // Update selected timeframe
+                selectedTimeframe = button.getAttribute('data-timeframe');
+
+                // Fetch new candles and markers
+                fetchCandlesAndCondition();
             });
         });
 
         // Initial fetch for 1-hour candles
-        fetchCandles('1h');
+        fetchCandlesAndCondition();
+
+        // Auto-refresh data every minute
+        setInterval(fetchCandlesAndCondition, 60000);
 
         // Resize chart dynamically
         window.addEventListener('resize', () => {
