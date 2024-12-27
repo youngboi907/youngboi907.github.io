@@ -3,75 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Live Order Book</title>
+    <title>Live Binance Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, sans-serif;
+            text-align: center;
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background: linear-gradient(to right, #1d2671, #c33764);
-            color: white;
-        }
-        h1 {
-            margin: 10px 0;
-            font-size: 2rem;
-        }
-        p {
-            margin: 5px 0;
-            font-size: 1.2rem;
+            background-color: #f4f4f9;
         }
         canvas {
-            max-width: 95vw;
-            max-height: 70vh;
-        }
-        #controls {
-            margin: 20px 0;
+            max-width: 900px;
+            margin: 20px auto;
         }
         select {
-            font-size: 1rem;
+            font-size: 16px;
             padding: 5px 10px;
-            border: none;
-            border-radius: 5px;
-            background-color: #ffffff;
-            color: #1d2671;
-            font-weight: bold;
-            outline: none;
-            cursor: pointer;
-        }
-        #controls p {
-            font-size: 1.1rem;
+            margin: 10px;
         }
     </style>
 </head>
 <body>
     <h1>Binance Live Order Book</h1>
-    <p>Monitor Total Bids, Asks, and Delta (Difference)</p>
-    <div id="controls">
-        <p>Select Timeframe:</p>
-        <select id="timeframeSelector">
-            <option value="5">5 Minutes</option>
-            <option value="60">1 Hour</option>
-            <option value="240">4 Hours</option>
-            <option value="1440">1 Day</option>
-        </select>
-    </div>
+    <p>Live Total Bids and Asks with Historical Data</p>
+    <label for="timeframe">Select Timeframe: </label>
+    <select id="timeframe">
+        <option value="5">5 Minutes</option>
+        <option value="60">1 Hour</option>
+        <option value="240">4 Hours</option>
+        <option value="1440">1 Day</option>
+    </select>
     <canvas id="orderBookChart"></canvas>
     <script>
         let chart;
         const historyData = {
             timestamps: [],
             bids: [],
-            asks: [],
-            deltas: []
+            asks: []
         };
 
-        let selectedTimeframe = 5; // Default: 5 minutes
+        let maxDataPoints = 12; // Default: 5 minutes (1 data point every 5 seconds)
 
         // Fetch the order book data
         async function fetchOrderBook(symbol) {
@@ -87,7 +59,7 @@
             return parseFloat(data.price);
         }
 
-        // Calculate total bids, asks, and delta
+        // Calculate total bids and asks
         function calculateTotals(orderBook) {
             let totalBids = 0;
             let totalAsks = 0;
@@ -100,8 +72,7 @@
                 totalAsks += parseFloat(price) * parseFloat(qty);
             }
 
-            const delta = totalBids - totalAsks;
-            return { totalBids, totalAsks, delta };
+            return { totalBids, totalAsks };
         }
 
         // Update the chart with live data
@@ -115,22 +86,18 @@
                 historyData.timestamps.push(timestamp);
                 historyData.bids.push(totals.totalBids);
                 historyData.asks.push(totals.totalAsks);
-                historyData.deltas.push(totals.delta);
 
-                // Limit the history based on the selected timeframe
-                const maxPoints = Math.round(selectedTimeframe / 5); // 1 point every 5 minutes
-                if (historyData.timestamps.length > maxPoints) {
+                // Limit the history to the selected timeframe
+                if (historyData.timestamps.length > maxDataPoints) {
                     historyData.timestamps.shift();
                     historyData.bids.shift();
                     historyData.asks.shift();
-                    historyData.deltas.shift();
                 }
 
                 // Update the chart
                 chart.data.labels = historyData.timestamps;
                 chart.data.datasets[0].data = historyData.bids;
                 chart.data.datasets[1].data = historyData.asks;
-                chart.data.datasets[2].data = historyData.deltas;
                 chart.update();
             } catch (error) {
                 console.error("Error updating chart:", error);
@@ -149,7 +116,7 @@
                     datasets: [
                         {
                             label: 'Total Bids (USDT)',
-                            data: [],
+                            data: [], // Historical bids
                             borderColor: '#4caf50',
                             backgroundColor: 'rgba(76, 175, 80, 0.2)',
                             borderWidth: 2,
@@ -157,17 +124,9 @@
                         },
                         {
                             label: 'Total Asks (USDT)',
-                            data: [],
+                            data: [], // Historical asks
                             borderColor: '#f44336',
                             backgroundColor: 'rgba(244, 67, 54, 0.2)',
-                            borderWidth: 2,
-                            fill: true
-                        },
-                        {
-                            label: 'Delta (Bids - Asks)',
-                            data: [],
-                            borderColor: '#2196f3',
-                            backgroundColor: 'rgba(33, 150, 243, 0.2)',
                             borderWidth: 2,
                             fill: true
                         }
@@ -175,47 +134,47 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
                     scales: {
                         x: {
                             title: {
                                 display: true,
-                                text: 'Timestamp',
-                                font: {
-                                    size: 14
-                                }
+                                text: 'Timestamp'
                             }
                         },
                         y: {
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Total Value (USDT)',
-                                font: {
-                                    size: 14
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                font: {
-                                    size: 14
-                                }
+                                text: 'Total Value (USDT)'
                             }
                         }
                     }
                 }
             });
 
-            // Update the chart every second
-            setInterval(() => updateChart(symbol), 1000);
+            // Update the chart every 5 seconds
+            setInterval(() => updateChart(symbol), 5000);
         }
 
         // Handle timeframe selection
-        document.getElementById('timeframeSelector').addEventListener('change', (event) => {
-            selectedTimeframe = parseInt(event.target.value);
+        document.getElementById('timeframe').addEventListener('change', (event) => {
+            const timeframe = parseInt(event.target.value);
+            switch (timeframe) {
+                case 5: // 5 minutes
+                    maxDataPoints = 12; // 1 data point every 5 seconds
+                    break;
+                case 60: // 1 hour
+                    maxDataPoints = 120; // 1 data point every 30 seconds
+                    break;
+                case 240: // 4 hours
+                    maxDataPoints = 240; // 1 data point every 1 minute
+                    break;
+                case 1440: // 1 day
+                    maxDataPoints = 288; // 1 data point every 5 minutes
+                    break;
+                default:
+                    maxDataPoints = 12; // Default to 5 minutes
+            }
         });
 
         initializeChart();
