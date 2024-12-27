@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance BTC/USDT Order Book</title>
+    <title>Binance BTC/USDT Order Book & Condition Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,7 +13,7 @@
             margin: 0;
             padding: 0;
         }
-        h1 {
+        h1, h2 {
             text-align: center;
             margin: 20px 0;
             color: #ffcc00;
@@ -54,6 +55,10 @@
             border-radius: 10px;
             background: rgba(255, 255, 255, 0.1);
         }
+        .chart-container {
+            width: 80%;
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body>
@@ -71,8 +76,54 @@
     <div id="alert-box" class="alert-box">
         Analyzing data...
     </div>
+    <div class="chart-container">
+        <h2>Condition Tracker</h2>
+        <canvas id="conditionChart"></canvas>
+    </div>
 
     <script>
+        let chartData = {
+            labels: [],
+            datasets: [{
+                label: 'Condition Met (1: Met, 0: Not Met)',
+                data: [],
+                borderColor: 'rgba(0, 255, 0, 1)',
+                backgroundColor: 'rgba(0, 255, 0, 0.2)',
+                fill: true
+            }]
+        };
+
+        const ctx = document.getElementById('conditionChart').getContext('2d');
+        const conditionChart = new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: true
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Condition Met (1: True, 0: False)'
+                        },
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+
         async function fetchOrderBook() {
             const response = await fetch("https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=500");
             const data = await response.json();
@@ -121,13 +172,31 @@
 
             const alertBox = document.getElementById("alert-box");
 
-            if (totalBidVolume > 50 * totalAskVolume) {
+            const conditionMet = totalBidVolume > 50 * totalAskVolume;
+
+            if (conditionMet) {
                 alertBox.textContent = "Condition Met: Bids (1%-2.5%) > 50x Asks (1%-2.5%)";
                 alertBox.style.background = "rgba(0, 255, 0, 0.2)";
             } else {
                 alertBox.textContent = "Condition Not Met";
                 alertBox.style.background = "rgba(255, 0, 0, 0.2)";
             }
+
+            updateChart(conditionMet);
+        }
+
+        function updateChart(conditionMet) {
+            const currentTime = new Date().toLocaleTimeString();
+
+            if (chartData.labels.length > 50) {
+                chartData.labels.shift();
+                chartData.datasets[0].data.shift();
+            }
+
+            chartData.labels.push(currentTime);
+            chartData.datasets[0].data.push(conditionMet ? 1 : 0);
+
+            conditionChart.update();
         }
 
         setInterval(fetchOrderBook, 1000);
