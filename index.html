@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Historical Tracker</title>
+    <title>BTC/USDT Condition Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -11,15 +11,13 @@
             background-color: #121212;
             color: #fff;
             margin: 0;
-            padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
         h1 {
             color: #ffcc00;
-            text-align: center;
-            margin: 20px 20px 10px;
+            margin: 20px 0;
         }
         .timeframe-selector {
             margin: 20px;
@@ -33,9 +31,9 @@
             color: #fff;
         }
         .chart-container {
-            width: 80%;
-            max-width: 800px;
-            margin: 20px 0;
+            width: 90%;
+            max-width: 1200px;
+            height: 80vh;
         }
     </style>
 </head>
@@ -49,6 +47,7 @@
             <option value="1d">1 Day</option>
             <option value="4h">4 Hours</option>
             <option value="1h">1 Hour</option>
+            <option value="5m">5 Minutes</option>
         </select>
     </div>
     <div class="chart-container">
@@ -56,14 +55,6 @@
     </div>
 
     <script>
-        const timeframeMapping = {
-            "1m": "1d",
-            "1w": "1h",
-            "1d": "30m",
-            "4h": "15m",
-            "1h": "5m"
-        };
-
         const chartData = {
             labels: [],
             datasets: [
@@ -72,14 +63,12 @@
                     data: [],
                     backgroundColor: "rgba(0, 255, 0, 0.5)",
                     borderColor: "rgba(0, 255, 0, 1)",
-                    borderWidth: 1
                 },
                 {
                     label: "Asks > 50x Bids",
                     data: [],
                     backgroundColor: "rgba(255, 0, 0, 0.5)",
                     borderColor: "rgba(255, 0, 0, 1)",
-                    borderWidth: 1
                 }
             ]
         };
@@ -102,7 +91,7 @@
                         ticks: { color: "#fff" }
                     },
                     y: {
-                        title: { display: true, text: "Condition Met Count", color: "#fff" },
+                        title: { display: true, text: "Condition Met", color: "#fff" },
                         ticks: { color: "#fff" }
                     }
                 }
@@ -118,11 +107,13 @@
                 timestamp: new Date(candle[0]).toLocaleString(),
                 high: parseFloat(candle[2]),
                 low: parseFloat(candle[3]),
-                close: parseFloat(candle[4])
+                close: parseFloat(candle[4]),
+                volume: parseFloat(candle[5])
             }));
         }
 
-        async function analyzeHistoricalData(interval, limit) {
+        async function analyzeHistoricalData(interval) {
+            const limit = 500; // Binance's max historical limit
             const data = await fetchHistoricalData(interval, limit);
 
             chartData.labels = [];
@@ -131,8 +122,10 @@
 
             for (const candle of data) {
                 const midPrice = (candle.high + candle.low) / 2;
-                const bidVolume = Math.random() * 100; // Simulated bid volume (replace with real data logic)
-                const askVolume = Math.random() * 10;  // Simulated ask volume (replace with real data logic)
+
+                // Simulated logic for 1%-2.5% conditions
+                const bidVolume = Math.random() * 100; // Replace with real bid data
+                const askVolume = Math.random() * 10;  // Replace with real ask data
 
                 chartData.labels.push(candle.timestamp);
 
@@ -151,16 +144,14 @@
             conditionChart.update();
         }
 
-        document.getElementById("timeframe").addEventListener("change", async (event) => {
-            const timeframe = event.target.value;
-            const interval = timeframeMapping[timeframe];
-            const limit = timeframe === "1m" ? 30 : timeframe === "1w" ? 168 : 24;
-
-            await analyzeHistoricalData(interval, limit);
+        document.getElementById("timeframe").addEventListener("change", async (e) => {
+            const timeframe = e.target.value;
+            const binanceInterval = { "1m": "1d", "1w": "1h", "1d": "30m", "4h": "15m", "1h": "5m", "5m": "1m" }[timeframe];
+            await analyzeHistoricalData(binanceInterval);
         });
 
-        // Initial load
-        analyzeHistoricalData("1d", 30);
+        // Default load: 1 Day timeframe
+        analyzeHistoricalData("30m");
     </script>
 </body>
 </html>
