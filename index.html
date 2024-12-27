@@ -38,18 +38,6 @@
 <body>
     <h1>Binance Spot BTC/USDT Order Book Depth</h1>
 
-    <!-- Timeframe Selector -->
-    <div class="controls">
-        <label for="timeframe">Select Timeframe:</label>
-        <select id="timeframe">
-            <option value="1m">1 Minute</option>
-            <option value="5m">5 Minutes</option>
-            <option value="1h">1 Hour</option>
-            <option value="4h">4 Hours</option>
-            <option value="1d">1 Day</option>
-        </select>
-    </div>
-
     <!-- Chart Container -->
     <div class="chart-container">
         <canvas id="depthChart"></canvas>
@@ -61,39 +49,49 @@
         // Initialize Chart
         const ctx = document.getElementById("depthChart").getContext("2d");
         const depthChart = new Chart(ctx, {
-            type: "bar",
+            type: "line",
             data: {
-                labels: ["1%-2.5% Bids", "1%-2.5% Asks", "2.5%-5% Bids", "2.5%-5% Asks"],
+                labels: [], // Price levels
                 datasets: [
                     {
-                        label: "Order Book Depth",
-                        data: [0, 0, 0, 0],
-                        backgroundColor: [
-                            "rgba(0, 255, 0, 0.5)", // 1%-2.5% Bids
-                            "rgba(255, 0, 0, 0.5)", // 1%-2.5% Asks
-                            "rgba(0, 200, 255, 0.5)", // 2.5%-5% Bids
-                            "rgba(255, 165, 0, 0.5)" // 2.5%-5% Asks
-                        ],
-                        borderColor: [
-                            "rgba(0, 255, 0, 1)",
-                            "rgba(255, 0, 0, 1)",
-                            "rgba(0, 200, 255, 1)",
-                            "rgba(255, 165, 0, 1)"
-                        ],
-                        borderWidth: 1
+                        label: "Cumulative Bids (1%-2.5%)",
+                        data: [],
+                        borderColor: "rgba(0, 255, 0, 1)",
+                        backgroundColor: "rgba(0, 255, 0, 0.2)",
+                        fill: true,
+                    },
+                    {
+                        label: "Cumulative Bids (2.5%-5%)",
+                        data: [],
+                        borderColor: "rgba(0, 200, 255, 1)",
+                        backgroundColor: "rgba(0, 200, 255, 0.2)",
+                        fill: true,
+                    },
+                    {
+                        label: "Cumulative Asks (1%-2.5%)",
+                        data: [],
+                        borderColor: "rgba(255, 0, 0, 1)",
+                        backgroundColor: "rgba(255, 0, 0, 0.2)",
+                        fill: true,
+                    },
+                    {
+                        label: "Cumulative Asks (2.5%-5%)",
+                        data: [],
+                        borderColor: "rgba(255, 165, 0, 1)",
+                        backgroundColor: "rgba(255, 165, 0, 0.2)",
+                        fill: true,
                     }
                 ]
             },
             options: {
                 responsive: true,
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: { display: true, text: "Volume", color: "#fff" },
+                    x: {
+                        title: { display: true, text: "Price Levels", color: "#fff" },
                         ticks: { color: "#fff" }
                     },
-                    x: {
-                        title: { display: true, text: "Depth Range", color: "#fff" },
+                    y: {
+                        title: { display: true, text: "Cumulative Volume", color: "#fff" },
                         ticks: { color: "#fff" }
                     }
                 },
@@ -124,20 +122,19 @@
                 "2.5%-5%": { min: midPrice * 0.95, max: midPrice * 0.975 }
             };
 
-            // Calculate Depth Volumes
-            const depth = {
-                "1%-2.5%": { bids: 0, asks: 0 },
-                "2.5%-5%": { bids: 0, asks: 0 }
-            };
+            const bids1to2_5 = [];
+            const asks1to2_5 = [];
+            const bids2_5to5 = [];
+            const asks2_5to5 = [];
 
             for (const [price, volume] of orderBook.bids) {
                 const priceNum = parseFloat(price);
                 const volumeNum = parseFloat(volume);
 
                 if (priceNum >= ranges["1%-2.5%"].min && priceNum <= ranges["1%-2.5%"].max) {
-                    depth["1%-2.5%"].bids += volumeNum;
+                    bids1to2_5.push({ price: priceNum, volume: volumeNum });
                 } else if (priceNum >= ranges["2.5%-5%"].min && priceNum <= ranges["2.5%-5%"].max) {
-                    depth["2.5%-5%"].bids += volumeNum;
+                    bids2_5to5.push({ price: priceNum, volume: volumeNum });
                 }
             }
 
@@ -146,30 +143,33 @@
                 const volumeNum = parseFloat(volume);
 
                 if (priceNum >= ranges["1%-2.5%"].min && priceNum <= ranges["1%-2.5%"].max) {
-                    depth["1%-2.5%"].asks += volumeNum;
+                    asks1to2_5.push({ price: priceNum, volume: volumeNum });
                 } else if (priceNum >= ranges["2.5%-5%"].min && priceNum <= ranges["2.5%-5%"].max) {
-                    depth["2.5%-5%"].asks += volumeNum;
+                    asks2_5to5.push({ price: priceNum, volume: volumeNum });
                 }
             }
 
-            // Update Chart Data
-            depthChart.data.datasets[0].data = [
-                depth["1%-2.5%"].bids,
-                depth["1%-2.5%"].asks,
-                depth["2.5%-5%"].bids,
-                depth["2.5%-5%"].asks
+            const cumulativeData = (data) => {
+                let cumulative = 0;
+                return data.map((entry) => {
+                    cumulative += entry.volume;
+                    return { price: entry.price, cumulative };
+                });
+            };
+
+            // Update chart
+            depthChart.data.labels = [
+                ...cumulativeData(bids1to2_5).map((p) => p.price),
+                ...cumulativeData(asks1to2_5).map((p) => p.price)
             ];
+
+            depthChart.data.datasets[0].data = cumulativeData(bids1to2_5).map((p) => p.cumulative);
+            depthChart.data.datasets[1].data = cumulativeData(bids2_5to5).map((p) => p.cumulative);
+            depthChart.data.datasets[2].data = cumulativeData(asks1to2_5).map((p) => p.cumulative);
+            depthChart.data.datasets[3].data = cumulativeData(asks2_5to5).map((p) => p.cumulative);
 
             depthChart.update();
         }
-
-        // Timeframe Selector Change Handler
-        document.getElementById("timeframe").addEventListener("change", (e) => {
-            const selectedTimeframe = e.target.value;
-
-            // Simulate timeframe functionality (real data aggregation requires a backend or websocket feed)
-            console.log(`Selected timeframe: ${selectedTimeframe}`);
-        });
 
         // Initial Data Load and Auto Update
         updateDepthData();
