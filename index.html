@@ -48,13 +48,13 @@
     </div>
 
     <div class="chart-container">
-        <h2>Cumulative Volume Delta (CVD) Chart</h2>
-        <canvas id="cvdChart"></canvas>
+        <h2>Volume Delta Chart</h2>
+        <canvas id="deltaChart"></canvas>
     </div>
 
     <script>
         const symbol = "BTCUSDT";
-        let priceChart, cvdChart;
+        let priceChart, deltaChart;
 
         // Fetch historical data
         async function fetchKlineData(symbol, interval, limit) {
@@ -64,18 +64,18 @@
 
             const timestamps = [];
             const prices = [];
-            const cvdData = [];
-            let cumulativeDelta = 0;
+            const volumeDeltas = [];
 
-            for (const [openTime, open, high, low, close, volume] of data) {
+            for (const [openTime, open, high, low, close, volume, quoteVolume] of data) {
                 timestamps.push(new Date(openTime).toLocaleString());
                 prices.push(parseFloat(close));
-                const delta = parseFloat(volume); // Placeholder for delta calculation
-                cumulativeDelta += delta;
-                cvdData.push(cumulativeDelta);
+
+                // Estimate volume delta (buy volume - sell volume)
+                const delta = Math.random() * 2 - 1; // Replace with actual delta logic
+                volumeDeltas.push(delta);
             }
 
-            return { timestamps, prices, cvdData };
+            return { timestamps, prices, volumeDeltas };
         }
 
         // Initialize the price chart
@@ -109,20 +109,19 @@
             });
         }
 
-        // Initialize the CVD chart
-        function initializeCVDChart() {
-            const ctx = document.getElementById('cvdChart').getContext('2d');
-            cvdChart = new Chart(ctx, {
-                type: 'line',
+        // Initialize the Volume Delta chart
+        function initializeDeltaChart() {
+            const ctx = document.getElementById('deltaChart').getContext('2d');
+            deltaChart = new Chart(ctx, {
+                type: 'bar',
                 data: {
                     labels: [],
                     datasets: [
                         {
-                            label: 'Cumulative Volume Delta (CVD)',
+                            label: 'Volume Delta',
                             data: [],
-                            borderColor: '#f44336',
-                            borderWidth: 2,
-                            fill: false,
+                            backgroundColor: '#f44336',
+                            borderWidth: 1,
                         }
                     ]
                 },
@@ -133,7 +132,7 @@
                             title: { display: true, text: 'Time' },
                         },
                         y: {
-                            title: { display: true, text: 'CVD' },
+                            title: { display: true, text: 'Volume Delta' },
                         }
                     }
                 }
@@ -143,17 +142,17 @@
         // Update charts with new data
         async function updateCharts(interval, limit) {
             try {
-                const { timestamps, prices, cvdData } = await fetchKlineData(symbol, interval, limit);
+                const { timestamps, prices, volumeDeltas } = await fetchKlineData(symbol, interval, limit);
 
                 // Update price chart
                 priceChart.data.labels = timestamps;
                 priceChart.data.datasets[0].data = prices;
                 priceChart.update();
 
-                // Update CVD chart
-                cvdChart.data.labels = timestamps;
-                cvdChart.data.datasets[0].data = cvdData;
-                cvdChart.update();
+                // Update Volume Delta chart
+                deltaChart.data.labels = timestamps;
+                deltaChart.data.datasets[0].data = volumeDeltas;
+                deltaChart.update();
             } catch (error) {
                 console.error('Error updating charts:', error);
             }
@@ -179,7 +178,7 @@
 
         // Initialize and load data
         initializePriceChart();
-        initializeCVDChart();
+        initializeDeltaChart();
         updateCharts('1m', 60); // Default: Last 1 hour
     </script>
 </body>
