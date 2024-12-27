@@ -11,10 +11,10 @@
             background-color: #121212;
             color: #fff;
             margin: 0;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
         }
         h1 {
             color: #ffcc00;
@@ -22,8 +22,7 @@
         .controls {
             margin: 20px 0;
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            flex-wrap: wrap;
             gap: 10px;
         }
         .controls select, .controls input {
@@ -47,6 +46,15 @@
     <div class="controls">
         <label for="multiplier">Custom Multiplier:</label>
         <input id="multiplier" type="number" value="1" step="0.1" min="0.1">
+
+        <label for="timeframe">Time Frame:</label>
+        <select id="timeframe">
+            <option value="1m">1 Minute</option>
+            <option value="5m">5 Minutes</option>
+            <option value="15m">15 Minutes</option>
+            <option value="1h">1 Hour</option>
+            <option value="4h">4 Hours</option>
+        </select>
     </div>
 
     <div class="chart-container">
@@ -70,8 +78,16 @@
                     legend: { labels: { color: "#fff" } }
                 },
                 scales: {
-                    x: { ticks: { color: "#fff" }, title: { display: true, text: "Price Levels", color: "#fff" } },
-                    y: { ticks: { color: "#fff" }, title: { display: true, text: "Cumulative Volume", color: "#fff" } }
+                    x: {
+                        type: "time",
+                        time: { unit: "minute" },
+                        ticks: { color: "#fff" },
+                        title: { display: true, text: "Time", color: "#fff" }
+                    },
+                    y: {
+                        ticks: { color: "#fff" },
+                        title: { display: true, text: "Cumulative Volume", color: "#fff" }
+                    }
                 }
             }
         });
@@ -85,8 +101,16 @@
                     legend: { labels: { color: "#fff" } }
                 },
                 scales: {
-                    x: { ticks: { color: "#fff" }, title: { display: true, text: "Price Levels", color: "#fff" } },
-                    y: { ticks: { color: "#fff" }, title: { display: true, text: "Cumulative Volume", color: "#fff" } }
+                    x: {
+                        type: "time",
+                        time: { unit: "minute" },
+                        ticks: { color: "#fff" },
+                        title: { display: true, text: "Time", color: "#fff" }
+                    },
+                    y: {
+                        ticks: { color: "#fff" },
+                        title: { display: true, text: "Cumulative Volume", color: "#fff" }
+                    }
                 }
             }
         });
@@ -96,10 +120,11 @@
             return response.ok ? response.json() : null;
         }
 
-        async function updateCharts(multiplier) {
+        async function updateCharts(multiplier, interval) {
             const orderBook = await fetchOrderBook("BTCUSDT");
             if (!orderBook) return;
 
+            const now = new Date();
             const topBid = parseFloat(orderBook.bids[0][0]);
             const topAsk = parseFloat(orderBook.asks[0][0]);
             const midPrice = (topBid + topAsk) / 2;
@@ -121,18 +146,18 @@
                 .filter(ask => ask.price >= midPrice * 1.025 && ask.price < midPrice * 1.05);
 
             // Update Chart 1 (1%-2.5%)
-            chart1.data.labels = [...bids1to2_5.map(b => b.price), ...asks1to2_5.map(a => a.price)];
+            chart1.data.labels.push(now);
             chart1.data.datasets = [
                 {
                     label: "Bids (1%-2.5%)",
-                    data: bids1to2_5.map(b => b.volume),
+                    data: bids1to2_5.map(b => b.volume).slice(-interval),
                     borderColor: bids1to2_5.some(b => b.volume > multiplier) ? "rgba(0, 255, 0, 1)" : "rgba(255, 0, 0, 1)",
                     backgroundColor: "rgba(0, 255, 0, 0.2)",
                     fill: true
                 },
                 {
                     label: "Asks (1%-2.5%)",
-                    data: asks1to2_5.map(a => a.volume),
+                    data: asks1to2_5.map(a => a.volume).slice(-interval),
                     borderColor: asks1to2_5.some(a => a.volume > multiplier) ? "rgba(255, 0, 0, 1)" : "rgba(0, 255, 0, 1)",
                     backgroundColor: "rgba(255, 0, 0, 0.2)",
                     fill: true
@@ -140,18 +165,18 @@
             ];
 
             // Update Chart 2 (2.5%-5%)
-            chart2.data.labels = [...bids2_5to5.map(b => b.price), ...asks2_5to5.map(a => a.price)];
+            chart2.data.labels.push(now);
             chart2.data.datasets = [
                 {
                     label: "Bids (2.5%-5%)",
-                    data: bids2_5to5.map(b => b.volume),
+                    data: bids2_5to5.map(b => b.volume).slice(-interval),
                     borderColor: bids2_5to5.some(b => b.volume > multiplier) ? "rgba(0, 255, 0, 1)" : "rgba(255, 0, 0, 1)",
                     backgroundColor: "rgba(0, 255, 0, 0.2)",
                     fill: true
                 },
                 {
                     label: "Asks (2.5%-5%)",
-                    data: asks2_5to5.map(a => a.volume),
+                    data: asks2_5to5.map(a => a.volume).slice(-interval),
                     borderColor: asks2_5to5.some(a => a.volume > multiplier) ? "rgba(255, 0, 0, 1)" : "rgba(0, 255, 0, 1)",
                     backgroundColor: "rgba(255, 0, 0, 0.2)",
                     fill: true
@@ -164,13 +189,19 @@
 
         document.getElementById("multiplier").addEventListener("change", () => {
             const multiplier = parseFloat(document.getElementById("multiplier").value) || 1;
-            updateCharts(multiplier);
+            const interval = parseInt(document.getElementById("timeframe").value);
+            updateCharts(multiplier, interval);
         });
 
-        // Initial load
+        document.getElementById("timeframe").addEventListener("change", () => {
+            const multiplier = parseFloat(document.getElementById("multiplier").value) || 1;
+            const interval = parseInt(document.getElementById("timeframe").value);
+            updateCharts(multiplier, interval);
+        });
+
         const defaultMultiplier = 1;
-        updateCharts(defaultMultiplier);
-        setInterval(() => updateCharts(defaultMultiplier), 1000);
+        const defaultInterval = 60;
+        setInterval(() => updateCharts(defaultMultiplier, defaultInterval), 1000);
     </script>
 </body>
 </html>
