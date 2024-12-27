@@ -53,7 +53,7 @@
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Order Book Depth</h1>
+    <h1>BTC/USDT Order Book Depth (1-2.5%)</h1>
     <div class="controls">
         <label for="timeframe">Select Timeframe:</label>
         <select id="timeframe">
@@ -74,7 +74,7 @@
             labels: [],
             datasets: [
                 {
-                    label: "Bids (Volume)",
+                    label: "Total Bids (1-2.5%)",
                     data: [],
                     borderColor: "rgba(0, 255, 0, 1)",
                     backgroundColor: "rgba(0, 255, 0, 0.2)",
@@ -82,7 +82,7 @@
                     tension: 0.4
                 },
                 {
-                    label: "Asks (Volume)",
+                    label: "Total Asks (1-2.5%)",
                     data: [],
                     borderColor: "rgba(255, 0, 0, 1)",
                     backgroundColor: "rgba(255, 0, 0, 0.2)",
@@ -110,7 +110,7 @@
                         ticks: { color: "#fff" }
                     },
                     y: {
-                        title: { display: true, text: "Volume", color: "#fff" },
+                        title: { display: true, text: "Quantity", color: "#fff" },
                         ticks: { color: "#fff" }
                     }
                 }
@@ -124,21 +124,33 @@
             return data;
         }
 
+        function calculateDepth(data, range) {
+            const midPrice =
+                (parseFloat(data.bids[0][0]) + parseFloat(data.asks[0][0])) / 2;
+            const lowerBound = midPrice * (1 - range);
+            const upperBound = midPrice * (1 + range);
+
+            const totalBids = data.bids
+                .filter(([price]) => price >= lowerBound && price < upperBound)
+                .reduce((total, [, volume]) => total + parseFloat(volume), 0);
+
+            const totalAsks = data.asks
+                .filter(([price]) => price <= upperBound && price > lowerBound)
+                .reduce((total, [, volume]) => total + parseFloat(volume), 0);
+
+            return { totalBids, totalAsks };
+        }
+
         async function updateChart() {
             try {
                 const data = await fetchOrderBookDepth();
                 const timestamp = new Date().toLocaleTimeString();
 
-                const bidsVolume = data.bids
-                    .slice(0, 10)
-                    .reduce((total, [price, volume]) => total + parseFloat(volume), 0);
-                const asksVolume = data.asks
-                    .slice(0, 10)
-                    .reduce((total, [price, volume]) => total + parseFloat(volume), 0);
+                const { totalBids, totalAsks } = calculateDepth(data, 0.025);
 
                 chartData.labels.push(timestamp);
-                chartData.datasets[0].data.push(bidsVolume);
-                chartData.datasets[1].data.push(asksVolume);
+                chartData.datasets[0].data.push(totalBids);
+                chartData.datasets[1].data.push(totalAsks);
 
                 if (chartData.labels.length > 50) {
                     chartData.labels.shift();
