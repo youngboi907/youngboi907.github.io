@@ -15,23 +15,15 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
+            justify-content: flex-start;
+            min-height: 100vh;
         }
         h1, select {
             margin: 10px 0;
         }
         canvas {
             max-width: 90%;
-            max-height: 40%;
-        }
-        #charts {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-around;
-            width: 100%;
-            height: 100vh;
+            margin: 20px 0;
         }
     </style>
 </head>
@@ -45,17 +37,14 @@
         <option value="1w">Last 1 Week</option>
         <option value="1m">Last 1 Month</option>
     </select>
-    <div id="charts">
-        <canvas id="priceChart"></canvas>
-        <canvas id="spotDeltaChart"></canvas>
-        <canvas id="futuresDeltaChart"></canvas>
-    </div>
+    <canvas id="priceChart"></canvas>
+    <canvas id="spotDeltaChart"></canvas>
+    <canvas id="futuresDeltaChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
         let priceChart, spotDeltaChart, futuresDeltaChart;
 
-        // Fetch Kline data (price and volume)
         async function fetchKlineData(interval, limit) {
             const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
             const response = await fetch(url);
@@ -68,7 +57,6 @@
             return { timestamps, prices };
         }
 
-        // Fetch Spot or Futures Volume Delta
         async function fetchVolumeDelta(interval, limit, isFutures = false) {
             const url = isFutures 
                 ? `https://fapi.binance.com/fapi/v1/aggTrades?symbol=${symbol}&limit=${limit}` 
@@ -88,6 +76,7 @@
 
         async function updateCharts(interval, limit) {
             try {
+                // Fetch data for all three charts
                 const { timestamps, prices } = await fetchKlineData(interval, limit);
                 const { timestamps: spotTimestamps, deltas: spotDeltas } = await fetchVolumeDelta(interval, limit);
                 const { timestamps: futuresTimestamps, deltas: futuresDeltas } = await fetchVolumeDelta(interval, limit, true);
@@ -97,12 +86,12 @@
                 priceChart.data.datasets[0].data = prices;
                 priceChart.update();
 
-                // Update Spot Delta Chart
+                // Update Spot Volume Delta Chart
                 spotDeltaChart.data.labels = spotTimestamps;
                 spotDeltaChart.data.datasets[0].data = spotDeltas;
                 spotDeltaChart.update();
 
-                // Update Futures Delta Chart
+                // Update Futures Volume Delta Chart
                 futuresDeltaChart.data.labels = futuresTimestamps;
                 futuresDeltaChart.data.datasets[0].data = futuresDeltas;
                 futuresDeltaChart.update();
@@ -116,7 +105,7 @@
             const spotDeltaCtx = document.getElementById("spotDeltaChart").getContext("2d");
             const futuresDeltaCtx = document.getElementById("futuresDeltaChart").getContext("2d");
 
-            // Price Chart
+            // BTC Price Chart
             priceChart = new Chart(priceCtx, {
                 type: "line",
                 data: {
@@ -125,14 +114,12 @@
                         label: "BTC/USDT Price",
                         data: [],
                         borderColor: "#4caf50",
-                        backgroundColor: "rgba(76, 175, 80, 0.2)",
                         borderWidth: 2,
                         fill: false,
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
                     scales: {
                         x: { title: { display: true, text: "Time" } },
                         y: { title: { display: true, text: "Price (USDT)" } }
@@ -140,7 +127,7 @@
                 }
             });
 
-            // Spot Delta Chart
+            // Spot Volume Delta Chart
             spotDeltaChart = new Chart(spotDeltaCtx, {
                 type: "bar",
                 data: {
@@ -148,12 +135,11 @@
                     datasets: [{
                         label: "Spot Volume Delta",
                         data: [],
-                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336"
+                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336",
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
                     scales: {
                         x: { title: { display: true, text: "Time" } },
                         y: { title: { display: true, text: "Volume Delta" } }
@@ -161,7 +147,7 @@
                 }
             });
 
-            // Futures Delta Chart
+            // Futures Volume Delta Chart
             futuresDeltaChart = new Chart(futuresDeltaCtx, {
                 type: "bar",
                 data: {
@@ -169,12 +155,11 @@
                     datasets: [{
                         label: "Futures Volume Delta",
                         data: [],
-                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336"
+                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336",
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
                     scales: {
                         x: { title: { display: true, text: "Time" } },
                         y: { title: { display: true, text: "Volume Delta" } }
@@ -183,6 +168,7 @@
             });
         }
 
+        // Event listener for the timeframe selector
         document.getElementById("timeframe").addEventListener("change", (event) => {
             const value = event.target.value;
             let interval, limit;
@@ -199,6 +185,7 @@
             updateCharts(interval, limit);
         });
 
+        // Initialize charts and load default data
         initializeCharts();
         updateCharts("1m", 60); // Default: Last 1 hour
     </script>
