@@ -14,7 +14,6 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
             background-color: #f9f9f9;
         }
         h1 {
@@ -22,13 +21,30 @@
         }
         canvas {
             max-width: 90vw;
-            max-height: 80vh;
+            max-height: 70vh;
+        }
+        #controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        #ratio {
+            font-size: 18px;
+            margin: 10px 0;
         }
     </style>
 </head>
 <body>
     <h1>Binance Live Order Book</h1>
-    <p>Total Bids, Asks, and Delta (Difference)</p>
+    <div id="controls">
+        <label for="timeframe">Select Timeframe:</label>
+        <select id="timeframe">
+            <option value="5">5 Minutes</option>
+            <option value="60">1 Hour</option>
+            <option value="240">4 Hours</option>
+            <option value="1440">1 Day</option>
+        </select>
+        <p id="ratio">Bid-Ask Ratio: Calculating...</p>
+    </div>
     <canvas id="orderBookChart"></canvas>
     <script>
         let chart;
@@ -38,6 +54,8 @@
             asks: [],
             deltas: []
         };
+
+        let selectedTimeframe = 5; // Default: 5 minutes
 
         // Fetch the order book data
         async function fetchOrderBook(symbol) {
@@ -53,21 +71,35 @@
             return parseFloat(data.price);
         }
 
-        // Calculate total bids, asks, and delta
-        function calculateTotals(orderBook) {
+        // Calculate totals and bid-ask ratio
+        function calculateTotals(orderBook, spotPrice, rangeLow = 1, rangeHigh = 2.5) {
             let totalBids = 0;
             let totalAsks = 0;
 
+            const lowerLimit = spotPrice * (1 - rangeHigh / 100);
+            const upperLimit = spotPrice * (1 + rangeHigh / 100);
+            const midLowerLimit = spotPrice * (1 - rangeLow / 100);
+            const midUpperLimit = spotPrice * (1 + rangeLow / 100);
+
             for (let [price, qty] of orderBook.bids) {
-                totalBids += parseFloat(price) * parseFloat(qty);
+                price = parseFloat(price);
+                qty = parseFloat(qty);
+                if (price >= lowerLimit && price <= midLowerLimit) {
+                    totalBids += price * qty;
+                }
             }
 
             for (let [price, qty] of orderBook.asks) {
-                totalAsks += parseFloat(price) * parseFloat(qty);
+                price = parseFloat(price);
+                qty = parseFloat(qty);
+                if (price >= midUpperLimit && price <= upperLimit) {
+                    totalAsks += price * qty;
+                }
             }
 
             const delta = totalBids - totalAsks;
-            return { totalBids, totalAsks, delta };
+            const ratio = totalBids / (totalAsks || 1); // Avoid division by zero
+            return { totalBids, totalAsks, delta, ratio };
         }
 
         // Update the chart with live data
@@ -75,7 +107,7 @@
             try {
                 const spotPrice = await fetchSpotPrice(symbol);
                 const orderBook = await fetchOrderBook(symbol);
-                const totals = calculateTotals(orderBook);
+                const totals = calculateTotals(orderBook, spotPrice);
 
                 // Add the new data point to history
                 const timestamp = new Date().toLocaleTimeString();
@@ -84,13 +116,17 @@
                 historyData.asks.push(totals.totalAsks);
                 historyData.deltas.push(totals.delta);
 
-                // Limit the history to the last 20 data points
-                if (historyData.timestamps.length > 20) {
+                // Limit the history based on the timeframe
+                const maxPoints = selectedTimeframe;
+                if (historyData.timestamps.length > maxPoints) {
                     historyData.timestamps.shift();
                     historyData.bids.shift();
                     historyData.asks.shift();
                     historyData.deltas.shift();
                 }
+
+                // Update Bid-Ask Ratio
+                document.getElementById('ratio').textContent = `Bid-Ask Ratio: ${totals.ratio.toFixed(2)}`;
 
                 // Update the chart
                 chart.data.labels = historyData.timestamps;
@@ -115,7 +151,7 @@
                     datasets: [
                         {
                             label: 'Total Bids (USDT)',
-                            data: [], // Historical bids
+                            data: [],
                             borderColor: '#4caf50',
                             backgroundColor: 'rgba(76, 175, 80, 0.2)',
                             borderWidth: 2,
@@ -123,7 +159,7 @@
                         },
                         {
                             label: 'Total Asks (USDT)',
-                            data: [], // Historical asks
+                            data: [],
                             borderColor: '#f44336',
                             backgroundColor: 'rgba(244, 67, 54, 0.2)',
                             borderWidth: 2,
@@ -131,7 +167,7 @@
                         },
                         {
                             label: 'Delta (Bids - Asks)',
-                            data: [], // Historical delta
+                            data: [],
                             borderColor: '#2196f3',
                             backgroundColor: 'rgba(33, 150, 243, 0.2)',
                             borderWidth: 2,
@@ -178,6 +214,11 @@
             // Update the chart every second
             setInterval(() => updateChart(symbol), 1000);
         }
+
+        // Handle timeframe selection
+        document.getElementById('timeframe').addEventListener('change', (event) => {
+            selectedTimeframe = parseInt(event.target.value);
+        });
 
         initializeChart();
     </script>
