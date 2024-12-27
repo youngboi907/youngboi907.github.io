@@ -46,6 +46,14 @@
         .price {
             font-weight: bold;
         }
+        .alert-box {
+            text-align: center;
+            margin: 20px auto;
+            width: 80%;
+            padding: 20px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -59,6 +67,9 @@
             <h2>Asks</h2>
             <div id="asks"></div>
         </div>
+    </div>
+    <div id="alert-box" class="alert-box">
+        Analyzing data...
     </div>
 
     <script>
@@ -74,8 +85,13 @@
             const filteredBids = bids.filter(bid => bid.price >= midPrice * 0.9);
             const filteredAsks = asks.filter(ask => ask.price <= midPrice * 1.1);
 
+            const rangeBids = bids.filter(bid => bid.price >= midPrice * 0.975 && bid.price < midPrice * 0.99);
+            const rangeAsks = asks.filter(ask => ask.price <= midPrice * 1.025 && ask.price > midPrice * 1.01);
+
             displayOrders("bids", filteredBids);
             displayOrders("asks", filteredAsks);
+
+            analyzeData(rangeBids, rangeAsks);
         }
 
         function displayOrders(elementId, orders) {
@@ -97,6 +113,21 @@
                 row.appendChild(quantity);
                 container.appendChild(row);
             });
+        }
+
+        function analyzeData(bids, asks) {
+            const totalBidVolume = bids.reduce((sum, bid) => sum + bid.quantity, 0);
+            const totalAskVolume = asks.reduce((sum, ask) => sum + ask.quantity, 0);
+
+            const alertBox = document.getElementById("alert-box");
+
+            if (totalBidVolume > 50 * totalAskVolume) {
+                alertBox.textContent = "Condition Met: Bids (1%-2.5%) > 50x Asks (1%-2.5%)";
+                alertBox.style.background = "rgba(0, 255, 0, 0.2)";
+            } else {
+                alertBox.textContent = "Condition Not Met";
+                alertBox.style.background = "rgba(255, 0, 0, 0.2)";
+            }
         }
 
         setInterval(fetchOrderBook, 1000);
