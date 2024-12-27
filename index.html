@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance CVD with Historical Data</title>
+    <title>BTC/USDT Price & CVD Overlay</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -29,7 +29,7 @@
     </style>
 </head>
 <body>
-    <h1>Binance Order Book CVD with Historical Data</h1>
+    <h1>BTC/USDT Price & CVD Overlay</h1>
     <label for="timeframe">Select Time Frame:</label>
     <select id="timeframe">
         <option value="1h">Last 1 Hour</option>
@@ -38,48 +38,60 @@
         <option value="7d">Last 7 Days</option>
         <option value="30d">Last 30 Days</option>
     </select>
-    <canvas id="cvdChart"></canvas>
+    <canvas id="overlayChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
         let chart;
 
-        // Fetch historical Kline data from Binance
+        // Fetch Kline data (price and volume)
         async function fetchKlineData(symbol, interval, limit) {
             const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
             const response = await fetch(url);
             if (!response.ok) throw new Error("Failed to fetch historical data");
             const data = await response.json();
 
-            // Process Kline data into timestamps and cumulative deltas
+            // Extract timestamps, prices, and cumulative deltas
             const timestamps = [];
+            const prices = [];
             const cvdData = [];
             let cumulativeDelta = 0;
 
             for (const [openTime, open, high, low, close, volume] of data) {
                 timestamps.push(new Date(openTime).toLocaleString());
-                const delta = parseFloat(volume); // Using volume as a placeholder for delta (you can customize this logic)
+                prices.push(parseFloat(close));
+                const delta = parseFloat(volume); // Placeholder for delta
                 cumulativeDelta += delta;
                 cvdData.push(cumulativeDelta);
             }
 
-            return { timestamps, cvdData };
+            return { timestamps, prices, cvdData };
         }
 
         // Initialize the chart
         function initializeChart() {
-            const ctx = document.getElementById('cvdChart').getContext('2d');
+            const ctx = document.getElementById('overlayChart').getContext('2d');
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: [],
                     datasets: [
                         {
-                            label: 'Cumulative Volume Delta (CVD)',
+                            label: 'BTC/USDT Price',
                             data: [],
                             borderColor: '#4caf50',
                             backgroundColor: 'rgba(76, 175, 80, 0.2)',
                             borderWidth: 2,
+                            yAxisID: 'y1',
+                            fill: true,
+                        },
+                        {
+                            label: 'Cumulative Volume Delta (CVD)',
+                            data: [],
+                            borderColor: '#f44336',
+                            backgroundColor: 'rgba(244, 67, 54, 0.2)',
+                            borderWidth: 2,
+                            yAxisID: 'y2',
                             fill: true,
                         }
                     ]
@@ -95,11 +107,34 @@
                                 font: { size: 14 }
                             }
                         },
-                        y: {
+                        y1: {
+                            type: 'linear',
+                            position: 'left',
                             title: {
                                 display: true,
-                                text: 'Cumulative Volume Delta',
+                                text: 'Price (USDT)',
                                 font: { size: 14 }
+                            }
+                        },
+                        y2: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'CVD',
+                                font: { size: 14 }
+                            },
+                            grid: {
+                                drawOnChartArea: false // Keeps y2 grid separate
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                font: {
+                                    size: 14
+                                }
                             }
                         }
                     }
@@ -110,9 +145,10 @@
         // Update the chart with new data
         async function updateChart(interval, limit) {
             try {
-                const { timestamps, cvdData } = await fetchKlineData(symbol, interval, limit);
+                const { timestamps, prices, cvdData } = await fetchKlineData(symbol, interval, limit);
                 chart.data.labels = timestamps;
-                chart.data.datasets[0].data = cvdData;
+                chart.data.datasets[0].data = prices;
+                chart.data.datasets[1].data = cvdData;
                 chart.update();
             } catch (error) {
                 console.error("Error updating chart:", error);
