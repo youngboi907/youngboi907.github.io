@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Live Order Book (Optimized)</title>
+    <title>Binance Live Order Book (Log Chart)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -48,7 +48,7 @@
 </head>
 <body>
     <h1>Binance Live Order Book</h1>
-    <p>Total Bids, Asks, Buys, Sells, and Delta</p>
+    <p>Total Bids, Asks, Buys, Sells, and Delta (Log Scale)</p>
     <div class="controls">
         <label for="timeframe">Select Timeframe:</label>
         <select id="timeframe">
@@ -210,10 +210,10 @@
                             }
                         },
                         y: {
-                            beginAtZero: true,
+                            type: 'logarithmic', // Set Y-axis to logarithmic scale
                             title: {
                                 display: true,
-                                text: 'Value / Quantity',
+                                text: 'Value / Quantity (Log Scale)',
                                 color: '#ffffff',
                                 font: {
                                     size: 14
@@ -221,7 +221,7 @@
                             },
                             ticks: {
                                 color: '#ffffff',
-                                callback: (value) => value.toLocaleString() // Format ticks
+                                callback: (value) => value.toExponential(2) // Format ticks as exponential
                             }
                         }
                     },
