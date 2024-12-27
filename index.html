@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Order Book (1-2.5% Range)</title>
+    <title>Binance Order Book (1% - 2.5% Range)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -73,12 +73,22 @@
             return parseFloat(data.price);
         }
 
-        function calculateSumInRange(orderData, price, rangeStart, rangeEnd) {
-            return orderData.reduce((sum, [orderPrice, qty]) => {
-                const p = parseFloat(orderPrice);
-                const q = parseFloat(qty);
-                if (p >= price * (1 + rangeStart / 100) && p <= price * (1 + rangeEnd / 100)) {
-                    sum += p * q; // Total value = price * quantity
+        function calculateSumInRange(orderData, spotPrice, lowerPercent, upperPercent, isBid = true) {
+            const lowerBound = spotPrice * (1 + lowerPercent / 100);
+            const upperBound = spotPrice * (1 + upperPercent / 100);
+
+            return orderData.reduce((sum, [price, qty]) => {
+                price = parseFloat(price);
+                qty = parseFloat(qty);
+
+                if (isBid) {
+                    if (price >= lowerBound && price < upperBound) {
+                        sum += price * qty;
+                    }
+                } else {
+                    if (price <= upperBound && price > lowerBound) {
+                        sum += price * qty;
+                    }
                 }
                 return sum;
             }, 0);
@@ -90,8 +100,8 @@
                 const spotPrice = await fetchSpotPrice(symbol);
                 const orderBook = await fetchOrderBook(symbol);
 
-                const bidsSum = calculateSumInRange(orderBook.bids, spotPrice, -2.5, -1);
-                const asksSum = calculateSumInRange(orderBook.asks, spotPrice, 1, 2.5);
+                const bidsSum = calculateSumInRange(orderBook.bids, spotPrice, -2.5, -1, true);
+                const asksSum = calculateSumInRange(orderBook.asks, spotPrice, 1, 2.5, false);
 
                 document.getElementById("bids-sum").textContent = bidsSum.toFixed(2) + " USDT";
                 document.getElementById("asks-sum").textContent = asksSum.toFixed(2) + " USDT";
