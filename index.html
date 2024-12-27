@@ -66,12 +66,12 @@
             const prices = [];
             const volumeDeltas = [];
 
-            for (const [openTime, open, high, low, close, volume, quoteVolume] of data) {
+            for (const [openTime, open, high, low, close, volume] of data) {
                 timestamps.push(new Date(openTime).toLocaleString());
                 prices.push(parseFloat(close));
 
                 // Estimate volume delta (buy volume - sell volume)
-                const delta = Math.random() * 2 - 1; // Replace with actual delta logic
+                const delta = Math.random() * 200 - 100; // Replace with actual logic for buy-sell delta
                 volumeDeltas.push(delta);
             }
 
@@ -120,7 +120,7 @@
                         {
                             label: 'Volume Delta',
                             data: [],
-                            backgroundColor: '#f44336',
+                            backgroundColor: [],
                             borderWidth: 1,
                         }
                     ]
@@ -149,9 +149,12 @@
                 priceChart.data.datasets[0].data = prices;
                 priceChart.update();
 
-                // Update Volume Delta chart
+                // Update Volume Delta chart with color coding
                 deltaChart.data.labels = timestamps;
                 deltaChart.data.datasets[0].data = volumeDeltas;
+                deltaChart.data.datasets[0].backgroundColor = volumeDeltas.map(delta =>
+                    delta >= 0 ? '#4caf50' : '#f44336'
+                );
                 deltaChart.update();
             } catch (error) {
                 console.error('Error updating charts:', error);
