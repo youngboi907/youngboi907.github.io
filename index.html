@@ -7,43 +7,59 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background-color: #f9f9f9;
+            min-height: 100vh;
+            background: linear-gradient(to right, #1d2671, #c33764);
+            color: white;
         }
         h1 {
             margin: 10px 0;
+            font-size: 2rem;
+        }
+        p {
+            margin: 5px 0;
+            font-size: 1.2rem;
         }
         canvas {
-            max-width: 90vw;
+            max-width: 95vw;
             max-height: 70vh;
         }
         #controls {
             margin: 20px 0;
-            text-align: center;
         }
-        #ratio {
-            font-size: 18px;
-            margin: 10px 0;
+        select {
+            font-size: 1rem;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #ffffff;
+            color: #1d2671;
+            font-weight: bold;
+            outline: none;
+            cursor: pointer;
+        }
+        #controls p {
+            font-size: 1.1rem;
         }
     </style>
 </head>
 <body>
     <h1>Binance Live Order Book</h1>
+    <p>Monitor Total Bids, Asks, and Delta (Difference)</p>
     <div id="controls">
-        <label for="timeframe">Select Timeframe:</label>
-        <select id="timeframe">
+        <p>Select Timeframe:</p>
+        <select id="timeframeSelector">
             <option value="5">5 Minutes</option>
             <option value="60">1 Hour</option>
             <option value="240">4 Hours</option>
             <option value="1440">1 Day</option>
         </select>
-        <p id="ratio">Bid-Ask Ratio: Calculating...</p>
     </div>
     <canvas id="orderBookChart"></canvas>
     <script>
@@ -71,43 +87,28 @@
             return parseFloat(data.price);
         }
 
-        // Calculate totals and bid-ask ratio
-        function calculateTotals(orderBook, spotPrice, rangeLow = 1, rangeHigh = 2.5) {
+        // Calculate total bids, asks, and delta
+        function calculateTotals(orderBook) {
             let totalBids = 0;
             let totalAsks = 0;
 
-            const lowerLimit = spotPrice * (1 - rangeHigh / 100);
-            const upperLimit = spotPrice * (1 + rangeHigh / 100);
-            const midLowerLimit = spotPrice * (1 - rangeLow / 100);
-            const midUpperLimit = spotPrice * (1 + rangeLow / 100);
-
             for (let [price, qty] of orderBook.bids) {
-                price = parseFloat(price);
-                qty = parseFloat(qty);
-                if (price >= lowerLimit && price <= midLowerLimit) {
-                    totalBids += price * qty;
-                }
+                totalBids += parseFloat(price) * parseFloat(qty);
             }
 
             for (let [price, qty] of orderBook.asks) {
-                price = parseFloat(price);
-                qty = parseFloat(qty);
-                if (price >= midUpperLimit && price <= upperLimit) {
-                    totalAsks += price * qty;
-                }
+                totalAsks += parseFloat(price) * parseFloat(qty);
             }
 
             const delta = totalBids - totalAsks;
-            const ratio = totalBids / (totalAsks || 1); // Avoid division by zero
-            return { totalBids, totalAsks, delta, ratio };
+            return { totalBids, totalAsks, delta };
         }
 
         // Update the chart with live data
         async function updateChart(symbol) {
             try {
-                const spotPrice = await fetchSpotPrice(symbol);
                 const orderBook = await fetchOrderBook(symbol);
-                const totals = calculateTotals(orderBook, spotPrice);
+                const totals = calculateTotals(orderBook);
 
                 // Add the new data point to history
                 const timestamp = new Date().toLocaleTimeString();
@@ -116,17 +117,14 @@
                 historyData.asks.push(totals.totalAsks);
                 historyData.deltas.push(totals.delta);
 
-                // Limit the history based on the timeframe
-                const maxPoints = selectedTimeframe;
+                // Limit the history based on the selected timeframe
+                const maxPoints = Math.round(selectedTimeframe / 5); // 1 point every 5 minutes
                 if (historyData.timestamps.length > maxPoints) {
                     historyData.timestamps.shift();
                     historyData.bids.shift();
                     historyData.asks.shift();
                     historyData.deltas.shift();
                 }
-
-                // Update Bid-Ask Ratio
-                document.getElementById('ratio').textContent = `Bid-Ask Ratio: ${totals.ratio.toFixed(2)}`;
 
                 // Update the chart
                 chart.data.labels = historyData.timestamps;
@@ -216,7 +214,7 @@
         }
 
         // Handle timeframe selection
-        document.getElementById('timeframe').addEventListener('change', (event) => {
+        document.getElementById('timeframeSelector').addEventListener('change', (event) => {
             selectedTimeframe = parseInt(event.target.value);
         });
 
