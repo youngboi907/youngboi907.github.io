@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT & Volume Delta</title>
+    <title>BTC/USDT Chart with Volume Deltas & Leverage Insights</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -12,182 +12,179 @@
             color: white;
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
+            text-align: center;
         }
         h1, select {
             margin: 10px 0;
         }
+        .chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
         canvas {
             max-width: 90%;
-            margin: 20px 0;
+            max-height: 400px;
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Price and Volume Delta</h1>
+    <h1>BTC/USDT Chart & Binance Insights</h1>
     <label for="timeframe">Select Time Frame:</label>
     <select id="timeframe">
         <option value="1h">Last 1 Hour</option>
         <option value="4h">Last 4 Hours</option>
         <option value="1d">Last 1 Day</option>
-        <option value="1w">Last 1 Week</option>
-        <option value="1m">Last 1 Month</option>
+        <option value="7d">Last 7 Days</option>
+        <option value="30d">Last 30 Days</option>
     </select>
-    <canvas id="priceChart"></canvas>
-    <canvas id="spotDeltaChart"></canvas>
-    <canvas id="futuresDeltaChart"></canvas>
+    <div class="chart-container">
+        <canvas id="btcChart"></canvas>
+        <canvas id="spotDeltaChart"></canvas>
+        <canvas id="futuresDeltaChart"></canvas>
+        <canvas id="openInterestChart"></canvas>
+        <canvas id="fundingRatesChart"></canvas>
+    </div>
 
     <script>
-        const symbol = "BTCUSDT";
-        let priceChart, spotDeltaChart, futuresDeltaChart;
+        const apiBaseUrl = "https://api.binance.com";
+        const futuresApiBaseUrl = "https://fapi.binance.com";
 
-        async function fetchKlineData(interval, limit) {
-            const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-            const response = await fetch(url);
-            const data = await response.json();
-            const timestamps = [], prices = [];
-            data.forEach(kline => {
-                timestamps.push(new Date(kline[0]).toLocaleString());
-                prices.push(parseFloat(kline[4])); // Close price
-            });
-            return { timestamps, prices };
+        // Chart instances
+        let btcChart, spotDeltaChart, futuresDeltaChart, openInterestChart, fundingRatesChart;
+
+        // Fetch data for Binance Futures Open Interest & Funding Rates
+        async function fetchFuturesData(symbol, interval, limit) {
+            const openInterestUrl = `${futuresApiBaseUrl}/futures/data/openInterestHist?symbol=${symbol}&period=${interval}&limit=${limit}`;
+            const fundingRateUrl = `${futuresApiBaseUrl}/futures/data/fundingRate?symbol=${symbol}&limit=${limit}`;
+
+            const [openInterestRes, fundingRateRes] = await Promise.all([
+                fetch(openInterestUrl),
+                fetch(fundingRateUrl)
+            ]);
+
+            const openInterestData = await openInterestRes.json();
+            const fundingRateData = await fundingRateRes.json();
+
+            const timestamps = openInterestData.map(data => new Date(data.timestamp).toLocaleString());
+            const openInterestValues = openInterestData.map(data => parseFloat(data.sumOpenInterest));
+            const fundingRatesValues = fundingRateData.map(data => parseFloat(data.fundingRate));
+
+            return { timestamps, openInterestValues, fundingRatesValues };
         }
 
-        async function fetchVolumeDelta(interval, limit, isFutures = false) {
-            const url = isFutures 
-                ? `https://fapi.binance.com/fapi/v1/aggTrades?symbol=${symbol}&limit=${limit}` 
-                : `https://api.binance.com/api/v3/aggTrades?symbol=${symbol}&limit=${limit}`;
+        // Fetch spot volume delta or futures volume delta
+        async function fetchVolumeDelta(symbol, interval, limit, isFutures = false) {
+            const baseUrl = isFutures ? futuresApiBaseUrl : apiBaseUrl;
+            const url = `${baseUrl}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
             const response = await fetch(url);
             const data = await response.json();
-            const timestamps = [], deltas = [];
-            data.forEach(trade => {
-                const volume = parseFloat(trade.q);
-                const timestamp = new Date(trade.T).toLocaleString();
-                const delta = trade.m ? -volume : volume; // Negative for sell, positive for buy
-                timestamps.push(timestamp);
+
+            const timestamps = [];
+            const deltas = [];
+
+            for (const [time, open, high, low, close, volume] of data) {
+                timestamps.push(new Date(time).toLocaleString());
+                const delta = parseFloat(volume); // Simulated delta
                 deltas.push(delta);
-            });
+            }
+
             return { timestamps, deltas };
         }
 
-        async function updateCharts(interval, limit) {
-            try {
-                // Fetch data for all three charts
-                const { timestamps, prices } = await fetchKlineData(interval, limit);
-                const { timestamps: spotTimestamps, deltas: spotDeltas } = await fetchVolumeDelta(interval, limit);
-                const { timestamps: futuresTimestamps, deltas: futuresDeltas } = await fetchVolumeDelta(interval, limit, true);
+        // Fetch candlestick data
+        async function fetchKlineData(symbol, interval, limit) {
+            const url = `${apiBaseUrl}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+            const response = await fetch(url);
+            const data = await response.json();
 
-                // Update Price Chart
-                priceChart.data.labels = timestamps;
-                priceChart.data.datasets[0].data = prices;
-                priceChart.update();
+            const timestamps = [];
+            const prices = [];
 
-                // Update Spot Volume Delta Chart
-                spotDeltaChart.data.labels = spotTimestamps;
-                spotDeltaChart.data.datasets[0].data = spotDeltas;
-                spotDeltaChart.update();
-
-                // Update Futures Volume Delta Chart
-                futuresDeltaChart.data.labels = futuresTimestamps;
-                futuresDeltaChart.data.datasets[0].data = futuresDeltas;
-                futuresDeltaChart.update();
-            } catch (error) {
-                console.error("Error updating charts:", error);
+            for (const [time, open, high, low, close] of data) {
+                timestamps.push(new Date(time).toLocaleString());
+                prices.push({
+                    open: parseFloat(open),
+                    high: parseFloat(high),
+                    low: parseFloat(low),
+                    close: parseFloat(close)
+                });
             }
+
+            return { timestamps, prices };
         }
 
-        function initializeCharts() {
-            const priceCtx = document.getElementById("priceChart").getContext("2d");
+        // Create the charts
+        function createCharts() {
+            const btcCtx = document.getElementById("btcChart").getContext("2d");
             const spotDeltaCtx = document.getElementById("spotDeltaChart").getContext("2d");
             const futuresDeltaCtx = document.getElementById("futuresDeltaChart").getContext("2d");
+            const openInterestCtx = document.getElementById("openInterestChart").getContext("2d");
+            const fundingRatesCtx = document.getElementById("fundingRatesChart").getContext("2d");
 
-            // BTC Price Chart
-            priceChart = new Chart(priceCtx, {
-                type: "line",
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: "BTC/USDT Price",
-                        data: [],
-                        borderColor: "#4caf50",
-                        borderWidth: 2,
-                        fill: false,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Price (USDT)" } }
-                    }
-                }
-            });
-
-            // Spot Volume Delta Chart
-            spotDeltaChart = new Chart(spotDeltaCtx, {
-                type: "bar",
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: "Spot Volume Delta",
-                        data: [],
-                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336",
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Volume Delta" } }
-                    }
-                }
-            });
-
-            // Futures Volume Delta Chart
-            futuresDeltaChart = new Chart(futuresDeltaCtx, {
-                type: "bar",
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: "Futures Volume Delta",
-                        data: [],
-                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336",
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Volume Delta" } }
-                    }
-                }
-            });
+            btcChart = new Chart(btcCtx, { type: "candlestick", data: { datasets: [] }, options: {} });
+            spotDeltaChart = new Chart(spotDeltaCtx, { type: "bar", data: { datasets: [] }, options: {} });
+            futuresDeltaChart = new Chart(futuresDeltaCtx, { type: "bar", data: { datasets: [] }, options: {} });
+            openInterestChart = new Chart(openInterestCtx, { type: "line", data: { datasets: [] }, options: {} });
+            fundingRatesChart = new Chart(fundingRatesCtx, { type: "line", data: { datasets: [] }, options: {} });
         }
 
-        // Event listener for the timeframe selector
-        document.getElementById("timeframe").addEventListener("change", (event) => {
-            const value = event.target.value;
-            let interval, limit;
+        // Update the charts with data
+        async function updateCharts(interval, limit) {
+            const symbol = "BTCUSDT";
+            const klineData = await fetchKlineData(symbol, interval, limit);
+            const spotDeltaData = await fetchVolumeDelta(symbol, interval, limit);
+            const futuresDeltaData = await fetchVolumeDelta(symbol, interval, limit, true);
+            const futuresData = await fetchFuturesData(symbol, interval, limit);
 
+            // Update BTC/USDT chart
+            btcChart.data.labels = klineData.timestamps;
+            btcChart.data.datasets = [{ label: "BTC/USDT Price", data: klineData.prices }];
+            btcChart.update();
+
+            // Update Spot Delta chart
+            spotDeltaChart.data.labels = spotDeltaData.timestamps;
+            spotDeltaChart.data.datasets = [{ label: "Spot Volume Delta", data: spotDeltaData.deltas }];
+            spotDeltaChart.update();
+
+            // Update Futures Delta chart
+            futuresDeltaChart.data.labels = futuresDeltaData.timestamps;
+            futuresDeltaChart.data.datasets = [{ label: "Futures Volume Delta", data: futuresDeltaData.deltas }];
+            futuresDeltaChart.update();
+
+            // Update Open Interest chart
+            openInterestChart.data.labels = futuresData.timestamps;
+            openInterestChart.data.datasets = [{ label: "Open Interest", data: futuresData.openInterestValues }];
+            openInterestChart.update();
+
+            // Update Funding Rates chart
+            fundingRatesChart.data.labels = futuresData.timestamps;
+            fundingRatesChart.data.datasets = [{ label: "Funding Rates", data: futuresData.fundingRatesValues }];
+            fundingRatesChart.update();
+        }
+
+        // Timeframe selector
+        document.getElementById("timeframe").addEventListener("change", (e) => {
+            const value = e.target.value;
+            let interval, limit;
             switch (value) {
                 case "1h": interval = "1m"; limit = 60; break;
                 case "4h": interval = "5m"; limit = 48; break;
                 case "1d": interval = "15m"; limit = 96; break;
-                case "1w": interval = "1h"; limit = 168; break;
-                case "1m": interval = "1d"; limit = 30; break;
+                case "7d": interval = "1h"; limit = 168; break;
+                case "30d": interval = "4h"; limit = 180; break;
                 default: interval = "1m"; limit = 60; break;
             }
-
             updateCharts(interval, limit);
         });
 
-        // Initialize charts and load default data
-        initializeCharts();
-        updateCharts("1m", 60); // Default: Last 1 hour
+        // Initialize
+        createCharts();
+        updateCharts("1m", 60);
     </script>
 </body>
 </html>
