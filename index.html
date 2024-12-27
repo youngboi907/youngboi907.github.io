@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Condition Tracker</title>
+    <title>BTC/USDT Historical Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -21,28 +21,15 @@
             text-align: center;
             margin: 20px 20px 10px;
         }
-        .condition-box {
-            width: 300px;
-            height: 100px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 10px;
-            font-size: 20px;
-            font-weight: bold;
-            text-align: center;
-            margin: 20px 0;
+        .timeframe-selector {
+            margin: 20px;
         }
-        .green {
-            background-color: rgba(0, 255, 0, 0.8);
-            color: #000;
-        }
-        .red {
-            background-color: rgba(255, 0, 0, 0.8);
-            color: #000;
-        }
-        .neutral {
-            background-color: rgba(255, 255, 255, 0.2);
+        .timeframe-selector select {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: none;
+            background-color: #2a2a2a;
             color: #fff;
         }
         .chart-container {
@@ -53,18 +40,32 @@
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Condition Tracker</h1>
-    <div id="condition-box" class="condition-box neutral">
-        Loading data...
+    <h1>BTC/USDT Historical Condition Tracker</h1>
+    <div class="timeframe-selector">
+        <label for="timeframe">Select Timeframe: </label>
+        <select id="timeframe">
+            <option value="1m">1 Month</option>
+            <option value="1w">1 Week</option>
+            <option value="1d">1 Day</option>
+            <option value="4h">4 Hours</option>
+            <option value="1h">1 Hour</option>
+        </select>
     </div>
     <div class="chart-container">
         <canvas id="conditionChart"></canvas>
     </div>
 
     <script>
-        // Chart data structure
-        let chartData = {
-            labels: [], // Timestamps
+        const timeframeMapping = {
+            "1m": "1d",
+            "1w": "1h",
+            "1d": "30m",
+            "4h": "15m",
+            "1h": "5m"
+        };
+
+        const chartData = {
+            labels: [],
             datasets: [
                 {
                     label: "Bids > 50x Asks",
@@ -83,7 +84,6 @@
             ]
         };
 
-        // Initialize Chart.js
         const ctx = document.getElementById("conditionChart").getContext("2d");
         const conditionChart = new Chart(ctx, {
             type: "bar",
@@ -93,87 +93,74 @@
                 plugins: {
                     legend: {
                         position: "top",
-                        labels: {
-                            color: "#fff"
-                        }
+                        labels: { color: "#fff" }
                     }
                 },
                 scales: {
                     x: {
-                        title: {
-                            display: true,
-                            text: "Timestamp",
-                            color: "#fff"
-                        },
+                        title: { display: true, text: "Timestamp", color: "#fff" },
                         ticks: { color: "#fff" }
                     },
                     y: {
-                        title: {
-                            display: true,
-                            text: "Condition Met Count",
-                            color: "#fff"
-                        },
+                        title: { display: true, text: "Condition Met Count", color: "#fff" },
                         ticks: { color: "#fff" }
                     }
                 }
             }
         });
 
-        async function fetchOrderBook() {
-            const response = await fetch("https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=500");
+        async function fetchHistoricalData(interval, limit) {
+            const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`;
+            const response = await fetch(url);
             const data = await response.json();
 
-            const bids = data.bids.map(order => ({ price: parseFloat(order[0]), quantity: parseFloat(order[1]) }));
-            const asks = data.asks.map(order => ({ price: parseFloat(order[0]), quantity: parseFloat(order[1]) }));
-
-            const midPrice = (bids[0].price + asks[0].price) / 2;
-
-            // Filter bids and asks within 1%-2.5% range
-            const rangeBids = bids.filter(bid => bid.price >= midPrice * 0.975 && bid.price < midPrice * 0.99);
-            const rangeAsks = asks.filter(ask => ask.price <= midPrice * 1.025 && ask.price > midPrice * 1.01);
-
-            const totalBidVolume = rangeBids.reduce((sum, bid) => sum + bid.quantity, 0);
-            const totalAskVolume = rangeAsks.reduce((sum, ask) => sum + ask.quantity, 0);
-
-            updateConditionBox(totalBidVolume, totalAskVolume);
+            return data.map(candle => ({
+                timestamp: new Date(candle[0]).toLocaleString(),
+                high: parseFloat(candle[2]),
+                low: parseFloat(candle[3]),
+                close: parseFloat(candle[4])
+            }));
         }
 
-        function updateConditionBox(totalBidVolume, totalAskVolume) {
-            const conditionBox = document.getElementById("condition-box");
-            const timestamp = new Date().toLocaleTimeString();
+        async function analyzeHistoricalData(interval, limit) {
+            const data = await fetchHistoricalData(interval, limit);
 
-            if (totalBidVolume > 50 * totalAskVolume) {
-                conditionBox.textContent = "Bids > 50x Asks";
-                conditionBox.className = "condition-box green";
-                addToChart("Bids > 50x Asks", timestamp);
-            } else if (totalAskVolume > 50 * totalBidVolume) {
-                conditionBox.textContent = "Asks > 50x Bids";
-                conditionBox.className = "condition-box red";
-                addToChart("Asks > 50x Bids", timestamp);
-            } else {
-                conditionBox.textContent = "No significant difference";
-                conditionBox.className = "condition-box neutral";
-            }
-        }
+            chartData.labels = [];
+            chartData.datasets[0].data = [];
+            chartData.datasets[1].data = [];
 
-        function addToChart(condition, timestamp) {
-            if (!chartData.labels.includes(timestamp)) {
-                chartData.labels.push(timestamp);
+            for (const candle of data) {
+                const midPrice = (candle.high + candle.low) / 2;
+                const bidVolume = Math.random() * 100; // Simulated bid volume (replace with real data logic)
+                const askVolume = Math.random() * 10;  // Simulated ask volume (replace with real data logic)
 
-                if (condition === "Bids > 50x Asks") {
+                chartData.labels.push(candle.timestamp);
+
+                if (bidVolume > 50 * askVolume) {
                     chartData.datasets[0].data.push(1);
                     chartData.datasets[1].data.push(0);
-                } else if (condition === "Asks > 50x Bids") {
+                } else if (askVolume > 50 * bidVolume) {
                     chartData.datasets[0].data.push(0);
                     chartData.datasets[1].data.push(1);
+                } else {
+                    chartData.datasets[0].data.push(0);
+                    chartData.datasets[1].data.push(0);
                 }
             }
 
             conditionChart.update();
         }
 
-        setInterval(fetchOrderBook, 2000); // Fetch data every 2 seconds
-        fetchOrderBook();
+        document.getElementById("timeframe").addEventListener("change", async (event) => {
+            const timeframe = event.target.value;
+            const interval = timeframeMapping[timeframe];
+            const limit = timeframe === "1m" ? 30 : timeframe === "1w" ? 168 : 24;
+
+            await analyzeHistoricalData(interval, limit);
+        });
+
+        // Initial load
+        analyzeHistoricalData("1d", 30);
     </script>
 </body>
 </html>
