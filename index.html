@@ -288,7 +288,121 @@
 		 
 		 
 		
-<!--------------------------------------------------------------------------------------------------------------------------------------------------------------->                                      
+<!--------------------------------------------------------------------------------------------------------------------------------------------------------------->   
+
+    <div class="container">
+        <div class="header">
+            Binance BTC/USDT Open Interest and Order Book
+        </div>
+        
+        <!-- Open Interest -->
+        <div id="loading" class="loading">
+            Loading data...
+        </div>
+        <div id="open-interest" class="data"></div>
+        <div id="error" class="error"></div>
+        
+        <!-- Order Book -->
+        <div class="order-book">
+            <h3>Order Book</h3>
+            <div id="order-book-error" class="error"></div>
+            <table id="order-book">
+                <thead>
+                    <tr>
+                        <th>Bid Price</th>
+                        <th>Bid Quantity</th>
+                        <th>Ask Price</th>
+                        <th>Ask Quantity</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function fetchOpenInterest() {
+            const url = 'https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT';
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data && data.openInterest) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('open-interest').innerText = `Open Interest: ${data.openInterest} BTC`;
+                } else {
+                    throw new Error('Open interest data is unavailable.');
+                }
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').innerText = `Error: ${error.message}`;
+            }
+        }
+
+        async function fetchOrderBook() {
+            const url = 'https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=5';
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data && data.bids && data.asks) {
+                    displayOrderBook(data.bids, data.asks);
+                } else {
+                    throw new Error('Order book data is unavailable.');
+                }
+            } catch (error) {
+                document.getElementById('order-book-error').innerText = `Error: ${error.message}`;
+            }
+        }
+
+        function displayOrderBook(bids, asks) {
+            const tbody = document.getElementById('order-book').getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+
+            const maxEntries = Math.min(bids.length, asks.length, 5);
+
+            for (let i = 0; i < maxEntries; i++) {
+                const bid = bids[i];
+                const ask = asks[i];
+
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${bid[0]}</td>
+                    <td>${bid[1]}</td>
+                    <td>${ask[0]}</td>
+                    <td>${ask[1]}</td>
+                `;
+            }
+        }
+
+        // Fetch data when the page loads
+        fetchOpenInterest();
+        fetch
+
+
+
+
+
+
+                        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+           
    <br>
 		 
 		 <div class="ui container center-alinged ">
@@ -418,99 +532,4 @@
  
 </div>	
 											  
-</body>
-<body>
-
-    <div class="container">
-        <div class="header">
-            Binance BTC/USDT Open Interest and Order Book
-        </div>
-        
-        <!-- Open Interest -->
-        <div id="loading" class="loading">
-            Loading data...
-        </div>
-        <div id="open-interest" class="data"></div>
-        <div id="error" class="error"></div>
-        
-        <!-- Order Book -->
-        <div class="order-book">
-            <h3>Order Book</h3>
-            <div id="order-book-error" class="error"></div>
-            <table id="order-book">
-                <thead>
-                    <tr>
-                        <th>Bid Price</th>
-                        <th>Bid Quantity</th>
-                        <th>Ask Price</th>
-                        <th>Ask Quantity</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-
-    <script>
-        async function fetchOpenInterest() {
-            const url = 'https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT';
-            
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                if (data && data.openInterest) {
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('open-interest').innerText = `Open Interest: ${data.openInterest} BTC`;
-                } else {
-                    throw new Error('Open interest data is unavailable.');
-                }
-            } catch (error) {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').innerText = `Error: ${error.message}`;
-            }
-        }
-
-        async function fetchOrderBook() {
-            const url = 'https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=5';
-            
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                if (data && data.bids && data.asks) {
-                    displayOrderBook(data.bids, data.asks);
-                } else {
-                    throw new Error('Order book data is unavailable.');
-                }
-            } catch (error) {
-                document.getElementById('order-book-error').innerText = `Error: ${error.message}`;
-            }
-        }
-
-        function displayOrderBook(bids, asks) {
-            const tbody = document.getElementById('order-book').getElementsByTagName('tbody')[0];
-            tbody.innerHTML = '';
-
-            const maxEntries = Math.min(bids.length, asks.length, 5);
-
-            for (let i = 0; i < maxEntries; i++) {
-                const bid = bids[i];
-                const ask = asks[i];
-
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${bid[0]}</td>
-                    <td>${bid[1]}</td>
-                    <td>${ask[0]}</td>
-                    <td>${ask[1]}</td>
-                `;
-            }
-        }
-
-        // Fetch data when the page loads
-        fetchOpenInterest();
-        fetchOrderBook();
-    </script>
-
 </body>
