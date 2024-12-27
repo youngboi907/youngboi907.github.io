@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance BTC/USDT Order Book & Condition Tracker</title>
+    <title>Binance BTC/USDT Condition Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -18,85 +18,49 @@
             margin: 20px 0;
             color: #ffcc00;
         }
-        .orderbook {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px;
-        }
-        .orders {
-            width: 45%;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-        }
-        .orders h2 {
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        .order-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-        }
-        .bids .order-row {
-            background: rgba(0, 255, 0, 0.1);
-        }
-        .asks .order-row {
-            background: rgba(255, 0, 0, 0.1);
-        }
-        .price {
-            font-weight: bold;
-        }
-        .alert-box {
-            text-align: center;
-            margin: 20px auto;
-            width: 80%;
-            padding: 20px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.1);
-        }
         .chart-container {
-            width: 80%;
+            width: 90%;
             margin: 0 auto;
         }
     </style>
 </head>
 <body>
-    <h1>Binance BTC/USDT Order Book (1%-10%)</h1>
-    <div class="orderbook">
-        <div class="orders bids">
-            <h2>Bids</h2>
-            <div id="bids"></div>
-        </div>
-        <div class="orders asks">
-            <h2>Asks</h2>
-            <div id="asks"></div>
-        </div>
-    </div>
-    <div id="alert-box" class="alert-box">
-        Analyzing data...
-    </div>
+    <h1>BTC/USDT Historical Condition Tracker</h1>
     <div class="chart-container">
-        <h2>Condition Tracker</h2>
-        <canvas id="conditionChart"></canvas>
+        <canvas id="btcChart"></canvas>
     </div>
 
     <script>
-        let chartData = {
-            labels: [],
-            datasets: [{
-                label: 'Condition Met (1: Met, 0: Not Met)',
-                data: [],
-                borderColor: 'rgba(0, 255, 0, 1)',
-                backgroundColor: 'rgba(0, 255, 0, 0.2)',
-                fill: true
-            }]
-        };
+        let btcPrices = [];
+        let conditionTimestamps = [];
+        let chartLabels = [];
 
-        const ctx = document.getElementById('conditionChart').getContext('2d');
-        const conditionChart = new Chart(ctx, {
-            type: 'line',
-            data: chartData,
+        // Initialize Chart.js
+        const ctx = document.getElementById("btcChart").getContext("2d");
+        const btcChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: chartLabels,
+                datasets: [
+                    {
+                        label: "BTC/USDT Price",
+                        data: btcPrices,
+                        borderColor: "rgba(0, 123, 255, 1)",
+                        backgroundColor: "rgba(0, 123, 255, 0.1)",
+                        borderWidth: 2,
+                        fill: true
+                    },
+                    {
+                        label: "Condition Met",
+                        data: [],
+                        borderColor: "rgba(0, 255, 0, 1)",
+                        backgroundColor: "rgba(0, 255, 0, 1)",
+                        pointRadius: 5,
+                        pointStyle: "circle",
+                        showLine: false
+                    }
+                ]
+            },
             options: {
                 responsive: true,
                 plugins: {
@@ -108,16 +72,13 @@
                     x: {
                         title: {
                             display: true,
-                            text: 'Time'
+                            text: "Time"
                         }
                     },
                     y: {
                         title: {
                             display: true,
-                            text: 'Condition Met (1: True, 0: False)'
-                        },
-                        ticks: {
-                            stepSize: 1
+                            text: "BTC/USDT Price"
                         }
                     }
                 }
@@ -125,78 +86,55 @@
         });
 
         async function fetchOrderBook() {
-            const response = await fetch("https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=500");
-            const data = await response.json();
+            try {
+                const response = await fetch("https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=500");
+                const tickerResponse = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
+                const orderBookData = await response.json();
+                const tickerData = await tickerResponse.json();
 
-            const bids = data.bids.map(order => ({ price: parseFloat(order[0]), quantity: parseFloat(order[1]) }));
-            const asks = data.asks.map(order => ({ price: parseFloat(order[0]), quantity: parseFloat(order[1]) }));
+                const currentPrice = parseFloat(tickerData.price);
 
-            const midPrice = (bids[0].price + asks[0].price) / 2;
+                const bids = orderBookData.bids.map(order => ({ price: parseFloat(order[0]), quantity: parseFloat(order[1]) }));
+                const asks = orderBookData.asks.map(order => ({ price: parseFloat(order[0]), quantity: parseFloat(order[1]) }));
 
-            const filteredBids = bids.filter(bid => bid.price >= midPrice * 0.9);
-            const filteredAsks = asks.filter(ask => ask.price <= midPrice * 1.1);
+                const midPrice = (bids[0].price + asks[0].price) / 2;
 
-            const rangeBids = bids.filter(bid => bid.price >= midPrice * 0.975 && bid.price < midPrice * 0.99);
-            const rangeAsks = asks.filter(ask => ask.price <= midPrice * 1.025 && ask.price > midPrice * 1.01);
+                const rangeBids = bids.filter(bid => bid.price >= midPrice * 0.975 && bid.price < midPrice * 0.99);
+                const rangeAsks = asks.filter(ask => ask.price <= midPrice * 1.025 && ask.price > midPrice * 1.01);
 
-            displayOrders("bids", filteredBids);
-            displayOrders("asks", filteredAsks);
+                const totalBidVolume = rangeBids.reduce((sum, bid) => sum + bid.quantity, 0);
+                const totalAskVolume = rangeAsks.reduce((sum, ask) => sum + ask.quantity, 0);
 
-            analyzeData(rangeBids, rangeAsks);
-        }
+                const conditionMet = totalBidVolume > 50 * totalAskVolume;
 
-        function displayOrders(elementId, orders) {
-            const container = document.getElementById(elementId);
-            container.innerHTML = "";
-
-            orders.forEach(order => {
-                const row = document.createElement("div");
-                row.classList.add("order-row");
-
-                const price = document.createElement("span");
-                price.classList.add("price");
-                price.textContent = order.price.toFixed(2);
-
-                const quantity = document.createElement("span");
-                quantity.textContent = order.quantity.toFixed(6);
-
-                row.appendChild(price);
-                row.appendChild(quantity);
-                container.appendChild(row);
-            });
-        }
-
-        function analyzeData(bids, asks) {
-            const totalBidVolume = bids.reduce((sum, bid) => sum + bid.quantity, 0);
-            const totalAskVolume = asks.reduce((sum, ask) => sum + ask.quantity, 0);
-
-            const alertBox = document.getElementById("alert-box");
-
-            const conditionMet = totalBidVolume > 50 * totalAskVolume;
-
-            if (conditionMet) {
-                alertBox.textContent = "Condition Met: Bids (1%-2.5%) > 50x Asks (1%-2.5%)";
-                alertBox.style.background = "rgba(0, 255, 0, 0.2)";
-            } else {
-                alertBox.textContent = "Condition Not Met";
-                alertBox.style.background = "rgba(255, 0, 0, 0.2)";
+                updateChart(currentPrice, conditionMet);
+            } catch (error) {
+                console.error("Error fetching data:", error);
             }
-
-            updateChart(conditionMet);
         }
 
-        function updateChart(conditionMet) {
+        function updateChart(currentPrice, conditionMet) {
             const currentTime = new Date().toLocaleTimeString();
 
-            if (chartData.labels.length > 50) {
-                chartData.labels.shift();
-                chartData.datasets[0].data.shift();
+            // Add data to chart
+            if (chartLabels.length > 50) {
+                chartLabels.shift();
+                btcPrices.shift();
+                btcChart.data.datasets[1].data.shift();
             }
 
-            chartData.labels.push(currentTime);
-            chartData.datasets[0].data.push(conditionMet ? 1 : 0);
+            chartLabels.push(currentTime);
+            btcPrices.push(currentPrice);
 
-            conditionChart.update();
+            if (conditionMet) {
+                conditionTimestamps.push({
+                    x: currentTime,
+                    y: currentPrice
+                });
+            }
+
+            btcChart.data.datasets[1].data = conditionTimestamps;
+            btcChart.update();
         }
 
         setInterval(fetchOrderBook, 1000);
