@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+l<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Spot Order Book</title>
+    <title>Binance Spot Order Book (1-2.5%)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,27 +12,40 @@
             text-align: center;
             padding: 20px;
         }
-        table {
-            width: 80%;
-            margin: 20px auto;
-            border-collapse: collapse;
-            background-color: #1e1e1e;
-            border: 1px solid #444;
+        .container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
         }
-        th, td {
-            padding: 10px;
+        .box {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px;
+            width: 300px;
             text-align: center;
             border: 1px solid #444;
         }
-        th {
-            background-color: #333;
+        .box h2 {
+            margin: 0;
+            color: #4caf50;
+        }
+        .box p {
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
-    <h1>Binance Spot Order Book (0-10%)</h1>
-    <div id="orderBook">
-        <p>Loading data...</p>
+    <h1>Binance Spot Order Book (1-2.5%)</h1>
+    <div class="container">
+        <div class="box">
+            <h2>Total Bids (1%-2.5%)</h2>
+            <p id="bidsSum">Loading...</p>
+        </div>
+        <div class="box">
+            <h2>Total Asks (1%-2.5%)</h2>
+            <p id="asksSum">Loading...</p>
+        </div>
     </div>
 
     <script>
@@ -49,11 +62,18 @@
             return parseFloat(data.price);
         }
 
-        function filterByRange(orders, spotPrice, range) {
-            return orders.filter(([price]) => {
+        function calculateSum(orders, spotPrice, minPercent, maxPercent) {
+            return orders.reduce((sum, [price, qty]) => {
+                price = parseFloat(price);
+                qty = parseFloat(qty);
                 const deviation = (Math.abs(price - spotPrice) / spotPrice) * 100;
-                return deviation >= 0 && deviation <= range;
-            });
+
+                if (deviation >= minPercent && deviation <= maxPercent) {
+                    sum += price * qty;
+                }
+
+                return sum;
+            }, 0);
         }
 
         async function updateOrderBook() {
@@ -62,66 +82,28 @@
                 const orderBook = await fetchOrderBook(symbol);
                 const spotPrice = await fetchSpotPrice(symbol);
 
-                const bids = filterByRange(
-                    orderBook.bids.map(([price, qty]) => [parseFloat(price), parseFloat(qty)]),
+                const bidsSum = calculateSum(
+                    orderBook.bids,
                     spotPrice,
-                    10
+                    1, // Min percentage
+                    2.5 // Max percentage
                 );
 
-                const asks = filterByRange(
-                    orderBook.asks.map(([price, qty]) => [parseFloat(price), parseFloat(qty)]),
+                const asksSum = calculateSum(
+                    orderBook.asks,
                     spotPrice,
-                    10
+                    1, // Min percentage
+                    2.5 // Max percentage
                 );
 
-                displayOrderBook(bids, asks);
+                // Display the sums
+                document.getElementById("bidsSum").innerText = `${bidsSum.toFixed(2)} USDT`;
+                document.getElementById("asksSum").innerText = `${asksSum.toFixed(2)} USDT`;
             } catch (error) {
                 console.error("Error fetching order book:", error);
-                document.getElementById("orderBook").innerHTML = `<p>Error loading data.</p>`;
+                document.getElementById("bidsSum").innerText = "Error";
+                document.getElementById("asksSum").innerText = "Error";
             }
-        }
-
-        function displayOrderBook(bids, asks) {
-            const container = document.getElementById("orderBook");
-            container.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th colspan="2">Bids (0-10%)</th>
-                            <th colspan="2">Asks (0-10%)</th>
-                        </tr>
-                        <tr>
-                            <th>Price</th>
-                            <th>Quantity</th>
-                            <th>Price</th>
-                            <th>Quantity</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${generateTableRows(bids, asks)}
-                    </tbody>
-                </table>
-            `;
-        }
-
-        function generateTableRows(bids, asks) {
-            const maxRows = Math.max(bids.length, asks.length);
-            let rows = "";
-
-            for (let i = 0; i < maxRows; i++) {
-                const bid = bids[i] || ["-", "-"];
-                const ask = asks[i] || ["-", "-"];
-                rows += `
-                    <tr>
-                        <td>${bid[0]}</td>
-                        <td>${bid[1]}</td>
-                        <td>${ask[0]}</td>
-                        <td>${ask[1]}</td>
-                    </tr>
-                `;
-            }
-
-            return rows;
         }
 
         updateOrderBook();
