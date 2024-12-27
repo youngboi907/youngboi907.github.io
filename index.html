@@ -117,6 +117,10 @@
                 },
                 scales: {
                     x: {
+                        type: "time",
+                        time: {
+                            unit: "minute",
+                        },
                         ticks: { color: "#fff" },
                     },
                     y: {
@@ -140,10 +144,8 @@
                 const asks = data.asks.map(order => ({ price: parseFloat(order[0]), quantity: parseFloat(order[1]) }));
                 const midPrice = (bids[0].price + asks[0].price) / 2;
 
-                // Get user-defined multiplier
                 const multiplier = parseFloat(document.getElementById("multiplier").value) || 50;
 
-                // Calculate volumes for 1%-2.5% and 2.5%-5%
                 const range1Bids = bids.filter(bid => bid.price >= midPrice * 0.975 && bid.price < midPrice * 0.99);
                 const range1Asks = asks.filter(ask => ask.price <= midPrice * 1.025 && ask.price > midPrice * 1.01);
                 const range2Bids = bids.filter(bid => bid.price >= midPrice * 0.95 && bid.price < midPrice * 0.975);
@@ -168,7 +170,7 @@
 
                 historicalData.push(result);
                 updateChart();
-                document.getElementById("error-message").textContent = ""; // Clear any existing error message
+                document.getElementById("error-message").textContent = "";
             } catch (error) {
                 console.error(error);
                 document.getElementById("error-message").textContent = "Error: " + error.message;
@@ -179,15 +181,19 @@
             const timeframe = document.getElementById("timeframe").value;
 
             const now = new Date();
+            const timeframeInSeconds = {
+                "5m": 300,
+                "1h": 3600,
+                "4h": 14400,
+                "1d": 86400,
+            }[timeframe];
+
             displayedData = historicalData.filter(data => {
-                const diff = (now - data.timestamp) / 1000; // Time difference in seconds
-                if (timeframe === "5m") return diff <= 300;
-                if (timeframe === "1h") return diff <= 3600;
-                if (timeframe === "4h") return diff <= 14400;
-                if (timeframe === "1d") return diff <= 86400;
+                const diff = (now - data.timestamp) / 1000;
+                return diff <= timeframeInSeconds;
             });
 
-            chartData.labels = displayedData.map(data => data.timestamp.toLocaleTimeString());
+            chartData.labels = displayedData.map(data => data.timestamp);
             chartData.datasets[0].data = displayedData.map(data => data.range1.bids);
             chartData.datasets[1].data = displayedData.map(data => data.range1.asks);
             chartData.datasets[2].data = displayedData.map(data => data.range2.bids);
@@ -196,10 +202,7 @@
             conditionChart.update();
         }
 
-        // Auto-refresh data every 2 seconds
         setInterval(fetchOrderBookAndUpdate, 2000);
-
-        // Update chart when timeframe changes
         document.getElementById("timeframe").addEventListener("change", updateChart);
 
         fetchOrderBookAndUpdate();
