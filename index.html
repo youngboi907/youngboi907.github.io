@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance BTC/USDT Condition Tracker</title>
+    <title>BTC/USDT Condition Tracker with Timeframes</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -22,10 +22,36 @@
             width: 90%;
             margin: 0 auto;
         }
+        .timeframe-buttons {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .timeframe-buttons button {
+            background-color: #ffcc00;
+            color: #000;
+            border: none;
+            padding: 10px 15px;
+            margin: 0 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .timeframe-buttons button:hover {
+            background-color: #ffd700;
+        }
+        .timeframe-buttons button.active {
+            background-color: #ffaa00;
+        }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Historical Condition Tracker</h1>
+    <h1>BTC/USDT Condition Tracker with Timeframes</h1>
+    <div class="timeframe-buttons">
+        <button data-timeframe="1" class="active">Last 1 Minute</button>
+        <button data-timeframe="5">Last 5 Minutes</button>
+        <button data-timeframe="10">Last 10 Minutes</button>
+    </div>
     <div class="chart-container">
         <canvas id="btcChart"></canvas>
     </div>
@@ -34,6 +60,7 @@
         let btcPrices = [];
         let conditionTimestamps = [];
         let chartLabels = [];
+        let selectedTimeframe = 1; // Default to 1 minute
 
         // Initialize Chart.js
         const ctx = document.getElementById("btcChart").getContext("2d");
@@ -117,12 +144,6 @@
             const currentTime = new Date().toLocaleTimeString();
 
             // Add data to chart
-            if (chartLabels.length > 50) {
-                chartLabels.shift();
-                btcPrices.shift();
-                btcChart.data.datasets[1].data.shift();
-            }
-
             chartLabels.push(currentTime);
             btcPrices.push(currentPrice);
 
@@ -133,9 +154,40 @@
                 });
             }
 
+            // Trim data based on selected timeframe
+            const maxPoints = selectedTimeframe * 60; // Convert minutes to seconds
+            if (chartLabels.length > maxPoints) {
+                chartLabels.shift();
+                btcPrices.shift();
+                conditionTimestamps.shift();
+            }
+
+            btcChart.data.labels = chartLabels;
+            btcChart.data.datasets[0].data = btcPrices;
             btcChart.data.datasets[1].data = conditionTimestamps;
             btcChart.update();
         }
+
+        // Handle timeframe button clicks
+        const buttons = document.querySelectorAll(".timeframe-buttons button");
+        buttons.forEach(button => {
+            button.addEventListener("click", () => {
+                // Update active button
+                buttons.forEach(btn => btn.classList.remove("active"));
+                button.classList.add("active");
+
+                // Update selected timeframe
+                selectedTimeframe = parseInt(button.getAttribute("data-timeframe"));
+
+                // Clear chart and reset data
+                btcChart.data.labels = [];
+                btcChart.data.datasets[0].data = [];
+                btcChart.data.datasets[1].data = [];
+                chartLabels = [];
+                btcPrices = [];
+                conditionTimestamps = [];
+            });
+        });
 
         setInterval(fetchOrderBook, 1000);
         fetchOrderBook();
