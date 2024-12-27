@@ -3,47 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Binance Order Book</title>
+    <title>Binance Live Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            margin: 10px 0;
         }
         canvas {
-            max-width: 900px;
-            margin: 20px auto;
-        }
-        select {
-            font-size: 16px;
-            padding: 5px 10px;
-            margin: 10px;
+            max-width: 90vw;
+            max-height: 80vh;
         }
     </style>
 </head>
 <body>
     <h1>Binance Live Order Book</h1>
-    <p>Live Total Bids and Asks with Historical Data</p>
-    <label for="timeframe">Select Timeframe: </label>
-    <select id="timeframe">
-        <option value="5">5 Minutes</option>
-        <option value="60">1 Hour</option>
-        <option value="240">4 Hours</option>
-        <option value="1440">1 Day</option>
-    </select>
+    <p>Total Bids, Asks, and Delta (Difference)</p>
     <canvas id="orderBookChart"></canvas>
     <script>
         let chart;
         const historyData = {
             timestamps: [],
             bids: [],
-            asks: []
+            asks: [],
+            deltas: []
         };
-
-        let maxDataPoints = 12; // Default: 5 minutes (1 data point every 5 seconds)
 
         // Fetch the order book data
         async function fetchOrderBook(symbol) {
@@ -59,7 +53,7 @@
             return parseFloat(data.price);
         }
 
-        // Calculate total bids and asks
+        // Calculate total bids, asks, and delta
         function calculateTotals(orderBook) {
             let totalBids = 0;
             let totalAsks = 0;
@@ -72,12 +66,14 @@
                 totalAsks += parseFloat(price) * parseFloat(qty);
             }
 
-            return { totalBids, totalAsks };
+            const delta = totalBids - totalAsks;
+            return { totalBids, totalAsks, delta };
         }
 
         // Update the chart with live data
         async function updateChart(symbol) {
             try {
+                const spotPrice = await fetchSpotPrice(symbol);
                 const orderBook = await fetchOrderBook(symbol);
                 const totals = calculateTotals(orderBook);
 
@@ -86,18 +82,21 @@
                 historyData.timestamps.push(timestamp);
                 historyData.bids.push(totals.totalBids);
                 historyData.asks.push(totals.totalAsks);
+                historyData.deltas.push(totals.delta);
 
-                // Limit the history to the selected timeframe
-                if (historyData.timestamps.length > maxDataPoints) {
+                // Limit the history to the last 20 data points
+                if (historyData.timestamps.length > 20) {
                     historyData.timestamps.shift();
                     historyData.bids.shift();
                     historyData.asks.shift();
+                    historyData.deltas.shift();
                 }
 
                 // Update the chart
                 chart.data.labels = historyData.timestamps;
                 chart.data.datasets[0].data = historyData.bids;
                 chart.data.datasets[1].data = historyData.asks;
+                chart.data.datasets[2].data = historyData.deltas;
                 chart.update();
             } catch (error) {
                 console.error("Error updating chart:", error);
@@ -129,53 +128,56 @@
                             backgroundColor: 'rgba(244, 67, 54, 0.2)',
                             borderWidth: 2,
                             fill: true
+                        },
+                        {
+                            label: 'Delta (Bids - Asks)',
+                            data: [], // Historical delta
+                            borderColor: '#2196f3',
+                            backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                            borderWidth: 2,
+                            fill: true
                         }
                     ]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         x: {
                             title: {
                                 display: true,
-                                text: 'Timestamp'
+                                text: 'Timestamp',
+                                font: {
+                                    size: 14
+                                }
                             }
                         },
                         y: {
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Total Value (USDT)'
+                                text: 'Total Value (USDT)',
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                font: {
+                                    size: 14
+                                }
                             }
                         }
                     }
                 }
             });
 
-            // Update the chart every 5 seconds
-            setInterval(() => updateChart(symbol), 5000);
+            // Update the chart every second
+            setInterval(() => updateChart(symbol), 1000);
         }
-
-        // Handle timeframe selection
-        document.getElementById('timeframe').addEventListener('change', (event) => {
-            const timeframe = parseInt(event.target.value);
-            switch (timeframe) {
-                case 5: // 5 minutes
-                    maxDataPoints = 12; // 1 data point every 5 seconds
-                    break;
-                case 60: // 1 hour
-                    maxDataPoints = 120; // 1 data point every 30 seconds
-                    break;
-                case 240: // 4 hours
-                    maxDataPoints = 240; // 1 data point every 1 minute
-                    break;
-                case 1440: // 1 day
-                    maxDataPoints = 288; // 1 data point every 5 minutes
-                    break;
-                default:
-                    maxDataPoints = 12; // Default to 5 minutes
-            }
-        });
 
         initializeChart();
     </script>
