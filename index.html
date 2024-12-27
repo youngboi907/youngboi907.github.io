@@ -73,14 +73,12 @@
     </div>
 
     <script>
-        // Percentage Ranges
         const ranges = [
             { label: "1% - 2.5%", min: 1, max: 2.5 },
             { label: "2.5% - 5%", min: 2.5, max: 5 },
             { label: "5% - 10%", min: 5, max: 10 }
         ];
 
-        // Fetch market price from Binance
         async function fetchMarketPrice() {
             const url = 'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT';
             try {
@@ -92,7 +90,6 @@
             }
         }
 
-        // Fetch order book from Binance
         async function fetchOrderBook() {
             const url = 'https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=1000';
             try {
@@ -104,7 +101,6 @@
             }
         }
 
-        // Filter orders by percentage range
         function filterOrders(orders, marketPrice, minPercent, maxPercent, type) {
             return orders.filter(order => {
                 const price = parseFloat(order[0]);
@@ -115,8 +111,7 @@
             });
         }
 
-        // Create a section for a percentage range
-        function createSection(label, bids, asks) {
+        function createSection(label) {
             const section = document.createElement('div');
             section.className = 'order-section';
             section.innerHTML = `
@@ -129,9 +124,7 @@
                             <th>Quantity</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${bids.map(bid => `<tr><td>${bid[0]}</td><td>${bid[1]}</td></tr>`).join('')}
-                    </tbody>
+                    <tbody id="bids-${label.replace(/[^a-zA-Z0-9]/g, '')}"></tbody>
                 </table>
                 <h3>Asks</h3>
                 <table>
@@ -141,19 +134,14 @@
                             <th>Quantity</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${asks.map(ask => `<tr><td>${ask[0]}</td><td>${ask[1]}</td></tr>`).join('')}
-                    </tbody>
+                    <tbody id="asks-${label.replace(/[^a-zA-Z0-9]/g, '')}"></tbody>
                 </table>
             `;
             return section;
         }
 
-        // Fetch and display data
         async function displayOrderBook() {
             const errorDiv = document.getElementById('error');
-            const orderSections = document.getElementById('order-sections');
-            orderSections.innerHTML = ''; // Clear previous data
             errorDiv.textContent = ''; // Clear previous errors
 
             try {
@@ -163,17 +151,35 @@
                 ranges.forEach(range => {
                     const bids = filterOrders(orderBook.bids, marketPrice, range.min, range.max, 'bids');
                     const asks = filterOrders(orderBook.asks, marketPrice, range.min, range.max, 'asks');
-                    const section = createSection(range.label, bids, asks);
-                    orderSections.appendChild(section);
+
+                    const bidsBody = document.getElementById(`bids-${range.label.replace(/[^a-zA-Z0-9]/g, '')}`);
+                    const asksBody = document.getElementById(`asks-${range.label.replace(/[^a-zA-Z0-9]/g, '')}`);
+
+                    bidsBody.innerHTML = bids.map(bid => `<tr><td>${bid[0]}</td><td>${bid[1]}</td></tr>`).join('');
+                    asksBody.innerHTML = asks.map(ask => `<tr><td>${ask[0]}</td><td>${ask[1]}</td></tr>`).join('');
                 });
             } catch (error) {
                 errorDiv.textContent = error.message;
             }
         }
 
-        // Auto-refresh every 2 seconds
-        setInterval(displayOrderBook, 2000);
-        displayOrderBook();
+        function initialize() {
+            const orderSections = document.getElementById('order-sections');
+            orderSections.innerHTML = ''; // Clear previous data
+
+            ranges.forEach(range => {
+                const section = createSection(range.label);
+                orderSections.appendChild(section);
+            });
+
+            // Initial Data Fetch
+            displayOrderBook();
+
+            // Auto-refresh data every 2 seconds
+            setInterval(displayOrderBook, 2000);
+        }
+
+        initialize();
     </script>
 </body>
 </html>
