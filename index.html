@@ -45,50 +45,25 @@
     <h1>BTC/USDT Order Book Depth</h1>
 
     <div class="controls">
-        <label for="timeframe">Select Time Frame:</label>
-        <select id="timeframe">
-            <option value="1m">1 Minute</option>
-            <option value="5m">5 Minutes</option>
-            <option value="15m">15 Minutes</option>
-            <option value="1h">1 Hour</option>
-            <option value="4h">4 Hours</option>
-            <option value="1d">1 Day</option>
-        </select>
+        <label for="multiplier">Custom Multiplier:</label>
+        <input id="multiplier" type="number" value="1" step="0.1" min="0.1">
     </div>
 
     <div class="chart-container">
-        <canvas id="depthChart"></canvas>
+        <canvas id="chart1"></canvas>
     </div>
     <div class="chart-container">
-        <canvas id="historicalChart"></canvas>
+        <canvas id="chart2"></canvas>
     </div>
 
     <script>
         const API_URL = "https://api.binance.com/api/v3/";
-        const depthCtx = document.getElementById("depthChart").getContext("2d");
-        const historicalCtx = document.getElementById("historicalChart").getContext("2d");
+        const ctx1 = document.getElementById("chart1").getContext("2d");
+        const ctx2 = document.getElementById("chart2").getContext("2d");
 
-        const depthChart = new Chart(depthCtx, {
+        const chart1 = new Chart(ctx1, {
             type: "line",
-            data: {
-                labels: [],
-                datasets: [
-                    {
-                        label: "Bids (1%-2.5%)",
-                        data: [],
-                        borderColor: "rgba(0, 255, 0, 1)",
-                        backgroundColor: "rgba(0, 255, 0, 0.2)",
-                        fill: true
-                    },
-                    {
-                        label: "Asks (1%-2.5%)",
-                        data: [],
-                        borderColor: "rgba(255, 0, 0, 1)",
-                        backgroundColor: "rgba(255, 0, 0, 0.2)",
-                        fill: true
-                    },
-                ]
-            },
+            data: { labels: [], datasets: [] },
             options: {
                 responsive: true,
                 plugins: {
@@ -101,35 +76,17 @@
             }
         });
 
-        const historicalChart = new Chart(historicalCtx, {
+        const chart2 = new Chart(ctx2, {
             type: "line",
-            data: {
-                labels: [],
-                datasets: [
-                    {
-                        label: "Bids Volume (1%-2.5%)",
-                        data: [],
-                        borderColor: "rgba(0, 200, 255, 1)",
-                        backgroundColor: "rgba(0, 200, 255, 0.2)",
-                        fill: true
-                    },
-                    {
-                        label: "Asks Volume (1%-2.5%)",
-                        data: [],
-                        borderColor: "rgba(255, 165, 0, 1)",
-                        backgroundColor: "rgba(255, 165, 0, 0.2)",
-                        fill: true
-                    }
-                ]
-            },
+            data: { labels: [], datasets: [] },
             options: {
                 responsive: true,
                 plugins: {
                     legend: { labels: { color: "#fff" } }
                 },
                 scales: {
-                    x: { ticks: { color: "#fff" }, title: { display: true, text: "Time", color: "#fff" } },
-                    y: { ticks: { color: "#fff" }, title: { display: true, text: "Volume", color: "#fff" } }
+                    x: { ticks: { color: "#fff" }, title: { display: true, text: "Price Levels", color: "#fff" } },
+                    y: { ticks: { color: "#fff" }, title: { display: true, text: "Cumulative Volume", color: "#fff" } }
                 }
             }
         });
@@ -139,12 +96,7 @@
             return response.ok ? response.json() : null;
         }
 
-        async function fetchHistoricalData(symbol, interval) {
-            const response = await fetch(`${API_URL}klines?symbol=${symbol}&interval=${interval}&limit=50`);
-            return response.ok ? response.json() : null;
-        }
-
-        async function updateDepthData() {
+        async function updateCharts(multiplier) {
             const orderBook = await fetchOrderBook("BTCUSDT");
             if (!orderBook) return;
 
@@ -152,45 +104,73 @@
             const topAsk = parseFloat(orderBook.asks[0][0]);
             const midPrice = (topBid + topAsk) / 2;
 
-            const bids = orderBook.bids
+            const bids1to2_5 = orderBook.bids
                 .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
                 .filter(bid => bid.price >= midPrice * 0.975 && bid.price <= midPrice * 0.99);
 
-            const asks = orderBook.asks
+            const asks1to2_5 = orderBook.asks
                 .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
                 .filter(ask => ask.price >= midPrice * 1.01 && ask.price <= midPrice * 1.025);
 
-            depthChart.data.labels = [...bids.map(b => b.price), ...asks.map(a => a.price)];
-            depthChart.data.datasets[0].data = bids.map(b => b.volume);
-            depthChart.data.datasets[1].data = asks.map(a => a.volume);
+            const bids2_5to5 = orderBook.bids
+                .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
+                .filter(bid => bid.price >= midPrice * 0.95 && bid.price < midPrice * 0.975);
 
-            depthChart.update();
+            const asks2_5to5 = orderBook.asks
+                .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
+                .filter(ask => ask.price >= midPrice * 1.025 && ask.price < midPrice * 1.05);
+
+            // Update Chart 1 (1%-2.5%)
+            chart1.data.labels = [...bids1to2_5.map(b => b.price), ...asks1to2_5.map(a => a.price)];
+            chart1.data.datasets = [
+                {
+                    label: "Bids (1%-2.5%)",
+                    data: bids1to2_5.map(b => b.volume),
+                    borderColor: bids1to2_5.some(b => b.volume > multiplier) ? "rgba(0, 255, 0, 1)" : "rgba(255, 0, 0, 1)",
+                    backgroundColor: "rgba(0, 255, 0, 0.2)",
+                    fill: true
+                },
+                {
+                    label: "Asks (1%-2.5%)",
+                    data: asks1to2_5.map(a => a.volume),
+                    borderColor: asks1to2_5.some(a => a.volume > multiplier) ? "rgba(255, 0, 0, 1)" : "rgba(0, 255, 0, 1)",
+                    backgroundColor: "rgba(255, 0, 0, 0.2)",
+                    fill: true
+                }
+            ];
+
+            // Update Chart 2 (2.5%-5%)
+            chart2.data.labels = [...bids2_5to5.map(b => b.price), ...asks2_5to5.map(a => a.price)];
+            chart2.data.datasets = [
+                {
+                    label: "Bids (2.5%-5%)",
+                    data: bids2_5to5.map(b => b.volume),
+                    borderColor: bids2_5to5.some(b => b.volume > multiplier) ? "rgba(0, 255, 0, 1)" : "rgba(255, 0, 0, 1)",
+                    backgroundColor: "rgba(0, 255, 0, 0.2)",
+                    fill: true
+                },
+                {
+                    label: "Asks (2.5%-5%)",
+                    data: asks2_5to5.map(a => a.volume),
+                    borderColor: asks2_5to5.some(a => a.volume > multiplier) ? "rgba(255, 0, 0, 1)" : "rgba(0, 255, 0, 1)",
+                    backgroundColor: "rgba(255, 0, 0, 0.2)",
+                    fill: true
+                }
+            ];
+
+            chart1.update();
+            chart2.update();
         }
 
-        async function updateHistoricalData(interval) {
-            const historicalData = await fetchHistoricalData("BTCUSDT", interval);
-            if (!historicalData) return;
-
-            const timestamps = historicalData.map(candle => new Date(candle[0]).toLocaleString());
-            const bidsVolume = historicalData.map(candle => parseFloat(candle[5])); // Using volume as a proxy for bids
-            const asksVolume = historicalData.map(candle => parseFloat(candle[7])); // Using trades as a proxy for asks
-
-            historicalChart.data.labels = timestamps;
-            historicalChart.data.datasets[0].data = bidsVolume;
-            historicalChart.data.datasets[1].data = asksVolume;
-
-            historicalChart.update();
-        }
-
-        document.getElementById("timeframe").addEventListener("change", async (e) => {
-            const interval = e.target.value;
-            await updateHistoricalData(interval);
+        document.getElementById("multiplier").addEventListener("change", () => {
+            const multiplier = parseFloat(document.getElementById("multiplier").value) || 1;
+            updateCharts(multiplier);
         });
 
         // Initial load
-        updateDepthData();
-        updateHistoricalData("1h");
-        setInterval(updateDepthData, 1000); // Update live data every second
+        const defaultMultiplier = 1;
+        updateCharts(defaultMultiplier);
+        setInterval(() => updateCharts(defaultMultiplier), 1000);
     </script>
 </body>
 </html>
