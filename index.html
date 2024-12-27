@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Spot BTC/USDT Order Book Depth</title>
+    <title>BTC/USDT Order Book Depth</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -11,103 +11,139 @@
             background-color: #121212;
             color: #fff;
             margin: 0;
-            padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
+            padding: 20px;
         }
         h1 {
             color: #ffcc00;
-            margin: 20px 20px 10px;
         }
         .controls {
-            margin: 20px;
+            margin: 20px 0;
             display: flex;
-            flex-direction: row;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
             gap: 10px;
+        }
+        .controls select, .controls input {
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+            color: #fff;
         }
         .chart-container {
             width: 90%;
             max-width: 1200px;
-            height: 500px;
-            margin: 20px 0;
+            margin-bottom: 30px;
         }
     </style>
 </head>
 <body>
-    <h1>Binance Spot BTC/USDT Order Book Depth</h1>
+    <h1>BTC/USDT Order Book Depth</h1>
 
-    <!-- Chart Container -->
+    <div class="controls">
+        <label for="timeframe">Select Time Frame:</label>
+        <select id="timeframe">
+            <option value="1m">1 Minute</option>
+            <option value="5m">5 Minutes</option>
+            <option value="15m">15 Minutes</option>
+            <option value="1h">1 Hour</option>
+            <option value="4h">4 Hours</option>
+            <option value="1d">1 Day</option>
+        </select>
+    </div>
+
     <div class="chart-container">
         <canvas id="depthChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="historicalChart"></canvas>
     </div>
 
     <script>
         const API_URL = "https://api.binance.com/api/v3/";
+        const depthCtx = document.getElementById("depthChart").getContext("2d");
+        const historicalCtx = document.getElementById("historicalChart").getContext("2d");
 
-        // Initialize Chart
-        const ctx = document.getElementById("depthChart").getContext("2d");
-        const depthChart = new Chart(ctx, {
+        const depthChart = new Chart(depthCtx, {
             type: "line",
             data: {
-                labels: [], // Price levels
+                labels: [],
                 datasets: [
                     {
-                        label: "Cumulative Bids (1%-2.5%)",
+                        label: "Bids (1%-2.5%)",
                         data: [],
                         borderColor: "rgba(0, 255, 0, 1)",
                         backgroundColor: "rgba(0, 255, 0, 0.2)",
-                        fill: true,
+                        fill: true
                     },
                     {
-                        label: "Cumulative Bids (2.5%-5%)",
-                        data: [],
-                        borderColor: "rgba(0, 200, 255, 1)",
-                        backgroundColor: "rgba(0, 200, 255, 0.2)",
-                        fill: true,
-                    },
-                    {
-                        label: "Cumulative Asks (1%-2.5%)",
+                        label: "Asks (1%-2.5%)",
                         data: [],
                         borderColor: "rgba(255, 0, 0, 1)",
                         backgroundColor: "rgba(255, 0, 0, 0.2)",
-                        fill: true,
+                        fill: true
+                    },
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: "#fff" } }
+                },
+                scales: {
+                    x: { ticks: { color: "#fff" }, title: { display: true, text: "Price Levels", color: "#fff" } },
+                    y: { ticks: { color: "#fff" }, title: { display: true, text: "Cumulative Volume", color: "#fff" } }
+                }
+            }
+        });
+
+        const historicalChart = new Chart(historicalCtx, {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: "Bids Volume (1%-2.5%)",
+                        data: [],
+                        borderColor: "rgba(0, 200, 255, 1)",
+                        backgroundColor: "rgba(0, 200, 255, 0.2)",
+                        fill: true
                     },
                     {
-                        label: "Cumulative Asks (2.5%-5%)",
+                        label: "Asks Volume (1%-2.5%)",
                         data: [],
                         borderColor: "rgba(255, 165, 0, 1)",
                         backgroundColor: "rgba(255, 165, 0, 0.2)",
-                        fill: true,
+                        fill: true
                     }
                 ]
             },
             options: {
                 responsive: true,
-                scales: {
-                    x: {
-                        title: { display: true, text: "Price Levels", color: "#fff" },
-                        ticks: { color: "#fff" }
-                    },
-                    y: {
-                        title: { display: true, text: "Cumulative Volume", color: "#fff" },
-                        ticks: { color: "#fff" }
-                    }
-                },
                 plugins: {
-                    legend: { display: true, labels: { color: "#fff" } }
+                    legend: { labels: { color: "#fff" } }
+                },
+                scales: {
+                    x: { ticks: { color: "#fff" }, title: { display: true, text: "Time", color: "#fff" } },
+                    y: { ticks: { color: "#fff" }, title: { display: true, text: "Volume", color: "#fff" } }
                 }
             }
         });
 
-        // Fetch Order Book Data
         async function fetchOrderBook(symbol) {
             const response = await fetch(`${API_URL}depth?symbol=${symbol}&limit=1000`);
             return response.ok ? response.json() : null;
         }
 
-        // Update Depth Data
+        async function fetchHistoricalData(symbol, interval) {
+            const response = await fetch(`${API_URL}klines?symbol=${symbol}&interval=${interval}&limit=50`);
+            return response.ok ? response.json() : null;
+        }
+
         async function updateDepthData() {
             const orderBook = await fetchOrderBook("BTCUSDT");
             if (!orderBook) return;
@@ -116,64 +152,45 @@
             const topAsk = parseFloat(orderBook.asks[0][0]);
             const midPrice = (topBid + topAsk) / 2;
 
-            // Define ranges
-            const ranges = {
-                "1%-2.5%": { min: midPrice * 0.975, max: midPrice * 0.99 },
-                "2.5%-5%": { min: midPrice * 0.95, max: midPrice * 0.975 }
-            };
+            const bids = orderBook.bids
+                .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
+                .filter(bid => bid.price >= midPrice * 0.975 && bid.price <= midPrice * 0.99);
 
-            const bids1to2_5 = [];
-            const asks1to2_5 = [];
-            const bids2_5to5 = [];
-            const asks2_5to5 = [];
+            const asks = orderBook.asks
+                .map(([price, volume]) => ({ price: parseFloat(price), volume: parseFloat(volume) }))
+                .filter(ask => ask.price >= midPrice * 1.01 && ask.price <= midPrice * 1.025);
 
-            for (const [price, volume] of orderBook.bids) {
-                const priceNum = parseFloat(price);
-                const volumeNum = parseFloat(volume);
-
-                if (priceNum >= ranges["1%-2.5%"].min && priceNum <= ranges["1%-2.5%"].max) {
-                    bids1to2_5.push({ price: priceNum, volume: volumeNum });
-                } else if (priceNum >= ranges["2.5%-5%"].min && priceNum <= ranges["2.5%-5%"].max) {
-                    bids2_5to5.push({ price: priceNum, volume: volumeNum });
-                }
-            }
-
-            for (const [price, volume] of orderBook.asks) {
-                const priceNum = parseFloat(price);
-                const volumeNum = parseFloat(volume);
-
-                if (priceNum >= ranges["1%-2.5%"].min && priceNum <= ranges["1%-2.5%"].max) {
-                    asks1to2_5.push({ price: priceNum, volume: volumeNum });
-                } else if (priceNum >= ranges["2.5%-5%"].min && priceNum <= ranges["2.5%-5%"].max) {
-                    asks2_5to5.push({ price: priceNum, volume: volumeNum });
-                }
-            }
-
-            const cumulativeData = (data) => {
-                let cumulative = 0;
-                return data.map((entry) => {
-                    cumulative += entry.volume;
-                    return { price: entry.price, cumulative };
-                });
-            };
-
-            // Update chart
-            depthChart.data.labels = [
-                ...cumulativeData(bids1to2_5).map((p) => p.price),
-                ...cumulativeData(asks1to2_5).map((p) => p.price)
-            ];
-
-            depthChart.data.datasets[0].data = cumulativeData(bids1to2_5).map((p) => p.cumulative);
-            depthChart.data.datasets[1].data = cumulativeData(bids2_5to5).map((p) => p.cumulative);
-            depthChart.data.datasets[2].data = cumulativeData(asks1to2_5).map((p) => p.cumulative);
-            depthChart.data.datasets[3].data = cumulativeData(asks2_5to5).map((p) => p.cumulative);
+            depthChart.data.labels = [...bids.map(b => b.price), ...asks.map(a => a.price)];
+            depthChart.data.datasets[0].data = bids.map(b => b.volume);
+            depthChart.data.datasets[1].data = asks.map(a => a.volume);
 
             depthChart.update();
         }
 
-        // Initial Data Load and Auto Update
+        async function updateHistoricalData(interval) {
+            const historicalData = await fetchHistoricalData("BTCUSDT", interval);
+            if (!historicalData) return;
+
+            const timestamps = historicalData.map(candle => new Date(candle[0]).toLocaleString());
+            const bidsVolume = historicalData.map(candle => parseFloat(candle[5])); // Using volume as a proxy for bids
+            const asksVolume = historicalData.map(candle => parseFloat(candle[7])); // Using trades as a proxy for asks
+
+            historicalChart.data.labels = timestamps;
+            historicalChart.data.datasets[0].data = bidsVolume;
+            historicalChart.data.datasets[1].data = asksVolume;
+
+            historicalChart.update();
+        }
+
+        document.getElementById("timeframe").addEventListener("change", async (e) => {
+            const interval = e.target.value;
+            await updateHistoricalData(interval);
+        });
+
+        // Initial load
         updateDepthData();
-        setInterval(updateDepthData, 1000); // Update every second
+        updateHistoricalData("1h");
+        setInterval(updateDepthData, 1000); // Update live data every second
     </script>
 </body>
 </html>
