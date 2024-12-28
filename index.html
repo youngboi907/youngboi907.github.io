@@ -119,6 +119,7 @@
     let bidsSum = 0;
     let asksSum = 0;
 
+    // Calculate bids sum: bids are within range (price <= currentPrice)
     orderBook.bids.forEach(([price, quantity]) => {
       price = parseFloat(price);
       quantity = parseFloat(quantity);
@@ -127,10 +128,11 @@
       }
     });
 
+    // Calculate asks sum: asks are within range (price >= currentPrice)
     orderBook.asks.forEach(([price, quantity]) => {
       price = parseFloat(price);
       quantity = parseFloat(quantity);
-      if (price <= priceRangeHigh && price >= currentPrice) {
+      if (price >= currentPrice && price <= priceRangeHigh) {
         asksSum += price * quantity;
       }
     });
