@@ -160,6 +160,7 @@
                 ];
             });
 
+            // Set the X-axis labels to actual price levels
             orderBookChart.data.labels = labels;
             orderBookChart.data.datasets[0].data = allQuantities.map(item => item[0]); // Bids
             orderBookChart.data.datasets[1].data = allQuantities.map(item => item[1]); // Asks
