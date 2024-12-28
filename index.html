@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BTC/USDT Price Chart with Historical Ratio Percentage</title>
+  <title>BTC/USDT Price Chart with Historical Ratio</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -42,7 +42,7 @@
 </head>
 <body>
 
-<h1>BTC/USDT Price Chart with Historical Ratio Percentage</h1>
+<h1>BTC/USDT Price Chart with Historical Ratio</h1>
 
 <div class="controls">
   <label for="timeFrame">Select Time Frame:</label>
@@ -63,7 +63,7 @@
 <script>
   const apiUrl = 'https://api.binance.com';
 
-  // Arrays to store historical BTC price and ratio percentage data
+  // Arrays to store historical BTC price and ratio data
   const historicalPrices = [];
   const historicalRatios = [];
   const historicalTimes = [];
@@ -129,10 +129,10 @@
     if (currentPrice && orderBook) {
       const { bidSum, askSum } = sumAllBidsAndAsks(orderBook);
 
-      // Calculate the ratio percentage: (sum of bids / sum of asks) * 100
-      const ratioPercentage = (bidSum / askSum) * 100;
+      // Calculate the ratio: sum of bids / sum of asks
+      const ratio = bidSum / askSum;
 
-      // Store the ratio percentage and the current price along with timestamp
+      // Store the ratio and the current price along with timestamp
       if (historicalPrices.length >= 1440) {  // Keep data for 24 hours (1440 minutes)
         historicalPrices.shift(); // Remove the oldest price
         historicalRatios.shift(); // Remove the oldest ratio
@@ -140,7 +140,7 @@
       }
 
       historicalPrices.push(currentPrice);
-      historicalRatios.push(ratioPercentage.toFixed(2)); // Store ratio percentage
+      historicalRatios.push(ratio.toFixed(4)); // Store ratio
       historicalTimes.push(new Date().toLocaleTimeString());
 
       // Update the chart data
@@ -177,7 +177,7 @@
     plotPriceChart(filteredPrices, filteredRatios, filteredTimes);
   }
 
-  // Plot the BTC price chart and the ratio percentage chart
+  // Plot the BTC price chart and the ratio chart
   function plotPriceChart(prices, ratios, timestamps) {
     const ctx = document.getElementById('priceChart').getContext('2d');
 
@@ -202,7 +202,7 @@
             fill: false
           },
           {
-            label: 'Ratio Percentage (Bids/Asks)',
+            label: 'Bid/Ask Ratio',
             data: ratios,
             borderColor: 'rgba(255, 99, 132, 1)',
             backgroundColor: 'rgba(255, 99, 132, 0.2)',
@@ -229,7 +229,7 @@
           y: {
             title: {
               display: true,
-              text: 'Price / Ratio Percentage'
+              text: 'Price / Ratio'
             }
           }
         },
