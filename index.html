@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Book Depth Analysis</title>
+    <title>Top 10 Bids and Asks with Duration</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -19,8 +18,8 @@
             justify-content: flex-start;
             min-height: 100vh;
         }
-        h1, select {
-            margin: 10px 0;
+        h1 {
+            margin: 20px 0;
         }
         canvas {
             max-width: 95%;
@@ -29,55 +28,13 @@
     </style>
 </head>
 <body>
-    <h1>Order Book Depth Analysis (Top 10%)</h1>
-    <label for="timeframe">Select Time Frame:</label>
-    <select id="timeframe">
-        <option value="5m">Last 5 Minutes</option>
-        <option value="15m">Last 15 Minutes</option>
-        <option value="1h">Last 1 Hour</option>
-        <option value="4h">Last 4 Hours</option>
-        <option value="1d">Last 1 Day</option>
-        <option value="1w">Last 1 Week</option>
-    </select>
+    <h1>Top 10 Largest Bids and Asks with Duration</h1>
     <canvas id="bidsAsksChart"></canvas>
-    <canvas id="deltaChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
-        let bidsAsksChart, deltaChart;
-        let intervalLimit = 60 * 1000; // Default: 1 minute
-        const historicalData = {
-            labels: [],
-            bids: [],
-            asks: [],
-            deltas: [],
-        };
-
-        function calculateOrderBookStats(data) {
-            const bids = data.bids.map(([price, quantity]) => ({
-                price: parseFloat(price),
-                quantity: parseFloat(quantity),
-                total: parseFloat(price) * parseFloat(quantity),
-            }));
-            const asks = data.asks.map(([price, quantity]) => ({
-                price: parseFloat(price),
-                quantity: parseFloat(quantity),
-                total: parseFloat(price) * parseFloat(quantity),
-            }));
-
-            // Sort bids (highest to lowest) and asks (lowest to highest)
-            bids.sort((a, b) => b.price - a.price);
-            asks.sort((a, b) => a.price - b.price);
-
-            // Calculate top 10% sum
-            const top10PercentBids = bids.slice(0, Math.ceil(bids.length * 0.1));
-            const top10PercentAsks = asks.slice(0, Math.ceil(asks.length * 0.1));
-
-            const bidsSum = top10PercentBids.reduce((sum, bid) => sum + bid.total, 0);
-            const asksSum = top10PercentAsks.reduce((sum, ask) => sum + ask.total, 0);
-
-            return { bidsSum, asksSum };
-        }
+        let bidsAsksChart;
+        const orderDurations = {}; // Tracks the duration each order is in the order book
 
         async function fetchOrderBookData() {
             const url = `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`;
@@ -85,155 +42,123 @@
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
                 const data = await response.json();
-                return calculateOrderBookStats(data);
+
+                const bids = data.bids.map(([price, quantity]) => ({
+                    price: parseFloat(price),
+                    quantity: parseFloat(quantity),
+                }));
+                const asks = data.asks.map(([price, quantity]) => ({
+                    price: parseFloat(price),
+                    quantity: parseFloat(quantity),
+                }));
+
+                // Sort and extract top 10 bids and asks
+                bids.sort((a, b) => b.price - a.price);
+                asks.sort((a, b) => a.price - b.price);
+
+                const top10Bids = bids.slice(0, 10);
+                const top10Asks = asks.slice(0, 10);
+
+                // Update durations
+                const now = Date.now();
+                [...top10Bids, ...top10Asks].forEach(order => {
+                    const key = `${order.price}-${order.quantity}`;
+                    if (!orderDurations[key]) {
+                        orderDurations[key] = { start: now, duration: 0 };
+                    } else {
+                        orderDurations[key].duration = now - orderDurations[key].start;
+                    }
+                });
+
+                return { top10Bids, top10Asks };
             } catch (error) {
                 console.error("Error fetching order book data:", error);
-                return { bidsSum: 0, asksSum: 0 };
+                return { top10Bids: [], top10Asks: [] };
             }
         }
 
-        function filterHistoricalData(timeframeLimit) {
-            const now = Date.now();
-            const cutoffTime = now - timeframeLimit;
-            while (historicalData.labels.length > 0 && new Date(historicalData.labels[0]).getTime() < cutoffTime) {
-                historicalData.labels.shift();
-                historicalData.bids.shift();
-                historicalData.asks.shift();
-                historicalData.deltas.shift();
-            }
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
         }
 
-        async function updateCharts() {
-            try {
-                const { bidsSum, asksSum } = await fetchOrderBookData();
-                const delta = bidsSum - asksSum;
-                const currentTime = new Date().toLocaleString();
+        async function updateChart() {
+            const { top10Bids, top10Asks } = await fetchOrderBookData();
 
-                // Update historical data
-                historicalData.labels.push(currentTime);
-                historicalData.bids.push(bidsSum);
-                historicalData.asks.push(asksSum);
-                historicalData.deltas.push(delta);
+            const bidLabels = top10Bids.map(order => `$${order.price.toFixed(2)}`);
+            const askLabels = top10Asks.map(order => `$${order.price.toFixed(2)}`);
 
-                filterHistoricalData(intervalLimit);
-
-                // Update Bids and Asks Chart
-                bidsAsksChart.data.labels = historicalData.labels;
-                bidsAsksChart.data.datasets[0].data = historicalData.bids;
-                bidsAsksChart.data.datasets[1].data = historicalData.asks;
-                bidsAsksChart.update();
-
-                // Update Delta Chart
-                deltaChart.data.labels = historicalData.labels;
-                deltaChart.data.datasets[0].data = historicalData.deltas;
-
-                // Update Fill Color Dynamically
-                deltaChart.data.datasets[0].backgroundColor = historicalData.deltas.map(value =>
-                    value >= 0 ? "rgba(76, 175, 80, 0.3)" : "rgba(244, 67, 54, 0.3)"
-                );
-
-                deltaChart.update();
-            } catch (error) {
-                console.error("Error updating charts:", error);
-            }
-        }
-
-        function initializeCharts() {
-            const bidsAsksCtx = document.getElementById("bidsAsksChart").getContext("2d");
-            const deltaCtx = document.getElementById("deltaChart").getContext("2d");
-
-            // Bids and Asks Chart
-            bidsAsksChart = new Chart(bidsAsksCtx, {
-                type: "line",
-                data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: "Top 10% Bids Sum",
-                            data: [],
-                            borderColor: "#4caf50",
-                            borderWidth: 2,
-                            fill: false,
-                        },
-                        {
-                            label: "Top 10% Asks Sum",
-                            data: [],
-                            borderColor: "#f44336",
-                            borderWidth: 2,
-                            fill: false,
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Sum (USDT)" } }
-                    },
-                    plugins: {
-                        zoom: {
-                            pan: { enabled: true, mode: "x" },
-                            zoom: { enabled: true, mode: "x" },
-                        },
-                    },
-                }
+            const bidDurations = top10Bids.map(order => {
+                const key = `${order.price}-${order.quantity}`;
+                return orderDurations[key]?.duration || 0;
             });
 
-            // Delta Chart
-            deltaChart = new Chart(deltaCtx, {
-                type: "line",
+            const askDurations = top10Asks.map(order => {
+                const key = `${order.price}-${order.quantity}`;
+                return orderDurations[key]?.duration || 0;
+            });
+
+            const bidQuantities = top10Bids.map(order => order.quantity);
+            const askQuantities = top10Asks.map(order => order.quantity);
+
+            bidsAsksChart.data.labels = [...bidLabels, ...askLabels];
+            bidsAsksChart.data.datasets[0].data = [...bidQuantities, ...askQuantities];
+            bidsAsksChart.data.datasets[0].backgroundColor = [
+                ...bidDurations.map(duration =>
+                    `rgba(76, 175, 80, ${Math.min(duration / 3600000, 1)})` // Green gradient for bids
+                ),
+                ...askDurations.map(duration =>
+                    `rgba(244, 67, 54, ${Math.min(duration / 3600000, 1)})` // Red gradient for asks
+                )
+            ];
+            bidsAsksChart.update();
+        }
+
+        function initializeChart() {
+            const ctx = document.getElementById("bidsAsksChart").getContext("2d");
+            bidsAsksChart = new Chart(ctx, {
+                type: "bar",
                 data: {
                     labels: [],
-                    datasets: [
-                        {
-                            label: "Delta (Bids - Asks)",
-                            data: [],
-                            borderColor: "#ffffff",
-                            borderWidth: 2,
-                            fill: true, // Enables fill under the line
-                            backgroundColor: [], // Will be updated dynamically
-                        }
-                    ]
+                    datasets: [{
+                        label: "Order Quantities",
+                        data: [],
+                        backgroundColor: [],
+                    }]
                 },
                 options: {
                     responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Delta (USDT)" } }
-                    },
                     plugins: {
-                        zoom: {
-                            pan: { enabled: true, mode: "x" },
-                            zoom: { enabled: true, mode: "x" },
-                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const label = context.label || "";
+                                    const value = context.raw || 0;
+                                    const duration =
+                                        orderDurations[label]?.duration || 0;
+                                    return [
+                                        `Price: ${label}`,
+                                        `Quantity: ${value}`,
+                                        `Duration: ${formatDuration(duration)}`,
+                                    ];
+                                }
+                            }
+                        }
                     },
+                    scales: {
+                        x: { title: { display: true, text: "Price Levels" } },
+                        y: { title: { display: true, text: "Quantity (BTC)" } }
+                    }
                 }
             });
         }
 
-        // Event listener for timeframe selector
-        document.getElementById("timeframe").addEventListener("change", (event) => {
-            const value = event.target.value;
-
-            switch (value) {
-                case "5m": intervalLimit = 5 * 60 * 1000; break;
-                case "15m": intervalLimit = 15 * 60 * 1000; break;
-                case "1h": intervalLimit = 60 * 60 * 1000; break;
-                case "4h": intervalLimit = 4 * 60 * 60 * 1000; break;
-                case "1d": intervalLimit = 24 * 60 * 60 * 1000; break;
-                case "1w": intervalLimit = 7 * 24 * 60 * 60 * 1000; break;
-                default: intervalLimit = 60 * 1000; break;
-            }
-
-            updateCharts();
-        });
-
-        // Initialize charts and load data
-        initializeCharts();
-        updateCharts();
-
-        // Auto-update every second
-        setInterval(updateCharts, 1000); // 1 second
+        // Initialize chart and start updates
+        initializeChart();
+        updateChart();
+        setInterval(updateChart, 1000); // Update every second
     </script>
 </body>
 </html>
