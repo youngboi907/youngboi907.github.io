@@ -1,207 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT & Volume Delta</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: white;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
-        }
-        h1, select {
-            margin: 10px 0;
-        }
-        canvas {
-            max-width: 95%;
-            margin: 20px 0;
-        }
-    </style>
+    <title>Binance Order Book Depth (1% - 2.5%)</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
-    <h1>BTC/USDT Price & Volume Delta</h1>
-    <label for="timeframe">Select Time Frame:</label>
-    <select id="timeframe">
-        <option value="1h">Last 1 Hour</option>
-        <option value="4h">Last 4 Hours</option>
-        <option value="1d">Last 1 Day</option>
-        <option value="1w">Last 1 Week</option>
-        <option value="1m">Last 1 Month</option>
-    </select>
-    <canvas id="priceChart"></canvas>
-    <canvas id="spotDeltaChart"></canvas>
-    <canvas id="futuresDeltaChart"></canvas>
+    <h1>Binance Order Book Depth (1% - 2.5%)</h1>
+    <label for="symbol">Symbol:</label>
+    <input type="text" id="symbol" value="BTCUSDT">
+    <button onclick="getOrderBookDepth()">Get Data</button>
+
+    <div id="bids"></div>
+    <div id="asks"></div>
 
     <script>
-        const symbol = "BTCUSDT";
-        let priceChart, spotDeltaChart, futuresDeltaChart;
-
-        // Fetch Kline Data (Price)
-        async function fetchKlineData(interval, limit) {
-            const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+        async function getOrderBookDepth() {
+            const symbol = document.getElementById('symbol').value;
             try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-                const data = await response.json();
-                console.log("Kline Data:", data);
-                const timestamps = [], prices = [];
-                data.forEach(kline => {
-                    timestamps.push(new Date(kline[0]).toLocaleString());
-                    prices.push(parseFloat(kline[4])); // Close price
+                const response = await axios.get(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=100`); 
+                const bids = response.data.bids;
+                const asks = response.data.asks;
+
+                // Calculate 1% and 2.5% of total bids and asks volume
+                const totalBidsVolume = bids.reduce((acc, [price, quantity]) => acc + parseFloat(quantity), 0);
+                const totalAsksVolume = asks.reduce((acc, [price, quantity]) => acc + parseFloat(quantity), 0);
+
+                const onePercentBidsVolume = totalBidsVolume * 0.01;
+                const twoPointFivePercentBidsVolume = totalBidsVolume * 0.025;
+                const onePercentAsksVolume = totalAsksVolume * 0.01;
+                const twoPointFivePercentAsksVolume = totalAsksVolume * 0.025;
+
+                // Filter bids and asks within the desired volume range
+                const filteredBids = bids.filter(([price, quantity]) => {
+                    const cumulativeVolume = bids.slice(0, bids.indexOf([price, quantity]) + 1)
+                        .reduce((acc, [_, q]) => acc + parseFloat(q), 0);
+                    return cumulativeVolume >= onePercentBidsVolume && cumulativeVolume <= twoPointFivePercentBidsVolume;
                 });
-                return { timestamps, prices };
-            } catch (error) {
-                console.error("Error fetching kline data:", error);
-                return { timestamps: [], prices: [] }; // Fallback data
-            }
-        }
 
-        // Fetch Volume Delta (Spot/Futures)
-        async function fetchVolumeDelta(interval, limit, isFutures = false) {
-            const url = isFutures 
-                ? `https://fapi.binance.com/fapi/v1/aggTrades?symbol=${symbol}&limit=${limit}` 
-                : `https://api.binance.com/api/v3/aggTrades?symbol=${symbol}&limit=${limit}`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-                const data = await response.json();
-                console.log(isFutures ? "Futures Delta Data:" : "Spot Delta Data:", data);
-                const timestamps = [], deltas = [];
-                data.forEach(trade => {
-                    const volume = parseFloat(trade.q);
-                    const timestamp = new Date(trade.T).toLocaleString();
-                    const delta = trade.m ? -volume : volume; // Negative for sell, positive for buy
-                    timestamps.push(timestamp);
-                    deltas.push(delta);
+                const filteredAsks = asks.filter(([price, quantity]) => {
+                    const cumulativeVolume = asks.slice(0, asks.indexOf([price, quantity]) + 1)
+                        .reduce((acc, [_, q]) => acc + parseFloat(q), 0);
+                    return cumulativeVolume >= onePercentAsksVolume && cumulativeVolume <= twoPointFivePercentAsksVolume;
                 });
-                return { timestamps, deltas };
+
+                // Display the filtered data
+                displayData('bids', filteredBids);
+                displayData('asks', filteredAsks);
+
             } catch (error) {
-                console.error("Error fetching volume delta:", error);
-                return { timestamps: [], deltas: [] }; // Fallback data
+                console.error('Error fetching order book depth:', error);
+                alert('Error fetching order book depth. Please check the symbol and try again.');
             }
         }
 
-        // Update All Charts
-        async function updateCharts(interval, limit) {
-            try {
-                const { timestamps, prices } = await fetchKlineData(interval, limit);
-                const { timestamps: spotTimestamps, deltas: spotDeltas } = await fetchVolumeDelta(interval, limit);
-                const { timestamps: futuresTimestamps, deltas: futuresDeltas } = await fetchVolumeDelta(interval, limit, true);
-
-                // Update Price Chart
-                priceChart.data.labels = timestamps;
-                priceChart.data.datasets[0].data = prices;
-                priceChart.update();
-
-                // Update Spot Volume Delta Chart
-                spotDeltaChart.data.labels = spotTimestamps;
-                spotDeltaChart.data.datasets[0].data = spotDeltas;
-                spotDeltaChart.update();
-
-                // Update Futures Volume Delta Chart
-                futuresDeltaChart.data.labels = futuresTimestamps;
-                futuresDeltaChart.data.datasets[0].data = futuresDeltas;
-                futuresDeltaChart.update();
-            } catch (error) {
-                console.error("Error updating charts:", error);
-            }
+        function displayData(elementId, data) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<h2>${elementId}</h2><ul>`;
+            data.forEach(([price, quantity]) => {
+                element.innerHTML += `<li>${price} - ${quantity}</li>`;
+            });
+            element.innerHTML += '</ul>';
         }
-
-        // Initialize All Charts
-        function initializeCharts() {
-            const priceCtx = document.getElementById("priceChart").getContext("2d");
-            const spotDeltaCtx = document.getElementById("spotDeltaChart").getContext("2d");
-            const futuresDeltaCtx = document.getElementById("futuresDeltaChart").getContext("2d");
-
-            priceChart = new Chart(priceCtx, {
-                type: "line",
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: "BTC/USDT Price",
-                        data: [],
-                        borderColor: "#4caf50",
-                        borderWidth: 2,
-                        fill: false,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Price (USDT)" } }
-                    }
-                }
-            });
-
-            spotDeltaChart = new Chart(spotDeltaCtx, {
-                type: "bar",
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: "Spot Volume Delta",
-                        data: [],
-                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336",
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Volume Delta" } }
-                    }
-                }
-            });
-
-            futuresDeltaChart = new Chart(futuresDeltaCtx, {
-                type: "bar",
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: "Futures Volume Delta",
-                        data: [],
-                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336",
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Volume Delta" } }
-                    }
-                }
-            });
-        }
-
-        // Event Listener for Timeframe Selector
-        document.getElementById("timeframe").addEventListener("change", (event) => {
-            const value = event.target.value;
-            let interval, limit;
-
-            switch (value) {
-                case "1h": interval = "1m"; limit = 60; break;
-                case "4h": interval = "5m"; limit = 48; break;
-                case "1d": interval = "15m"; limit = 96; break;
-                case "1w": interval = "1h"; limit = 168; break;
-                case "1m": interval = "1d"; limit = 30; break;
-                default: interval = "1m"; limit = 60; break;
-            }
-
-            updateCharts(interval, limit);
-        });
-
-        // Initialize and Load Default Data
-        initializeCharts();
-        updateCharts("1m", 60); // Default: Last 1 hour
     </script>
 </body>
 </html>
