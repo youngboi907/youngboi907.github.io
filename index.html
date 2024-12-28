@@ -105,6 +105,16 @@
                         x: {
                             title: { display: true, text: "Price Levels (USDT)" },
                             beginAtZero: false,
+                            type: 'linear',
+                            position: 'bottom',
+                            ticks: {
+                                autoSkip: true,
+                                maxRotation: 0,
+                                minRotation: 0,
+                                callback: function(value, index, values) {
+                                    return `$${value.toFixed(2)}`; // Format the price labels
+                                }
+                            },
                         },
                         y: {
                             title: { display: true, text: "Volume (BTC)" }
@@ -132,8 +142,8 @@
 
         // Update the chart with new order book data
         function updateChart() {
-            const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
-            const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
+            const bidLabels = orderBook.bids.map(order => order.price);
+            const askLabels = orderBook.asks.map(order => order.price);
 
             const bidVolumes = orderBook.bids.map(order => order.quantity * order.price); // Volume = quantity * price
             const askVolumes = orderBook.asks.map(order => order.quantity * order.price); // Volume = quantity * price
