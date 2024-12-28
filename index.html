@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top 10 Bids and Asks with Duration</title>
+    <title>Custom Top N Bids and Asks</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -18,8 +18,8 @@
             justify-content: flex-start;
             min-height: 100vh;
         }
-        h1 {
-            margin: 20px 0;
+        h1, select {
+            margin: 10px 0;
         }
         canvas {
             max-width: 95%;
@@ -28,14 +28,23 @@
     </style>
 </head>
 <body>
-    <h1>Top 10 Largest Bids and Asks with Duration</h1>
+    <h1>Custom Top N Bids and Asks</h1>
+    <label for="topNSelector">Select Top N:</label>
+    <select id="topNSelector">
+        <option value="5">Top 5</option>
+        <option value="10" selected>Top 10</option>
+        <option value="20">Top 20</option>
+        <option value="30">Top 30</option>
+    </select>
     <canvas id="bidsAsksChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
         let bidsAsksChart;
         const orderDurations = {}; // Tracks the duration each order is in the order book
+        let topN = 10; // Default to Top 10
 
+        // Fetch order book data
         async function fetchOrderBookData() {
             const url = `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`;
             try {
@@ -52,16 +61,16 @@
                     quantity: parseFloat(quantity),
                 }));
 
-                // Sort and extract top 10 bids and asks
+                // Sort and extract top N bids and asks
                 bids.sort((a, b) => b.price - a.price);
                 asks.sort((a, b) => a.price - b.price);
 
-                const top10Bids = bids.slice(0, 10);
-                const top10Asks = asks.slice(0, 10);
+                const topNBids = bids.slice(0, topN);
+                const topNAsks = asks.slice(0, topN);
 
                 // Update durations
                 const now = Date.now();
-                [...top10Bids, ...top10Asks].forEach(order => {
+                [...topNBids, ...topNAsks].forEach(order => {
                     const key = `${order.price}-${order.quantity}`;
                     if (!orderDurations[key]) {
                         orderDurations[key] = { start: now, duration: 0 };
@@ -70,13 +79,14 @@
                     }
                 });
 
-                return { top10Bids, top10Asks };
+                return { topNBids, topNAsks };
             } catch (error) {
                 console.error("Error fetching order book data:", error);
-                return { top10Bids: [], top10Asks: [] };
+                return { topNBids: [], topNAsks: [] };
             }
         }
 
+        // Format duration into hours, minutes, and seconds
         function formatDuration(ms) {
             const seconds = Math.floor(ms / 1000);
             const minutes = Math.floor(seconds / 60);
@@ -84,24 +94,25 @@
             return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
         }
 
+        // Update the chart
         async function updateChart() {
-            const { top10Bids, top10Asks } = await fetchOrderBookData();
+            const { topNBids, topNAsks } = await fetchOrderBookData();
 
-            const bidLabels = top10Bids.map(order => `$${order.price.toFixed(2)}`);
-            const askLabels = top10Asks.map(order => `$${order.price.toFixed(2)}`);
+            const bidLabels = topNBids.map(order => `$${order.price.toFixed(2)}`);
+            const askLabels = topNAsks.map(order => `$${order.price.toFixed(2)}`);
 
-            const bidDurations = top10Bids.map(order => {
+            const bidDurations = topNBids.map(order => {
                 const key = `${order.price}-${order.quantity}`;
                 return orderDurations[key]?.duration || 0;
             });
 
-            const askDurations = top10Asks.map(order => {
+            const askDurations = topNAsks.map(order => {
                 const key = `${order.price}-${order.quantity}`;
                 return orderDurations[key]?.duration || 0;
             });
 
-            const bidQuantities = top10Bids.map(order => order.quantity);
-            const askQuantities = top10Asks.map(order => order.quantity);
+            const bidQuantities = topNBids.map(order => order.quantity);
+            const askQuantities = topNAsks.map(order => order.quantity);
 
             bidsAsksChart.data.labels = [...bidLabels, ...askLabels];
             bidsAsksChart.data.datasets[0].data = [...bidQuantities, ...askQuantities];
@@ -116,6 +127,7 @@
             bidsAsksChart.update();
         }
 
+        // Initialize the chart
         function initializeChart() {
             const ctx = document.getElementById("bidsAsksChart").getContext("2d");
             bidsAsksChart = new Chart(ctx, {
@@ -155,7 +167,13 @@
             });
         }
 
-        // Initialize chart and start updates
+        // Event listener for Top N selector
+        document.getElementById("topNSelector").addEventListener("change", (event) => {
+            topN = parseInt(event.target.value, 10);
+            updateChart();
+        });
+
+        // Initialize and auto-update
         initializeChart();
         updateChart();
         setInterval(updateChart, 1000); // Update every second
