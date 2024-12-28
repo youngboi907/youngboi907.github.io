@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Chart & Order Book Depth</title>
+    <title>BTC/USDT Historical Order Book Depth</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -28,21 +28,23 @@
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Chart & Order Book Depth</h1>
+    <h1>BTC/USDT Historical Order Book Depth</h1>
     <label for="timeframe">Select Time Frame:</label>
     <select id="timeframe">
+        <option value="5m">Last 5 Minutes</option>
+        <option value="15m">Last 15 Minutes</option>
         <option value="1h">Last 1 Hour</option>
         <option value="4h">Last 4 Hours</option>
         <option value="1d">Last 1 Day</option>
         <option value="1w">Last 1 Week</option>
-        <option value="1m">Last 1 Month</option>
     </select>
     <canvas id="priceChart"></canvas>
+    <canvas id="historicalOrderBookChart"></canvas>
     <canvas id="orderBookChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
-        let priceChart, orderBookChart;
+        let priceChart, historicalOrderBookChart, orderBookChart;
         let interval = "1m";
         let limit = 60;
 
@@ -113,7 +115,13 @@
                 priceChart.data.datasets[0].data = prices;
                 priceChart.update();
 
-                // Update Order Book Chart
+                // Update Historical Order Book Chart
+                historicalOrderBookChart.data.labels.push(new Date().toLocaleString());
+                historicalOrderBookChart.data.datasets[0].data.push(bidsSum);
+                historicalOrderBookChart.data.datasets[1].data.push(asksSum);
+                historicalOrderBookChart.update();
+
+                // Update Current Order Book Chart
                 orderBookChart.data.datasets[0].data = [bidsSum];
                 orderBookChart.data.datasets[1].data = [asksSum];
                 orderBookChart.update();
@@ -124,6 +132,7 @@
 
         function initializeCharts() {
             const priceCtx = document.getElementById("priceChart").getContext("2d");
+            const historicalOrderBookCtx = document.getElementById("historicalOrderBookChart").getContext("2d");
             const orderBookCtx = document.getElementById("orderBookChart").getContext("2d");
 
             // BTC Price Chart
@@ -148,7 +157,38 @@
                 }
             });
 
-            // Order Book Depth Chart
+            // Historical Order Book Chart
+            historicalOrderBookChart = new Chart(historicalOrderBookCtx, {
+                type: "line",
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: "Top 10% Bids Sum",
+                            data: [],
+                            borderColor: "#4caf50",
+                            borderWidth: 2,
+                            fill: false,
+                        },
+                        {
+                            label: "Top 10% Asks Sum",
+                            data: [],
+                            borderColor: "#f44336",
+                            borderWidth: 2,
+                            fill: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Time" } },
+                        y: { title: { display: true, text: "Sum (USDT)" } }
+                    }
+                }
+            });
+
+            // Current Order Book Chart
             orderBookChart = new Chart(orderBookCtx, {
                 type: "bar",
                 data: {
@@ -181,11 +221,12 @@
             const value = event.target.value;
 
             switch (value) {
+                case "5m": interval = "1m"; limit = 5; break;
+                case "15m": interval = "1m"; limit = 15; break;
                 case "1h": interval = "1m"; limit = 60; break;
                 case "4h": interval = "5m"; limit = 48; break;
                 case "1d": interval = "15m"; limit = 96; break;
                 case "1w": interval = "1h"; limit = 168; break;
-                case "1m": interval = "1d"; limit = 30; break;
                 default: interval = "1m"; limit = 60; break;
             }
 
