@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Full Order Book (±10% Range)</title>
+    <title>BTC/USDT High Volume Order Book (±10% Range)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -60,7 +60,7 @@
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Full Order Book (±10% Price Range)</h1>
+    <h1>BTC/USDT High Volume Order Book (±10% Price Range)</h1>
     <div class="order-book-container">
         <!-- Bids Column -->
         <div class="order-book-column">
@@ -93,6 +93,7 @@
 
     <script>
         const symbol = "BTCUSDT";
+        const volumeThreshold = 0.1; // Orders with quantity above this will be shown
         let orderBook = { bids: [], asks: [] }; // Order book data
 
         // Function to fetch the order book data from Binance API
@@ -110,22 +111,30 @@
                 max: midPrice * 1.1  // 10% above the mid price
             };
 
-            // Filter bids within the ±10% price range
+            // Filter bids within the ±10% price range and volume threshold
             const filteredBids = data.bids
                 .map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }))
-                .filter(order => order.price >= priceRange.min)
+                .filter(order => order.price >= priceRange.min && order.quantity >= volumeThreshold)
                 .sort((a, b) => b.price - a.price); // Sort bids by price (descending)
 
-            // Filter asks within the ±10% price range
+            // Filter asks within the ±10% price range and volume threshold
             const filteredAsks = data.asks
                 .map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }))
-                .filter(order => order.price <= priceRange.max)
+                .filter(order => order.price <= priceRange.max && order.quantity >= volumeThreshold)
                 .sort((a, b) => a.price - b.price); // Sort asks by price (ascending)
 
             orderBook.bids = filteredBids;
             orderBook.asks = filteredAsks;
 
             updateOrderBookTables();
+        }
+
+        // Function to calculate the color based on quantity (volume)
+        function getColorForOrder(quantity) {
+            // Normalize the quantity for color scale (darker for larger volumes)
+            const normalizedQuantity = Math.min(quantity / 5, 1); // Normalize between 0 and 1, adjust max (5 BTC in this example)
+            const colorValue = Math.floor(255 * (1 - normalizedQuantity)); // Darker for higher volumes (reverse scale)
+            return `rgb(${colorValue}, ${Math.floor(255 - colorValue)}, ${Math.floor(255 - colorValue)})`;
         }
 
         // Function to update the table with the filtered order book data
@@ -140,20 +149,4 @@
             // Populate the bids table
             orderBook.bids.forEach(order => {
                 const row = bidsTableBody.insertRow();
-                row.insertCell(0).textContent = order.price.toFixed(2);
-                row.insertCell(1).textContent = order.quantity.toFixed(6);
-            });
-
-            // Populate the asks table
-            orderBook.asks.forEach(order => {
-                const row = asksTableBody.insertRow();
-                row.insertCell(0).textContent = order.price.toFixed(2);
-                row.insertCell(1).textContent = order.quantity.toFixed(6);
-            });
-        }
-
-        // Fetch the initial order book data
-        fetchOrderBook();
-    </script>
-</body>
-</html>
+                row.insertCell(0).textContent
