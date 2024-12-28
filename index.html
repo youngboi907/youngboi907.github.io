@@ -3,7 +3,6 @@
 <head>
     <title>Binance Order Book Depth (1% - 2.5%)</title>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios-rate-limit/dist/axios-rate-limit.js"></script> 
 </head>
 <body>
     <h1>Binance Order Book Depth (1% - 2.5%)</h1>
@@ -15,20 +14,60 @@
     <div id="asks"></div>
 
     <script>
-        const apiLimiter = axios.create({
-          timeout: 1000, // Set a reasonable timeout for requests
-          maxRequests: 10, // Maximum number of requests per second
-          perMilliseconds: 1000, // Time window for the rate limit (in milliseconds)
-        });
-
         async function getOrderBookDepth() {
             const symbol = document.getElementById('symbol').value;
             try {
-                const response = await apiLimiter.get(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=100`); 
+                const response = await axios.get(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=100`); 
                 const bids = response.data.bids;
                 const asks = response.data.asks;
 
-                // ... (Rest of your code for calculating and filtering data) 
+                // Calculate total volume of bids and asks
+                const totalBidsVolume = bids.reduce((acc, [price, quantity]) => acc + parseFloat(quantity), 0);
+                const totalAsksVolume = asks.reduce((acc, [price, quantity]) => acc + parseFloat(quantity), 0);
+
+                // Determine 1% and 2.5% of total volume
+                const onePercentBidsVolume = totalBidsVolume * 0.01;
+                const twoPointFivePercentBidsVolume = totalBidsVolume * 0.025;
+                const onePercentAsksVolume = totalAsksVolume * 0.01;
+                const twoPointFivePercentAsksVolume = totalAsksVolume * 0.025;
+
+                // Find the index range for 1% to 2.5% of the order book
+                let bidStartIndex = 0;
+                let bidEndIndex = bids.length - 1;
+                let askStartIndex = 0;
+                let askEndIndex = asks.length - 1;
+
+                let cumulativeBidsVolume = 0;
+                while (bidStartIndex < bids.length && cumulativeBidsVolume < onePercentBidsVolume) {
+                    cumulativeBidsVolume += parseFloat(bids[bidStartIndex][1]);
+                    bidStartIndex++;
+                }
+
+                cumulativeBidsVolume = 0;
+                while (bidEndIndex >= 0 && cumulativeBidsVolume < twoPointFivePercentBidsVolume) {
+                    cumulativeBidsVolume += parseFloat(bids[bidEndIndex][1]);
+                    bidEndIndex--;
+                }
+
+                let cumulativeAsksVolume = 0;
+                while (askStartIndex < asks.length && cumulativeAsksVolume < onePercentAsksVolume) {
+                    cumulativeAsksVolume += parseFloat(asks[askStartIndex][1]);
+                    askStartIndex++;
+                }
+
+                cumulativeAsksVolume = 0;
+                while (askEndIndex >= 0 && cumulativeAsksVolume < twoPointFivePercentAsksVolume) {
+                    cumulativeAsksVolume += parseFloat(asks[askEndIndex][1]);
+                    askEndIndex--;
+                }
+
+                // Extract the desired range of orders
+                const filteredBids = bids.slice(bidStartIndex, bidEndIndex + 1);
+                const filteredAsks = asks.slice(askStartIndex, askEndIndex + 1);
+
+                // Display the filtered data
+                displayData('bids', filteredBids);
+                displayData('asks', filteredAsks);
 
             } catch (error) {
                 console.error('Error fetching order book depth:', error);
@@ -36,8 +75,14 @@
             }
         }
 
-        // ... (Rest of your code for displaying data)
-
+        function displayData(elementId, data) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<h2>${elementId}</h2><ul>`;
+            data.forEach(([price, quantity]) => {
+                element.innerHTML += `<li>${price} - ${quantity}</li>`;
+            });
+            element.innerHTML += '</ul>';
+        }
     </script>
 </body>
 </html>
