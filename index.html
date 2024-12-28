@@ -10,10 +10,11 @@
     <h2>Order Book Data</h2>
     <p>Best Bid: <span id="best-bid"></span></p>
     <p>Best Ask: <span id="best-ask"></span></p>
+    <p>Bid/Ask Ratio: <span id="bid-ask-ratio"></span></p>
   </div>
 
   <div id="charts">
-    <h2>Order Book Depth Chart</h2>
+    <h2>Order Book Depth Chart (1-10%)</h2>
     <canvas id="depth-chart"></canvas>
   </div>
 
@@ -28,29 +29,84 @@
         const asks = data.asks.map(item => parseFloat(item[0]));
         const askVolumes = data.asks.map(item => parseFloat(item[1]));
 
-        // ... (Your calculations for order book depth at 1% to 10% here)
+        const bestBid = bids[0];
+        const bestAsk = asks[0];
 
-        // Update UI with best bid and ask
-        document.getElementById('best-bid').textContent = bids[0];
-        document.getElementById('best-ask').textContent = asks[0];
+        // Calculate mid price
+        const midPrice = (bestBid + bestAsk) / 2;
 
-        // Create Chart.js chart (example: simple bar chart)
+        // Calculate order book depth at 1% to 10% of mid price
+        const depthPercentages = Array.from({length: 10}, (_, i) => (i + 1) / 100);
+        const bidDepths = [];
+        const askDepths = [];
+
+        for (const percentage of depthPercentages) {
+          const depthLevel = midPrice * percentage;
+          let bidDepth = 0;
+          let askDepth = 0;
+
+          for (let i = 0; i < bids.length; i++) {
+            if (bids[i][0] >= bestBid - depthLevel) {
+              bidDepth += bids[i][1];
+            } else {
+              break; // No need to iterate further for bids
+            }
+          }
+
+          for (let i = 0; i < asks.length; i++) {
+            if (asks[i][0] <= bestAsk + depthLevel) {
+              askDepth += asks[i][1];
+            } else {
+              break; // No need to iterate further for asks
+            }
+          }
+
+          bidDepths.push(bidDepth);
+          askDepths.push(askDepth);
+        }
+
+        // Calculate Bid/Ask Ratio (using top 10% depth as an example)
+        const bidAskRatio = bidDepths[9] / askDepths[9]; 
+
+        // Update UI with data
+        document.getElementById('best-bid').textContent = bestBid;
+        document.getElementById('best-ask').textContent = bestAsk;
+        document.getElementById('bid-ask-ratio').textContent = bidAskRatio.toFixed(2);
+
+        // Create Chart.js chart
         const ctx = document.getElementById('depth-chart').getContext('2d');
         new Chart(ctx, {
-          type: 'bar',
+          type: 'line',
           data: {
-            labels: ['Bid', 'Ask'],
-            datasets: [{
-              label: 'Top 10 Volume',
-              data: [bidVolumes.slice(0, 10).reduce((a, b) => a + b, 0), 
-                     askVolumes.slice(0, 10).reduce((a, b) => a + b, 0)],
-              backgroundColor: ['green', 'red']
-            }]
+            labels: depthPercentages.map(p => p * 100 + "%"), 
+            datasets: [
+              {
+                label: 'Bid Depth',
+                data: bidDepths,
+                borderColor: 'green',
+                fill: false,
+              },
+              {
+                label: 'Ask Depth',
+                data: askDepths,
+                borderColor: 'red',
+                fill: false,
+              }
+            ]
           },
           options: {
             scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: 'Percentage from Mid Price'
+                }
+              },
               y: {
-                beginAtZero: true
+                title: {
+                  display: true,
+                  text: 'Order Book Depth'
+                }
               }
             }
           }
