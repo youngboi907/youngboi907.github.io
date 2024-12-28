@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Order Book Depth with History</title>
+    <title>BTC/USDT Cumulative Volume</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -40,40 +40,23 @@
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Order Book Depth with History</h1>
-
-    <div class="controls">
-        <div>
-            <label for="minPrice">Min Price:</label>
-            <input type="number" id="minPrice" value="20000" step="0.01" style="width: 80px;">
-        </div>
-
-        <div>
-            <label for="maxPrice">Max Price:</label>
-            <input type="number" id="maxPrice" style="width: 80px;">
-        </div>
-
-        <button id="updateRange">Update Range</button>
-    </div>
+    <h1>BTC/USDT Cumulative Volume (1% to 2.5%)</h1>
 
     <canvas id="depthChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
         let orderBook = { bids: [], asks: [] };
-        let historicalData = { bids: [], asks: [] };
         let depthChart;
-        let minPrice = 20000;
-        let maxPrice;
         let currentPrice = 21000; // Placeholder until we fetch the current price
+        let minRange = 1.01; // 1% above the current price for asks, 1% below for bids
+        let maxRange = 1.025; // 2.5% above the current price for asks, 2.5% below for bids
 
         // Function to fetch the current price
         async function fetchCurrentPrice() {
             const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const data = await response.json();
             currentPrice = parseFloat(data.price);
-            maxPrice = currentPrice * 1.05;
-            document.getElementById("maxPrice").value = maxPrice.toFixed(2);
         }
 
         // Connect to Binance WebSocket for real-time depth updates
@@ -108,14 +91,6 @@
 
             orderBook.bids = processOrders(bids);
             orderBook.asks = processOrders(asks);
-
-            // Add current snapshot to historical data
-            historicalData.bids.push([...orderBook.bids]);
-            historicalData.asks.push([...orderBook.asks]);
-
-            // Limit the historical data to the last 100 snapshots
-            if (historicalData.bids.length > 100) historicalData.bids.shift();
-            if (historicalData.asks.length > 100) historicalData.asks.shift();
         }
 
         // Initialize the chart
@@ -123,22 +98,19 @@
             const ctx = document.getElementById("depthChart").getContext("2d");
 
             depthChart = new Chart(ctx, {
-                type: "line",
+                type: "bar",
                 data: {
+                    labels: [],
                     datasets: [
                         {
                             label: "Bids",
                             data: [],
-                            borderColor: "rgba(76, 175, 80, 1)", // Green
-                            backgroundColor: "rgba(76, 175, 80, 0.2)",
-                            fill: true,
+                            backgroundColor: "rgba(76, 175, 80, 0.7)", // Green
                         },
                         {
                             label: "Asks",
                             data: [],
-                            borderColor: "rgba(244, 67, 54, 1)", // Red
-                            backgroundColor: "rgba(244, 67, 54, 0.2)",
-                            fill: true,
+                            backgroundColor: "rgba(244, 67, 54, 0.7)", // Red
                         },
                     ],
                 },
@@ -146,22 +118,10 @@
                     responsive: true,
                     scales: {
                         x: {
-                            title: { display: true, text: "Price (USDT)" },
+                            title: { display: true, text: "Price Levels (USDT)" },
                         },
                         y: {
                             title: { display: true, text: "Cumulative Volume (BTC)" },
-                        },
-                    },
-                    interaction: {
-                        mode: "nearest",
-                        intersect: false,
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: (tooltipItem) =>
-                                    `Price: $${tooltipItem.raw.x}, Cumulative Volume: ${tooltipItem.raw.y} BTC`,
-                            },
                         },
                     },
                 },
@@ -171,30 +131,24 @@
         // Update the chart
         function updateChart() {
             const bidData = orderBook.bids
-                .filter(order => order.price >= minPrice && order.price <= maxPrice)
+                .filter(order => order.price >= currentPrice * (1 - maxRange) && order.price <= currentPrice * (1 - minRange))
                 .map(order => ({ x: order.price, y: order.cumulativeVolume }));
 
             const askData = orderBook.asks
-                .filter(order => order.price >= minPrice && order.price <= maxPrice)
+                .filter(order => order.price >= currentPrice * minRange && order.price <= currentPrice * maxRange)
                 .map(order => ({ x: order.price, y: order.cumulativeVolume }));
 
-            depthChart.data.datasets[0].data = bidData;
-            depthChart.data.datasets[1].data = askData;
+            depthChart.data.labels = [...bidData.map(order => `$${order.x.toFixed(2)}`), ...askData.map(order => `$${order.x.toFixed(2)}`)];
+            depthChart.data.datasets[0].data = bidData.map(order => order.y);
+            depthChart.data.datasets[1].data = askData.map(order => order.y);
 
             depthChart.update();
         }
 
-        // Add event listener for range updates
-        document.getElementById("updateRange").addEventListener("click", () => {
-            minPrice = parseFloat(document.getElementById("minPrice").value);
-            maxPrice = parseFloat(document.getElementById("maxPrice").value);
-
-            // Update the chart
-            updateChart();
-        });
-
         // Fetch the current price and initialize the chart
-        fetchCurrentPrice().then(initializeChart);
+        fetchCurrentPrice().then(() => {
+            initializeChart();
+        });
     </script>
 </body>
 </html>
