@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Bid-Ask Summary</title>
+    <title>BTC Order Book Summary</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -15,139 +15,125 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
         }
-        h1 {
-            margin-top: 20px;
-        }
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-bottom: 20px;
-            gap: 20px;
-        }
-        label {
-            font-size: 1rem;
-        }
-        input[type="range"], select {
-            margin-left: 10px;
+        h1, label {
+            margin: 10px 0;
         }
         canvas {
             max-width: 95%;
             margin: 20px 0;
         }
+        select, input {
+            margin: 10px 5px;
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Bid-Ask Summary</h1>
-    <div class="controls">
-        <label for="priceRange">Price Range (%):</label>
-        <input type="range" id="priceRange" min="1" max="10" value="2.5" step="0.1">
-        <span id="priceRangeValue">2.5%</span>
-
-        <label for="timeFrame">Timeframe:</label>
-        <select id="timeFrame">
-            <option value="1">1 Minute</option>
-            <option value="5" selected>5 Minutes</option>
-            <option value="15">15 Minutes</option>
-            <option value="60">1 Hour</option>
-        </select>
-
-        <label for="timeSlider">Time Navigation:</label>
-        <input type="range" id="timeSlider" min="0" max="100" value="100">
-        <span id="timeSliderValue">Latest</span>
-    </div>
-    <canvas id="summaryChart"></canvas>
+    <h1>BTC Order Book Summary</h1>
+    <label for="priceRange">Price Range (%):</label>
+    <input type="number" id="priceRange" value="2.5" min="0.1" step="0.1">
+    <label for="timeframe">Select Timeframe:</label>
+    <select id="timeframe">
+        <option value="1h">Last 1 Hour</option>
+        <option value="4h">Last 4 Hours</option>
+        <option value="1d">Last 1 Day</option>
+        <option value="1w">Last 1 Week</option>
+    </select>
+    <canvas id="orderBookChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
-        let currentPrice = 0;
-        let priceRange = 2.5;
-        let timeFrame = 5; // Default to 5 minutes
-        let historicalData = [];
-        const maxHistoryDuration = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
-        let timeSliderValue = 100;
-        let summaryChart;
+        let priceRangePercent = 2.5;
+        let timeframe = "1h"; // Default to last 1 hour
+        let historicalData = []; // To store historical data
+        let chart;
 
-        // Fetch current price
+        // Function to fetch the current price of BTC/USDT
         async function fetchCurrentPrice() {
             const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const data = await response.json();
-            currentPrice = parseFloat(data.price);
+            return parseFloat(data.price);
         }
 
-        // WebSocket connection for real-time order book updates
-        const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            const bids = data.b.map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }));
-            const asks = data.a.map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }));
+        // Function to fetch order book data and calculate sums
+        async function fetchOrderBookData() {
+            const currentPrice = await fetchCurrentPrice();
+            const lowerLimit = currentPrice * (1 - priceRangePercent / 100);
+            const upperLimit = currentPrice * (1 + priceRangePercent / 100);
 
-            // Calculate sums within the price range
-            const filteredBids = bids.filter(order => order.price >= currentPrice * (1 - priceRange / 100));
-            const filteredAsks = asks.filter(order => order.price <= currentPrice * (1 + priceRange / 100));
+            const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
+            const data = await response.json();
 
-            const bidSum = filteredBids.reduce((sum, order) => sum + order.quantity, 0);
-            const askSum = filteredAsks.reduce((sum, order) => sum + order.quantity, 0);
+            let bidsSum = 0;
+            let asksSum = 0;
 
-            // Add to historical data
-            const now = Date.now();
-            historicalData = historicalData.filter(entry => entry.time >= now - maxHistoryDuration);
-            historicalData.push({ time: now, bidSum, askSum });
-
-            // Aggregate data based on the timeframe
-            const aggregatedData = aggregateData(historicalData, timeFrame);
-
-            // Update chart
-            updateChart(aggregatedData);
-        };
-
-        // Aggregate data based on the selected timeframe
-        function aggregateData(data, interval) {
-            const aggregated = [];
-            let currentBucket = null;
-
-            data.forEach(entry => {
-                const bucketTime = Math.floor(entry.time / (interval * 60 * 1000)) * (interval * 60 * 1000);
-
-                if (!currentBucket || currentBucket.time !== bucketTime) {
-                    if (currentBucket) aggregated.push(currentBucket);
-                    currentBucket = { time: bucketTime, bidSum: 0, askSum: 0 };
+            data.bids.forEach(([price, quantity]) => {
+                if (price >= lowerLimit) {
+                    bidsSum += price * quantity;
                 }
-
-                currentBucket.bidSum += entry.bidSum;
-                currentBucket.askSum += entry.askSum;
             });
 
-            if (currentBucket) aggregated.push(currentBucket);
-            return aggregated;
+            data.asks.forEach(([price, quantity]) => {
+                if (price <= upperLimit) {
+                    asksSum += price * quantity;
+                }
+            });
+
+            return { bidsSum, asksSum, timestamp: new Date() };
         }
 
-        // Initialize the chart
+        // Function to update chart
+        async function updateChart() {
+            const { bidsSum, asksSum, timestamp } = await fetchOrderBookData();
+
+            // Add new data to historical data
+            historicalData.push({ bidsSum, asksSum, timestamp });
+
+            // Trim historical data based on timeframe
+            const now = new Date();
+            historicalData = historicalData.filter(dataPoint => {
+                const diff = now - new Date(dataPoint.timestamp);
+                switch (timeframe) {
+                    case "1h":
+                        return diff <= 60 * 60 * 1000;
+                    case "4h":
+                        return diff <= 4 * 60 * 60 * 1000;
+                    case "1d":
+                        return diff <= 24 * 60 * 60 * 1000;
+                    case "1w":
+                        return diff <= 7 * 24 * 60 * 60 * 1000;
+                }
+            });
+
+            // Update chart data
+            chart.data.labels = historicalData.map(dataPoint => dataPoint.timestamp.toLocaleTimeString());
+            chart.data.datasets[0].data = historicalData.map(dataPoint => dataPoint.bidsSum);
+            chart.data.datasets[1].data = historicalData.map(dataPoint => dataPoint.asksSum);
+            chart.update();
+        }
+
+        // Initialize chart
         function initializeChart() {
-            const ctx = document.getElementById("summaryChart").getContext("2d");
-            summaryChart = new Chart(ctx, {
+            const ctx = document.getElementById("orderBookChart").getContext("2d");
+            chart = new Chart(ctx, {
                 type: "line",
                 data: {
                     labels: [],
                     datasets: [
                         {
-                            label: "Bid Volume",
+                            label: "Bids Sum",
                             data: [],
-                            borderColor: "rgba(76, 175, 80, 0.8)", // Green
-                            backgroundColor: "rgba(76, 175, 80, 0.2)",
-                            fill: true,
-                            tension: 0.3
+                            borderColor: "rgba(76, 175, 80, 0.7)", // Green
+                            fill: false,
                         },
                         {
-                            label: "Ask Volume",
+                            label: "Asks Sum",
                             data: [],
-                            borderColor: "rgba(244, 67, 54, 0.8)", // Red
-                            backgroundColor: "rgba(244, 67, 54, 0.2)",
-                            fill: true,
-                            tension: 0.3
+                            borderColor: "rgba(244, 67, 54, 0.7)", // Red
+                            fill: false,
                         }
                     ]
                 },
@@ -156,54 +142,31 @@
                     scales: {
                         x: {
                             type: "time",
-                            time: {
-                                unit: "minute"
-                            },
                             title: { display: true, text: "Time" }
                         },
                         y: {
-                            title: { display: true, text: "Volume (BTC)" }
+                            title: { display: true, text: "Volume (USDT)" }
                         }
                     }
                 }
             });
         }
 
-        // Update the chart
-        function updateChart(aggregatedData) {
-            if (!aggregatedData.length) return;
-
-            const index = Math.floor((timeSliderValue / 100) * (aggregatedData.length - 1));
-            const dataToShow = aggregatedData.slice(0, index + 1);
-
-            summaryChart.data.labels = dataToShow.map(entry => new Date(entry.time));
-            summaryChart.data.datasets[0].data = dataToShow.map(entry => entry.bidSum);
-            summaryChart.data.datasets[1].data = dataToShow.map(entry => entry.askSum);
-
-            summaryChart.update();
-        }
-
         // Event listeners
-        document.getElementById("priceRange").addEventListener("input", (event) => {
-            priceRange = parseFloat(event.target.value);
-            document.getElementById("priceRangeValue").textContent = `${priceRange}%`;
+        document.getElementById("priceRange").addEventListener("change", (event) => {
+            priceRangePercent = parseFloat(event.target.value);
+            updateChart();
         });
 
-        document.getElementById("timeFrame").addEventListener("change", (event) => {
-            timeFrame = parseInt(event.target.value, 10);
-            const aggregatedData = aggregateData(historicalData, timeFrame);
-            updateChart(aggregatedData);
+        document.getElementById("timeframe").addEventListener("change", (event) => {
+            timeframe = event.target.value;
+            updateChart();
         });
 
-        document.getElementById("timeSlider").addEventListener("input", (event) => {
-            timeSliderValue = parseFloat(event.target.value);
-            document.getElementById("timeSliderValue").textContent = timeSliderValue === 100 ? "Latest" : `${timeSliderValue}%`;
-            const aggregatedData = aggregateData(historicalData, timeFrame);
-            updateChart(aggregatedData);
-        });
-
-        // Initialize
-        fetchCurrentPrice().then(() => initializeChart());
+        // Initialize chart and set auto-update
+        initializeChart();
+        updateChart();
+        setInterval(updateChart, 60000); // Update every minute
     </script>
 </body>
 </html>
