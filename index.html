@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Full Order Book with ±10% Price Range</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <title>BTC/USDT Full Order Book (±10% Range)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -20,22 +18,64 @@
             min-height: 100vh;
         }
         h1 {
-            margin: 10px 0;
-        }
-        canvas {
-            max-width: 95%;
             margin: 20px 0;
+        }
+        table {
+            width: 80%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table th, table td {
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: right;
+        }
+        table th {
+            background-color: #444;
+        }
+        table tr:nth-child(even) {
+            background-color: #222;
+        }
+        table tr:nth-child(odd) {
+            background-color: #333;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            align-items: center;
         }
     </style>
 </head>
 <body>
-    <h1>Full BTC/USDT Order Book with ±10% Price Range</h1>
-    <canvas id="orderBookChart"></canvas>
+    <h1>BTC/USDT Full Order Book (±10% Price Range)</h1>
+    <div class="container">
+        <h2>Bids</h2>
+        <table id="bidsTable">
+            <thead>
+                <tr>
+                    <th>Price (USDT)</th>
+                    <th>Quantity (BTC)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <h2>Asks</h2>
+        <table id="asksTable">
+            <thead>
+                <tr>
+                    <th>Price (USDT)</th>
+                    <th>Quantity (BTC)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
 
     <script>
         const symbol = "BTCUSDT";
         let orderBook = { bids: [], asks: [] }; // Order book data
-        let orderBookChart;
 
         // Function to fetch the order book data from Binance API
         async function fetchOrderBook() {
@@ -44,7 +84,7 @@
             processOrderBookData(data);
         }
 
-        // Function to process order book data and ensure ±10% price range
+        // Function to process order book data and filter within ±10% of the mid-price
         function processOrderBookData(data) {
             const midPrice = (parseFloat(data.bids[0][0]) + parseFloat(data.asks[0][0])) / 2;
             const priceRange = {
@@ -52,12 +92,13 @@
                 max: midPrice * 1.1  // 10% above the mid price
             };
 
-            // Filter bids and asks within the ±10% price range
+            // Filter bids within the ±10% price range
             const filteredBids = data.bids
                 .map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }))
                 .filter(order => order.price >= priceRange.min)
                 .sort((a, b) => b.price - a.price); // Sort bids by price (descending)
 
+            // Filter asks within the ±10% price range
             const filteredAsks = data.asks
                 .map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }))
                 .filter(order => order.price <= priceRange.max)
@@ -66,91 +107,35 @@
             orderBook.bids = filteredBids;
             orderBook.asks = filteredAsks;
 
-            updateChart();
+            updateOrderBookTables();
         }
 
-        // Initialize the chart
-        function initializeChart() {
-            const ctx = document.getElementById("orderBookChart").getContext("2d");
+        // Function to update the table with the filtered order book data
+        function updateOrderBookTables() {
+            const bidsTableBody = document.getElementById('bidsTable').getElementsByTagName('tbody')[0];
+            const asksTableBody = document.getElementById('asksTable').getElementsByTagName('tbody')[0];
 
-            orderBookChart = new Chart(ctx, {
-                type: "bar",
-                data: {
-                    labels: [], // Will be updated dynamically
-                    datasets: [
-                        {
-                            label: "Bids",
-                            data: [],
-                            backgroundColor: "rgba(76, 175, 80, 0.7)", // Green
-                        },
-                        {
-                            label: "Asks",
-                            data: [],
-                            backgroundColor: "rgba(244, 67, 54, 0.7)", // Red
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: {
-                            title: { display: true, text: "Price Levels (USDT)" },
-                            beginAtZero: false,
-                            type: 'linear',
-                            position: 'bottom',
-                            ticks: {
-                                autoSkip: true,
-                                maxRotation: 0,
-                                minRotation: 0,
-                                callback: function(value, index, values) {
-                                    return `$${value.toFixed(2)}`; // Format the price labels
-                                }
-                            },
-                        },
-                        y: {
-                            title: { display: true, text: "Volume (BTC)" }
-                        }
-                    },
-                    plugins: {
-                        zoom: {
-                            pan: {
-                                enabled: true,
-                                mode: 'x', // Enable panning on x-axis (price axis)
-                                speed: 10,
-                                threshold: 10
-                            },
-                            zoom: {
-                                enabled: true,
-                                mode: 'x', // Enable zooming on x-axis (price axis)
-                                speed: 0.1,
-                                threshold: 1
-                            }
-                        }
-                    }
-                }
+            // Clear the tables
+            bidsTableBody.innerHTML = '';
+            asksTableBody.innerHTML = '';
+
+            // Populate the bids table
+            orderBook.bids.forEach(order => {
+                const row = bidsTableBody.insertRow();
+                row.insertCell(0).textContent = order.price.toFixed(2);
+                row.insertCell(1).textContent = order.quantity.toFixed(6);
             });
-        }
 
-        // Update the chart with new order book data
-        function updateChart() {
-            const bidLabels = orderBook.bids.map(order => order.price);
-            const askLabels = orderBook.asks.map(order => order.price);
-
-            const bidVolumes = orderBook.bids.map(order => order.quantity * order.price); // Volume = quantity * price
-            const askVolumes = orderBook.asks.map(order => order.quantity * order.price); // Volume = quantity * price
-
-            orderBookChart.data.labels = [...bidLabels, ...askLabels];
-            orderBookChart.data.datasets[0].data = bidVolumes;
-            orderBookChart.data.datasets[1].data = askVolumes;
-
-            orderBookChart.update();
+            // Populate the asks table
+            orderBook.asks.forEach(order => {
+                const row = asksTableBody.insertRow();
+                row.insertCell(0).textContent = order.price.toFixed(2);
+                row.insertCell(1).textContent = order.quantity.toFixed(6);
+            });
         }
 
         // Fetch the initial order book data
         fetchOrderBook();
-
-        // Initialize the chart
-        initializeChart();
     </script>
 </body>
 </html>
