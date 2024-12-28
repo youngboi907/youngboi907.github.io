@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BTC Order Book (Non-Cumulative)</title>
+  <title>BTC Non-Cumulative Order Book Depth</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -56,11 +56,18 @@
       font-size: 14px;
       margin-top: 10px;
     }
+    .order-item {
+      margin-bottom: 10px;
+    }
+    .order-item span {
+      display: block;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
 
-<h1>BTC Order Book (Non-Cumulative)</h1>
+<h1>BTC Non-Cumulative Order Book Depth</h1>
 
 <div>
   <label for="percentage">Price Range Percentage: </label>
@@ -133,16 +140,26 @@
     if (currentPrice && orderBook) {
       const { filteredBids, filteredAsks, priceRangeLow, priceRangeHigh } = filterOrderBookByRange(orderBook, currentPrice, percentage);
 
-      // Display filtered bids
+      // Display filtered bids (non-cumulative order depth)
       const bidsList = document.getElementById('bids-list');
       bidsList.innerHTML = filteredBids.map(([price, quantity]) => {
-        return `<div>Price: $${parseFloat(price).toFixed(2)} | Quantity: ${quantity}</div>`;
+        return `
+          <div class="order-item">
+            <span>Price: $${parseFloat(price).toFixed(2)}</span>
+            <span>Quantity: ${quantity}</span>
+          </div>
+        `;
       }).join('');
 
-      // Display filtered asks
+      // Display filtered asks (non-cumulative order depth)
       const asksList = document.getElementById('asks-list');
       asksList.innerHTML = filteredAsks.map(([price, quantity]) => {
-        return `<div>Price: $${parseFloat(price).toFixed(2)} | Quantity: ${quantity}</div>`;
+        return `
+          <div class="order-item">
+            <span>Price: $${parseFloat(price).toFixed(2)}</span>
+            <span>Quantity: ${quantity}</span>
+          </div>
+        `;
       }).join('');
 
       // Display the price range used
