@@ -18,7 +18,7 @@
             justify-content: flex-start;
             min-height: 100vh;
         }
-        h1, h2, label {
+        h1, h2, label, select {
             margin: 10px 0;
         }
         canvas {
@@ -34,6 +34,24 @@
 <body>
     <h1>BTC/USDT Dashboard</h1>
 
+    <!-- Combined Timeframe Selector -->
+    <h2>Select Timeframe for BTC/USDT and Open Interest</h2>
+    <label for="combinedTimeframe">Timeframe:</label>
+    <select id="combinedTimeframe">
+        <option value="1m">1 Minute</option>
+        <option value="5m">5 Minutes</option>
+        <option value="15m">15 Minutes</option>
+        <option value="1h">1 Hour</option>
+        <option value="4h">4 Hours</option>
+        <option value="1d">1 Day</option>
+    </select>
+
+    <!-- Combined BTC/USDT and Open Interest Chart -->
+    <h2>BTC/USDT and Open Interest Chart</h2>
+    <div class="chart-container">
+        <canvas id="combinedChart"></canvas>
+    </div>
+
     <!-- Order Book Section -->
     <h2>Filtered BTC/USDT Order Book</h2>
     <label for="minQty">Minimum Quantity (BTC):</label>
@@ -42,52 +60,100 @@
         <canvas id="orderBookChart"></canvas>
     </div>
 
-    <!-- Open Interest Section -->
-    <h2>BTC/USDT Open Interest</h2>
-    <div class="chart-container">
-        <canvas id="openInterestChart"></canvas>
-    </div>
-
-    <!-- BTC/USDT Price Section -->
-    <h2>BTC/USDT Price Chart</h2>
-    <div class="chart-container">
-        <canvas id="priceChart"></canvas>
-    </div>
-
     <script>
         const symbol = "BTCUSDT";
         let minQty = 0.001;
-        let orderBook = { bids: [], asks: [] };
-        let orderBookChart, priceChart;
+        let combinedChart, orderBookChart;
 
-        // WebSocket connection for order book
+        // --- COMBINED BTC/USDT AND OPEN INTEREST CHART ---
+        async function fetchChartData(timeframe) {
+            try {
+                // Fetch BTC/USDT price data
+                const priceResponse = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=50`);
+                const priceData = await priceResponse.json();
+
+                // Fetch Open Interest data
+                const oiResponse = await fetch(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=${timeframe}&limit=50`);
+                const oiData = await oiResponse.json();
+
+                return priceData.map((entry, index) => ({
+                    time: new Date(entry[0]).toLocaleTimeString(),
+                    price: parseFloat(entry[4]), // Closing price
+                    openInterest: oiData[index] ? parseFloat(oiData[index].sumOpenInterest) : 0
+                }));
+            } catch (error) {
+                console.error("Error fetching chart data:", error);
+                return [];
+            }
+        }
+
+        async function renderCombinedChart(timeframe) {
+            const data = await fetchChartData(timeframe);
+
+            if (!data.length) {
+                alert("No data available!");
+                return;
+            }
+
+            const labels = data.map(entry => entry.time);
+            const prices = data.map(entry => entry.price);
+            const openInterest = data.map(entry => entry.openInterest);
+
+            const ctx = document.getElementById("combinedChart").getContext("2d");
+            if (combinedChart) combinedChart.destroy();
+
+            combinedChart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: `BTC/USDT Price (${timeframe})`,
+                            data: prices,
+                            borderColor: "rgba(255, 206, 86, 1)",
+                            backgroundColor: "rgba(255, 206, 86, 0.2)",
+                            borderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: `Open Interest (${timeframe})`,
+                            data: openInterest,
+                            borderColor: "rgba(75, 192, 192, 1)",
+                            backgroundColor: "rgba(75, 192, 192, 0.2)",
+                            borderWidth: 2,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Time" } },
+                        y: {
+                            title: { display: true, text: "Price (USDT)" },
+                            position: 'left',
+                            grid: { color: 'rgba(255, 206, 86, 0.2)' }
+                        },
+                        y1: {
+                            title: { display: true, text: "Open Interest" },
+                            position: 'right',
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- ORDER BOOK CHART ---
+        const orderBook = { bids: [], asks: [] };
         const wsOrderBook = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
+
         wsOrderBook.onmessage = (event) => {
             const data = JSON.parse(event.data);
             updateOrderBook(data.b, data.a);
             updateOrderBookChart();
         };
 
-        // WebSocket connection for price chart
-        const wsPrice = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@trade`);
-        let priceData = { timestamps: [], prices: [] };
-        wsPrice.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            const timestamp = new Date(data.T).toLocaleTimeString();
-            const price = parseFloat(data.p);
-
-            // Update price data
-            if (priceData.timestamps.length > 50) {
-                priceData.timestamps.shift();
-                priceData.prices.shift();
-            }
-            priceData.timestamps.push(timestamp);
-            priceData.prices.push(price);
-
-            updatePriceChart();
-        };
-
-        // Order book functions
         function updateOrderBook(bids, asks) {
             bids.forEach(([price, quantity]) => {
                 const priceNum = parseFloat(price);
@@ -121,8 +187,20 @@
             const ctx = document.getElementById("orderBookChart").getContext("2d");
             orderBookChart = new Chart(ctx, {
                 type: "bar",
-                data: { labels: [], datasets: [{ label: "Bids", data: [], backgroundColor: "rgba(76, 175, 80, 0.7)" }, { label: "Asks", data: [], backgroundColor: "rgba(244, 67, 54, 0.7)" }] },
-                options: { responsive: true, scales: { x: { title: { display: true, text: "Price Levels (USDT)" } }, y: { title: { display: true, text: "Quantity (BTC)" } } } }
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: "Bids", data: [], backgroundColor: "rgba(76, 175, 80, 0.7)" },
+                        { label: "Asks", data: [], backgroundColor: "rgba(244, 67, 54, 0.7)" }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Price Levels (USDT)" } },
+                        y: { title: { display: true, text: "Quantity (BTC)" } }
+                    }
+                }
             });
         }
 
@@ -139,65 +217,20 @@
             orderBookChart.update();
         }
 
+        // --- EVENT LISTENERS ---
+        document.getElementById("combinedTimeframe").addEventListener("change", (event) => {
+            const timeframe = event.target.value;
+            renderCombinedChart(timeframe);
+        });
+
         document.getElementById("minQty").addEventListener("input", (event) => {
             minQty = parseFloat(event.target.value);
-            orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
-            orderBook.asks = orderBook.asks.filter(order => order.quantity >= minQty);
             updateOrderBookChart();
         });
 
+        // --- INITIALIZATION ---
         initializeOrderBookChart();
-
-        // Open Interest Functions
-        async function fetchOpenInterest(symbol) {
-            try {
-                const response = await fetch(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=5m&limit=50`);
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                console.error("Error fetching open interest data:", error);
-                return [];
-            }
-        }
-
-        async function renderOpenInterestChart() {
-            const data = await fetchOpenInterest(symbol);
-
-            if (!data.length) {
-                alert("No open interest data available!");
-                return;
-            }
-
-            const labels = data.map(entry => new Date(entry.timestamp).toLocaleTimeString());
-            const openInterest = data.map(entry => entry.sumOpenInterest);
-
-            const ctx = document.getElementById("openInterestChart").getContext("2d");
-            new Chart(ctx, {
-                type: "line",
-                data: { labels, datasets: [{ label: `Open Interest (${symbol})`, data: openInterest, borderColor: "rgba(75, 192, 192, 1)", backgroundColor: "rgba(75, 192, 192, 0.2)", borderWidth: 2 }] },
-                options: { responsive: true, scales: { x: { title: { display: true, text: "Time" } }, y: { title: { display: true, text: "Open Interest" } } } }
-            });
-        }
-
-        renderOpenInterestChart();
-
-        // Price Chart Functions
-        function initializePriceChart() {
-            const ctx = document.getElementById("priceChart").getContext("2d");
-            priceChart = new Chart(ctx, {
-                type: "line",
-                data: { labels: [], datasets: [{ label: "BTC/USDT Price", data: [], borderColor: "rgba(255, 206, 86, 1)", backgroundColor: "rgba(255, 206, 86, 0.2)", borderWidth: 2 }] },
-                options: { responsive: true, scales: { x: { title: { display: true, text: "Time" } }, y: { title: { display: true, text: "Price (USDT)" } } } }
-            });
-        }
-
-        function updatePriceChart() {
-            priceChart.data.labels = priceData.timestamps;
-            priceChart.data.datasets[0].data = priceData.prices;
-            priceChart.update();
-        }
-
-        initializePriceChart();
+        renderCombinedChart("1m"); // Default timeframe
     </script>
 </body>
 </html>
