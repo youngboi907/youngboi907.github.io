@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Filtered BTC/USDT Order Book</title>
+    <title>BTC/USDT Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -18,7 +18,7 @@
             justify-content: flex-start;
             min-height: 100vh;
         }
-        h1, label {
+        h1, label, select {
             margin: 10px 0;
         }
         canvas {
@@ -28,65 +28,72 @@
     </style>
 </head>
 <body>
-    <h1>Filtered BTC/USDT Order Book</h1>
+    <h1>BTC/USDT Dashboard</h1>
+
+    <!-- Timeframe Selector -->
+    <label for="timeframe">Select Timeframe:</label>
+    <select id="timeframe">
+        <option value="1m">1 Minute</option>
+        <option value="5m">5 Minutes</option>
+        <option value="15m">15 Minutes</option>
+        <option value="1h">1 Hour</option>
+        <option value="4h">4 Hours</option>
+        <option value="1d">1 Day</option>
+    </select>
+
+    <!-- Combined BTC/USDT and Open Interest Chart -->
+    <h2>BTC/USDT and Open Interest</h2>
+    <canvas id="combinedChart"></canvas>
+
+    <!-- Order Book Filter -->
+    <h2>Filtered Order Book</h2>
     <label for="minQty">Minimum Quantity (BTC):</label>
-    <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
+    <input type="number" id="minQty" value="50" step="1" min="1">
+
     <canvas id="orderBookChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
-        let minQty = 0.001; // Default minimum quantity filter
+        let minQty = 50; // Default minimum quantity filter set to 50
         let orderBook = { bids: [], asks: [] }; // Order book data
-        let orderBookChart;
+        let combinedChart, orderBookChart;
 
-        // Connect to Binance WebSocket for real-time depth updates
-        const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
+        // WebSocket for Order Book
+        const wsOrderBook = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
 
-        ws.onmessage = (event) => {
+        wsOrderBook.onmessage = (event) => {
             const data = JSON.parse(event.data);
-
-            // Update the order book with the new data
             updateOrderBook(data.b, data.a);
-
-            // Update the chart
-            updateChart();
+            updateOrderBookChart();
         };
 
-        // Function to update the order book
+        // Function to update the Order Book data
         function updateOrderBook(bids, asks) {
-            // Process bids
+            // Process Bids
             bids.forEach(([price, quantity]) => {
                 const priceNum = parseFloat(price);
                 const quantityNum = parseFloat(quantity);
-
-                if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) {
-                    // Ignore bids that don't match the criteria
-                    return;
-                }
-
-                const existing = orderBook.bids.find(order => order.price === priceNum);
-                if (existing) {
-                    existing.quantity = quantityNum;
-                } else {
-                    orderBook.bids.push({ price: priceNum, quantity: quantityNum });
+                if (quantityNum >= minQty) { // Only include bids that meet the minQty
+                    const existing = orderBook.bids.find(order => order.price === priceNum);
+                    if (existing) {
+                        existing.quantity = quantityNum;
+                    } else {
+                        orderBook.bids.push({ price: priceNum, quantity: quantityNum });
+                    }
                 }
             });
 
-            // Process asks
+            // Process Asks
             asks.forEach(([price, quantity]) => {
                 const priceNum = parseFloat(price);
                 const quantityNum = parseFloat(quantity);
-
-                if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) {
-                    // Ignore asks that don't match the criteria
-                    return;
-                }
-
-                const existing = orderBook.asks.find(order => order.price === priceNum);
-                if (existing) {
-                    existing.quantity = quantityNum;
-                } else {
-                    orderBook.asks.push({ price: priceNum, quantity: quantityNum });
+                if (quantityNum >= minQty) { // Only include asks that meet the minQty
+                    const existing = orderBook.asks.find(order => order.price === priceNum);
+                    if (existing) {
+                        existing.quantity = quantityNum;
+                    } else {
+                        orderBook.asks.push({ price: priceNum, quantity: quantityNum });
+                    }
                 }
             });
 
@@ -95,14 +102,13 @@
             orderBook.asks.sort((a, b) => a.price - b.price);
         }
 
-        // Initialize the chart
-        function initializeChart() {
+        // Initialize the Order Book Chart
+        function initializeOrderBookChart() {
             const ctx = document.getElementById("orderBookChart").getContext("2d");
-
             orderBookChart = new Chart(ctx, {
                 type: "bar",
                 data: {
-                    labels: [], // Will be updated dynamically
+                    labels: [], // Will be populated dynamically with actual price levels
                     datasets: [
                         {
                             label: "Bids",
@@ -120,7 +126,12 @@
                     responsive: true,
                     scales: {
                         x: {
-                            title: { display: true, text: "Price Levels (USDT)" }
+                            title: { display: true, text: "Price Levels (USDT)" },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(2); // Format price to 2 decimal places
+                                }
+                            }
                         },
                         y: {
                             title: { display: true, text: "Quantity (BTC)" }
@@ -130,35 +141,135 @@
             });
         }
 
-        // Update the chart
-        function updateChart() {
-            const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
-            const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
+        // Update the Order Book Chart
+        function updateOrderBookChart() {
+            // Combine bids and asks, and sort them from lower to higher price
+            const allOrders = [...orderBook.bids, ...orderBook.asks];
+            allOrders.sort((a, b) => a.price - b.price); // Sort by price from low to high
 
-            const bidQuantities = orderBook.bids.map(order => order.quantity);
-            const askQuantities = orderBook.asks.map(order => order.quantity);
+            // Labels: actual price levels from low to high
+            const labels = allOrders.map(order => order.price.toFixed(2)); 
 
-            orderBookChart.data.labels = [...bidLabels, ...askLabels];
-            orderBookChart.data.datasets[0].data = bidQuantities;
-            orderBookChart.data.datasets[1].data = askQuantities;
+            // Quantities for Bids and Asks
+            const bidQuantities = [];
+            const askQuantities = [];
+            allOrders.forEach(order => {
+                if (orderBook.bids.includes(order)) {
+                    bidQuantities.push(order.quantity);
+                    askQuantities.push(0); // No ask at this price level
+                } else {
+                    askQuantities.push(order.quantity);
+                    bidQuantities.push(0); // No bid at this price level
+                }
+            });
+
+            // Set the X-axis labels to actual price levels
+            orderBookChart.data.labels = labels;
+            orderBookChart.data.datasets[0].data = bidQuantities; // Bids
+            orderBookChart.data.datasets[1].data = askQuantities; // Asks
 
             orderBookChart.update();
         }
 
-        // Event listener for the minimum quantity input
-        document.getElementById("minQty").addEventListener("input", (event) => {
-            minQty = parseFloat(event.target.value);
+        // --- Combined BTC/USDT and Open Interest Chart ---
+        async function fetchCombinedChartData(timeframe) {
+            try {
+                const priceDataResponse = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=50`);
+                const priceData = await priceDataResponse.json();
 
-            // Re-filter and update the order book with the new minimum quantity
-            orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
-            orderBook.asks = orderBook.asks.filter(order => order.quantity >= minQty);
+                const openInterestDataResponse = await fetch(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=${timeframe}&limit=50`);
+                const openInterestData = await openInterestDataResponse.json();
 
-            // Update the chart
-            updateChart();
+                return priceData.map((entry, index) => ({
+                    time: new Date(entry[0]).toLocaleTimeString(),
+                    price: parseFloat(entry[4]),
+                    openInterest: openInterestData[index] ? parseFloat(openInterestData[index].sumOpenInterest) : 0
+                }));
+            } catch (error) {
+                console.error("Error fetching combined chart data:", error);
+                return [];
+            }
+        }
+
+        async function renderCombinedChart(timeframe) {
+            const data = await fetchCombinedChartData(timeframe);
+
+            if (!data.length) {
+                alert("No data available!");
+                return;
+            }
+
+            const labels = data.map(entry => entry.time);
+            const prices = data.map(entry => entry.price);
+            const openInterest = data.map(entry => entry.openInterest);
+
+            const ctx = document.getElementById("combinedChart").getContext("2d");
+            if (combinedChart) combinedChart.destroy();
+
+            combinedChart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: "BTC/USDT Price",
+                            data: prices,
+                            borderColor: "rgba(255, 206, 86, 1)",
+                            backgroundColor: "rgba(255, 206, 86, 0.2)",
+                            borderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: "Open Interest",
+                            data: openInterest,
+                            borderColor: "rgba(75, 192, 192, 1)",
+                            backgroundColor: "rgba(75, 192, 192, 0.2)",
+                            borderWidth: 2,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Time" } },
+                        y: {
+                            title: { display: true, text: "Price (USDT)" },
+                            position: 'left',
+                            grid: { color: 'rgba(255, 206, 86, 0.2)' }
+                        },
+                        y1: {
+                            title: { display: true, text: "Open Interest" },
+                            position: 'right',
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Event Listeners ---
+        document.getElementById("timeframe").addEventListener("change", (event) => {
+            const timeframe = event.target.value;
+            renderCombinedChart(timeframe);
         });
 
-        // Initialize the chart
-        initializeChart();
+        document.getElementById("minQty").addEventListener("input", (event) => {
+            minQty = parseFloat(event.target.value);
+            orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
+            orderBook.asks = orderBook.asks.filter(order => order.quantity >= minQty);
+            updateOrderBookChart(); // Refresh the order book chart with the new filter
+        });
+
+        // Initialize charts
+        initializeOrderBookChart();
+        renderCombinedChart("1m");
+
+        // Auto-refresh the data every 30 seconds (30000 ms)
+        setInterval(() => {
+            wsOrderBook.send(JSON.stringify({ method: "ping" }));
+            renderCombinedChart(document.getElementById("timeframe").value); // Re-render the combined chart
+        }, 30000); // Refresh interval
     </script>
 </body>
 </html>
