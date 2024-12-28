@@ -10,11 +10,11 @@
     <h2>Order Book Data</h2>
     <p>Best Bid: <span id="best-bid"></span></p>
     <p>Best Ask: <span id="best-ask"></span></p>
-    <p>Bid/Ask Ratio (Top 10% Depth): <span id="bid-ask-ratio"></span></p>
+    <p>Bid/Ask Ratio (Top 5% Depth): <span id="bid-ask-ratio"></span></p>
   </div>
 
   <div id="charts">
-    <h2>Order Book Depth Chart (1-10%)</h2>
+    <h2>Order Book Depth Chart (Top 5%)</h2>
     <canvas id="depth-chart"></canvas>
   </div>
 
@@ -22,11 +22,37 @@
     const wsUrl = 'wss://stream.binance.com:9443/ws/btcusdt@depth@100ms'; 
     let ws = new WebSocket(wsUrl);
     let chart;
+    let bidDepth5 = 0;
+    let askDepth5 = 0; 
 
-    function updateChart(bidDepths, askDepths) {
+    function calculateDepth(bids, asks, midPrice) {
+      const depthPercentage = 0.05; // 5% 
+      let bidDepth = 0;
+      let askDepth = 0;
+
+      for (let i = 0; i < bids.length; i++) {
+        if (bids[i][0] >= midPrice * (1 - depthPercentage)) {
+          bidDepth += bids[i][1];
+        } else {
+          break; 
+        }
+      }
+
+      for (let i = 0; i < asks.length; i++) {
+        if (asks[i][0] <= midPrice * (1 + depthPercentage)) {
+          askDepth += asks[i][1];
+        } else {
+          break; 
+        }
+      }
+
+      return { bidDepth, askDepth };
+    }
+
+    function updateChart(bidDepth, askDepth) {
       if (chart) {
-        chart.data.datasets[0].data = bidDepths;
-        chart.data.datasets[1].data = askDepths;
+        chart.data.datasets[0].data = [bidDepth]; 
+        chart.data.datasets[1].data = [askDepth]; 
         chart.update();
       }
     }
@@ -48,37 +74,13 @@
       // Calculate mid price
       const midPrice = (bestBid + bestAsk) / 2;
 
-      const depthPercentages = Array.from({length: 10}, (_, i) => (i + 1) / 100);
-      const bidDepths = [];
-      const askDepths = [];
+      // Calculate top 5% depth
+      const { bidDepth: newBidDepth, askDepth: newAskDepth } = calculateDepth(bids, asks, midPrice);
+      bidDepth5 = newBidDepth;
+      askDepth5 = newAskDepth;
 
-      for (const percentage of depthPercentages) {
-        const depthLevel = midPrice * percentage;
-        let bidDepth = 0;
-        let askDepth = 0;
-
-        for (let i = 0; i < bids.length; i++) {
-          if (bids[i][0] >= bestBid - depthLevel) {
-            bidDepth += bids[i][1];
-          } else {
-            break;
-          }
-        }
-
-        for (let i = 0; i < asks.length; i++) {
-          if (asks[i][0] <= bestAsk + depthLevel) {
-            askDepth += asks[i][1];
-          } else {
-            break;
-          }
-        }
-
-        bidDepths.push(bidDepth);
-        askDepths.push(askDepth);
-      }
-
-      // Calculate Bid/Ask Ratio (using top 10% depth)
-      const bidAskRatio = bidDepths[9] / askDepths[9]; 
+      // Calculate Bid/Ask Ratio 
+      const bidAskRatio = bidDepth5 / askDepth5; 
 
       // Update UI
       document.getElementById('best-bid').textContent = bestBid;
@@ -86,7 +88,7 @@
       document.getElementById('bid-ask-ratio').textContent = bidAskRatio.toFixed(2);
 
       // Update chart
-      updateChart(bidDepths, askDepths); 
+      updateChart(bidDepth5, askDepth5); 
     };
 
     ws.onclose = function() {
@@ -97,37 +99,21 @@
     // Create Chart.js chart
     const ctx = document.getElementById('depth-chart').getContext('2d');
     chart = new Chart(ctx, {
-      type: 'line',
+      type: 'bar',
       data: {
-        labels: depthPercentages.map(p => p * 100 + "%"), 
+        labels: ['Bid Depth (Top 5%)', 'Ask Depth (Top 5%)'],
         datasets: [
           {
-            label: 'Bid Depth',
-            data: [], // Initial data will be updated by WebSocket
-            borderColor: 'green',
-            fill: false,
-          },
-          {
-            label: 'Ask Depth',
-            data: [], // Initial data will be updated by WebSocket
-            borderColor: 'red',
-            fill: false,
+            label: 'Depth',
+            data: [], 
+            backgroundColor: ['green', 'red'],
           }
         ]
       },
       options: {
         scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Percentage from Mid Price'
-            }
-          },
           y: {
-            title: {
-              display: true,
-              text: 'Order Book Depth'
-            }
+            beginAtZero: true
           }
         }
       }
