@@ -19,109 +19,120 @@
   </div>
 
   <script>
-    async function fetchOrderBook() {
-      try {
-        const response = await fetch('https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=100');
-        const data = await response.json();
+    const wsUrl = 'wss://stream.binance.com:9443/ws/btcusdt@depth@100ms'; 
+    let ws = new WebSocket(wsUrl);
+    let chart;
 
-        const bids = data.bids.map(item => parseFloat(item[0]));
-        const bidVolumes = data.bids.map(item => parseFloat(item[1]));
-        const asks = data.asks.map(item => parseFloat(item[0]));
-        const askVolumes = data.asks.map(item => parseFloat(item[1]));
-
-        const bestBid = bids[0];
-        const bestAsk = asks[0];
-
-        // Calculate mid price
-        const midPrice = (bestBid + bestAsk) / 2;
-
-        // Calculate order book depth at 1% to 10% of mid price
-        const depthPercentages = Array.from({length: 10}, (_, i) => (i + 1) / 100);
-        const bidDepths = [];
-        const askDepths = [];
-
-        for (const percentage of depthPercentages) {
-          const depthLevel = midPrice * percentage;
-          let bidDepth = 0;
-          let askDepth = 0;
-
-          for (let i = 0; i < bids.length; i++) {
-            if (bids[i][0] >= bestBid - depthLevel) {
-              bidDepth += bids[i][1];
-            } else {
-              break; // No need to iterate further for bids
-            }
-          }
-
-          for (let i = 0; i < asks.length; i++) {
-            if (asks[i][0] <= bestAsk + depthLevel) {
-              askDepth += asks[i][1];
-            } else {
-              break; // No need to iterate further for asks
-            }
-          }
-
-          bidDepths.push(bidDepth);
-          askDepths.push(askDepth);
-        }
-
-        // Calculate Bid/Ask Ratio (using top 10% depth)
-        const bidAskRatio = bidDepths[9] / askDepths[9]; 
-
-        // Update UI with data
-        document.getElementById('best-bid').textContent = bestBid;
-        document.getElementById('best-ask').textContent = bestAsk;
-        document.getElementById('bid-ask-ratio').textContent = bidAskRatio.toFixed(2);
-
-        // Create Chart.js chart
-        const ctx = document.getElementById('depth-chart').getContext('2d');
-        new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: depthPercentages.map(p => p * 100 + "%"), 
-            datasets: [
-              {
-                label: 'Bid Depth',
-                data: bidDepths,
-                borderColor: 'green',
-                fill: false,
-              },
-              {
-                label: 'Ask Depth',
-                data: askDepths,
-                borderColor: 'red',
-                fill: false,
-              }
-            ]
-          },
-          options: {
-            scales: {
-              x: {
-                title: {
-                  display: true,
-                  text: 'Percentage from Mid Price'
-                }
-              },
-              y: {
-                title: {
-                  display: true,
-                  text: 'Order Book Depth'
-                }
-              }
-            }
-          }
-        });
-
-      } catch (error) {
-        console.error("Error fetching order book:", error);
-        // Handle error gracefully (e.g., display error message to user)
-        document.getElementById('best-bid').textContent = "N/A";
-        document.getElementById('best-ask').textContent = "N/A";
-        document.getElementById('bid-ask-ratio').textContent = "N/A";
+    function updateChart(bidDepths, askDepths) {
+      if (chart) {
+        chart.data.datasets[0].data = bidDepths;
+        chart.data.datasets[1].data = askDepths;
+        chart.update();
       }
     }
 
-    fetchOrderBook(); 
+    ws.onopen = function() {
+      console.log('WebSocket connection opened.');
+    };
+
+    ws.onmessage = function(event) {
+      const data = JSON.parse(event.data);
+      const bids = data.b.map(item => parseFloat(item[0]));
+      const bidVolumes = data.b.map(item => parseFloat(item[1]));
+      const asks = data.a.map(item => parseFloat(item[0]));
+      const askVolumes = data.a.map(item => parseFloat(item[1]));
+
+      const bestBid = bids[0];
+      const bestAsk = asks[0];
+
+      // Calculate mid price
+      const midPrice = (bestBid + bestAsk) / 2;
+
+      const depthPercentages = Array.from({length: 10}, (_, i) => (i + 1) / 100);
+      const bidDepths = [];
+      const askDepths = [];
+
+      for (const percentage of depthPercentages) {
+        const depthLevel = midPrice * percentage;
+        let bidDepth = 0;
+        let askDepth = 0;
+
+        for (let i = 0; i < bids.length; i++) {
+          if (bids[i][0] >= bestBid - depthLevel) {
+            bidDepth += bids[i][1];
+          } else {
+            break;
+          }
+        }
+
+        for (let i = 0; i < asks.length; i++) {
+          if (asks[i][0] <= bestAsk + depthLevel) {
+            askDepth += asks[i][1];
+          } else {
+            break;
+          }
+        }
+
+        bidDepths.push(bidDepth);
+        askDepths.push(askDepth);
+      }
+
+      // Calculate Bid/Ask Ratio (using top 10% depth)
+      const bidAskRatio = bidDepths[9] / askDepths[9]; 
+
+      // Update UI
+      document.getElementById('best-bid').textContent = bestBid;
+      document.getElementById('best-ask').textContent = bestAsk;
+      document.getElementById('bid-ask-ratio').textContent = bidAskRatio.toFixed(2);
+
+      // Update chart
+      updateChart(bidDepths, askDepths); 
+    };
+
+    ws.onclose = function() {
+      console.log('WebSocket connection closed.');
+      // Attempt to reconnect (optional)
+    };
+
+    // Create Chart.js chart
+    const ctx = document.getElementById('depth-chart').getContext('2d');
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: depthPercentages.map(p => p * 100 + "%"), 
+        datasets: [
+          {
+            label: 'Bid Depth',
+            data: [], // Initial data will be updated by WebSocket
+            borderColor: 'green',
+            fill: false,
+          },
+          {
+            label: 'Ask Depth',
+            data: [], // Initial data will be updated by WebSocket
+            borderColor: 'red',
+            fill: false,
+          }
+        ]
+      },
+      options: {
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Percentage from Mid Price'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Order Book Depth'
+            }
+          }
+        }
+      }
+    });
+
   </script>
 </body>
 </html>
