@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top N Bids and Asks - BTC/USDT Order Book</title>
+    <title>Top N Orders in BTC/USDT Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -28,7 +28,7 @@
     </style>
 </head>
 <body>
-    <h1>Top N Bids and Asks with Duration</h1>
+    <h1>Top N Orders in BTC/USDT Order Book</h1>
     <label for="topNSelector">Select Top N:</label>
     <select id="topNSelector">
         <option value="5">Top 5</option>
@@ -36,14 +36,13 @@
         <option value="20">Top 20</option>
         <option value="30">Top 30</option>
     </select>
-    <canvas id="bidsAsksChart"></canvas>
+    <canvas id="orderBookChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
-        let topN = 10; // Default to Top 10
-        let orderBook = { bids: [], asks: [] }; // Complete order book
-        const orderDurations = {}; // Tracks the duration each order has been in the book
-        let bidsAsksChart;
+        let topN = 10; // Default to Top 10 orders
+        let orderBook = { bids: [], asks: [] }; // Order book data
+        let orderBookChart;
 
         // Connect to Binance WebSocket for real-time depth updates
         const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
@@ -51,7 +50,7 @@
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
 
-            // Update the order book
+            // Update the order book with the new data
             updateOrderBook(data.b, data.a);
 
             // Update the chart
@@ -60,17 +59,13 @@
 
         // Function to update the order book
         function updateOrderBook(bids, asks) {
-            const now = Date.now();
-
-            // Update bids
+            // Process bids
             bids.forEach(([price, quantity]) => {
                 const priceNum = parseFloat(price);
                 const quantityNum = parseFloat(quantity);
-                const key = `bid-${priceNum}`;
 
                 if (quantityNum === 0) {
                     // Remove the bid if quantity is 0
-                    delete orderDurations[key];
                     orderBook.bids = orderBook.bids.filter(order => order.price !== priceNum);
                 } else {
                     // Update or add the bid
@@ -79,20 +74,17 @@
                         existing.quantity = quantityNum;
                     } else {
                         orderBook.bids.push({ price: priceNum, quantity: quantityNum });
-                        orderDurations[key] = now; // Track when the bid was added
                     }
                 }
             });
 
-            // Update asks
+            // Process asks
             asks.forEach(([price, quantity]) => {
                 const priceNum = parseFloat(price);
                 const quantityNum = parseFloat(quantity);
-                const key = `ask-${priceNum}`;
 
                 if (quantityNum === 0) {
                     // Remove the ask if quantity is 0
-                    delete orderDurations[key];
                     orderBook.asks = orderBook.asks.filter(order => order.price !== priceNum);
                 } else {
                     // Update or add the ask
@@ -101,7 +93,6 @@
                         existing.quantity = quantityNum;
                     } else {
                         orderBook.asks.push({ price: priceNum, quantity: quantityNum });
-                        orderDurations[key] = now; // Track when the ask was added
                     }
                 }
             });
@@ -109,8 +100,76 @@
             // Sort bids (descending) and asks (ascending)
             orderBook.bids.sort((a, b) => b.price - a.price);
             orderBook.asks.sort((a, b) => a.price - b.price);
+
+            // Limit to top N entries
+            orderBook.bids = orderBook.bids.slice(0, topN);
+            orderBook.asks = orderBook.asks.slice(0, topN);
         }
 
         // Initialize the chart
         function initializeChart() {
-            const ctx = document.getElementById("bidsAsksChart
+            const ctx = document.getElementById("orderBookChart").getContext("2d");
+
+            orderBookChart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: [], // Will be updated dynamically
+                    datasets: [
+                        {
+                            label: "Bids",
+                            data: [],
+                            backgroundColor: "rgba(76, 175, 80, 0.7)", // Green
+                        },
+                        {
+                            label: "Asks",
+                            data: [],
+                            backgroundColor: "rgba(244, 67, 54, 0.7)", // Red
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: { display: true, text: "Price Levels (USDT)" }
+                        },
+                        y: {
+                            title: { display: true, text: "Quantity (BTC)" }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update the chart
+        function updateChart() {
+            const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
+            const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
+
+            const bidQuantities = orderBook.bids.map(order => order.quantity);
+            const askQuantities = orderBook.asks.map(order => order.quantity);
+
+            orderBookChart.data.labels = [...bidLabels, ...askLabels];
+            orderBookChart.data.datasets[0].data = bidQuantities;
+            orderBookChart.data.datasets[1].data = askQuantities;
+
+            orderBookChart.update();
+        }
+
+        // Event listener for the top N selector
+        document.getElementById("topNSelector").addEventListener("change", (event) => {
+            topN = parseInt(event.target.value, 10);
+
+            // Re-sort and limit the data to the selected top N
+            orderBook.bids = orderBook.bids.slice(0, topN);
+            orderBook.asks = orderBook.asks.slice(0, topN);
+
+            // Update the chart
+            updateChart();
+        });
+
+        // Initialize the chart
+        initializeChart();
+    </script>
+</body>
+</html>
