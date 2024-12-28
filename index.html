@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BTC/USDT Order Book Summary</title>
+  <title>Multi-Exchange BTC/USDT Order Book Summary</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -37,7 +37,7 @@
 </head>
 <body>
 
-<h1>BTC/USDT Order Book Summary</h1>
+<h1>Multi-Exchange BTC/USDT Order Book Summary</h1>
 
 <div class="box">
   <h2>Sum of Bids (0 - 1M USD)</h2>
@@ -55,12 +55,18 @@
 </div>
 
 <script>
-  const apiUrl = 'https://api.binance.com';
+  const exchangeApis = {
+    binance: 'https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=1000',
+    bybit: 'https://api.bybit.com/v2/public/orderBook/L2?symbol=BTCUSDT&limit=200',
+    bitstamp: 'https://www.bitstamp.net/api/v2/order_book/btcusdt/',
+    kraken: 'https://api.kraken.com/0/public/Depth?pair=XBTUSDT&count=1000',
+    kucoin: 'https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=BTC-USDT'
+  };
 
-  // Fetch order book data
-  async function fetchOrderBook() {
+  // Fetch order book data from multiple exchanges
+  async function fetchOrderBookFromExchange(url) {
     try {
-      const response = await fetch(`${apiUrl}/api/v3/depth?symbol=BTCUSDT&limit=1000`);
+      const response = await fetch(url);
       const data = await response.json();
       return data;
     } catch (error) {
@@ -69,47 +75,80 @@
     }
   }
 
-  // Calculate sum of bids and asks within the range of 0 to 1 million USD
+  // Calculate sum of bids and asks within the 0-1M USD range for each exchange
   function calculateSum(orderBook) {
     let bidSum = 0;
     let askSum = 0;
 
-    // Sum all bid values (price * quantity) within 0 to 1 million USD
-    orderBook.bids.forEach(([price, quantity]) => {
-      price = parseFloat(price);
-      quantity = parseFloat(quantity);
-      if (price >= 0 && price <= 1000000) {  // Consider bids from 0 USD to 1 million USD
-        bidSum += price * quantity;
-      }
-    });
-
-    // Sum all ask values (price * quantity) within 0 to 1 million USD
-    orderBook.asks.forEach(([price, quantity]) => {
-      price = parseFloat(price);
-      quantity = parseFloat(quantity);
-      if (price >= 0 && price <= 1000000) {  // Consider asks from 0 USD to 1 million USD
-        askSum += price * quantity;
-      }
-    });
+    // Depending on the exchange's response format, adjust the parsing here
+    if (orderBook.bids) {
+      orderBook.bids.forEach(([price, quantity]) => {
+        price = parseFloat(price);
+        quantity = parseFloat(quantity);
+        if (price >= 0 && price <= 1000000) {
+          bidSum += price * quantity;
+        }
+      });
+    } else if (orderBook.data) { // For Bybit
+      orderBook.data.forEach(order => {
+        const price = parseFloat(order.price);
+        const quantity = parseFloat(order.size);
+        if (price >= 0 && price <= 1000000) {
+          if (order.side === 'Buy') {
+            bidSum += price * quantity;
+          } else {
+            askSum += price * quantity;
+          }
+        }
+      });
+    } else if (orderBook.asks) { // For Kraken
+      orderBook.asks.forEach(([price, quantity]) => {
+        price = parseFloat(price);
+        quantity = parseFloat(quantity);
+        if (price >= 0 && price <= 1000000) {
+          askSum += price * quantity;
+        }
+      });
+    } else if (orderBook.asks) { // For Kucoin
+      orderBook.data.asks.forEach(order => {
+        const price = parseFloat(order.price);
+        const quantity = parseFloat(order.size);
+        if (price >= 0 && price <= 1000000) {
+          askSum += price * quantity;
+        }
+      });
+    }
 
     return { bidSum, askSum };
   }
 
   // Update the order book data in the UI and calculate ratio
   async function updateOrderBook() {
-    const orderBook = await fetchOrderBook();
+    let totalBidSum = 0;
+    let totalAskSum = 0;
 
-    if (orderBook) {
-      const { bidSum, askSum } = calculateSum(orderBook);
+    // Fetch data from all exchanges
+    const exchanges = Object.values(exchangeApis);
+    const promises = exchanges.map(apiUrl => fetchOrderBookFromExchange(apiUrl));
 
-      // Calculate the ratio percentage
-      const ratio = (bidSum / askSum) * 100;
+    const orderBooks = await Promise.all(promises);
 
-      // Update the UI with the calculated values
-      document.getElementById('bids-sum').textContent = bidSum.toFixed(2) + ' USD';
-      document.getElementById('asks-sum').textContent = askSum.toFixed(2) + ' USD';
-      document.getElementById('ratio').textContent = ratio.toFixed(2) + '%';
-    }
+    // Calculate total sums from all exchanges
+    orderBooks.forEach(orderBook => {
+      if (orderBook) {
+        const { bidSum, askSum } = calculateSum(orderBook);
+        totalBidSum += bidSum;
+        totalAskSum += askSum;
+      }
+    });
+
+    // Calculate the ratio percentage
+    const ratio = (totalBidSum / totalAskSum) * 100;
+
+    // Update the UI with the calculated values
+    document.getElementById('bids-sum').textContent = totalBidSum.toFixed(2) + ' USD';
+    document.getElementById('asks-sum').textContent = totalAskSum.toFixed(2) + ' USD';
+    document.getElementById('ratio').textContent = ratio.toFixed(2) + '%';
   }
 
   // Initialize and update every second
