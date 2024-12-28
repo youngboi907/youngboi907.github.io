@@ -160,8 +160,7 @@
                     animation: false, // Prevent flickering
                     scales: {
                         x: {
-                            title: { display: true, text: "Price Levels (USDT)" },
-                            ticks: { callback: value => `$${value}` },
+                            title: { display: true, text: "Time" },
                         },
                         y: {
                             title: { display: true, text: "Cumulative Volume (BTC)" },
@@ -220,8 +219,8 @@
                 depthChart.data.datasets[0].data = bidData;
                 depthChart.data.datasets[1].data = askData;
                 depthChart.data.datasets[2].data = deltaData;
-                depthChart.options.scales.x.title.text = "Price Levels (USDT)";
-                depthChart.options.scales.x.ticks.callback = value => `$${value}`;
+                depthChart.options.scales.x.title.text = "Time";
+                depthChart.options.scales.x.ticks.callback = null;
             }
 
             depthChart.update();
