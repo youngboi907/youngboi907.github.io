@@ -48,13 +48,13 @@
     <!-- Order Book Filter -->
     <h2>Filtered Order Book</h2>
     <label for="minQty">Minimum Quantity (BTC):</label>
-    <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
+    <input type="number" id="minQty" value="50" step="1" min="1">
 
     <canvas id="orderBookChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
-        let minQty = 0.001; // Default minimum quantity filter
+        let minQty = 50; // Default minimum quantity filter set to 50
         let orderBook = { bids: [], asks: [] }; // Order book data
         let combinedChart, orderBookChart;
 
@@ -125,8 +125,17 @@
                 options: {
                     responsive: true,
                     scales: {
-                        x: { title: { display: true, text: "Price Levels (USDT)" } },
-                        y: { title: { display: true, text: "Quantity (BTC)" } }
+                        x: {
+                            title: { display: true, text: "Price Levels (USDT)" },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(2); // Format price to 2 decimal places
+                                }
+                            }
+                        },
+                        y: {
+                            title: { display: true, text: "Quantity (BTC)" }
+                        }
                     }
                 }
             });
@@ -134,14 +143,18 @@
 
         // Update the Order Book Chart
         function updateOrderBookChart() {
-            const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
-            const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
+            const bidLabels = orderBook.bids.map(order => order.price.toFixed(2));
+            const askLabels = orderBook.asks.map(order => order.price.toFixed(2));
             const bidQuantities = orderBook.bids.map(order => order.quantity);
             const askQuantities = orderBook.asks.map(order => order.quantity);
 
-            orderBookChart.data.labels = [...bidLabels, ...askLabels];
-            orderBookChart.data.datasets[0].data = bidQuantities;
-            orderBookChart.data.datasets[1].data = askQuantities;
+            // Merge the bids and asks data for the chart
+            const allLabels = [...bidLabels, ...askLabels];
+            const allQuantities = [...bidQuantities, ...askQuantities];
+
+            orderBookChart.data.labels = allLabels;
+            orderBookChart.data.datasets[0].data = bidQuantities; // Bids
+            orderBookChart.data.datasets[1].data = askQuantities; // Asks
 
             orderBookChart.update();
         }
