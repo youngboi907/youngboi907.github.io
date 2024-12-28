@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Book Delta</title>
+    <title>Order Book Depth Analysis</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -28,12 +28,13 @@
     </style>
 </head>
 <body>
-    <h1>Order Book Delta (Top 10%)</h1>
+    <h1>Order Book Depth Analysis (Top 10%)</h1>
+    <canvas id="bidsAsksChart"></canvas>
     <canvas id="deltaChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
-        let deltaChart;
+        let bidsAsksChart, deltaChart;
         let interval = "1m";
         let limit = 60;
 
@@ -76,11 +77,23 @@
             }
         }
 
-        async function updateDeltaChart() {
+        async function updateCharts() {
             try {
                 const { bidsSum, asksSum } = await fetchOrderBookData();
                 const delta = bidsSum - asksSum;
                 const currentTime = new Date().toLocaleTimeString();
+
+                // Update Bids and Asks Chart
+                bidsAsksChart.data.labels.push(currentTime);
+                bidsAsksChart.data.datasets[0].data.push(bidsSum);
+                bidsAsksChart.data.datasets[1].data.push(asksSum);
+
+                if (bidsAsksChart.data.labels.length > limit) {
+                    bidsAsksChart.data.labels.shift();
+                    bidsAsksChart.data.datasets[0].data.shift();
+                    bidsAsksChart.data.datasets[1].data.shift();
+                }
+                bidsAsksChart.update();
 
                 // Update Delta Chart
                 deltaChart.data.labels.push(currentTime);
@@ -98,13 +111,46 @@
 
                 deltaChart.update();
             } catch (error) {
-                console.error("Error updating delta chart:", error);
+                console.error("Error updating charts:", error);
             }
         }
 
-        function initializeDeltaChart() {
+        function initializeCharts() {
+            const bidsAsksCtx = document.getElementById("bidsAsksChart").getContext("2d");
             const deltaCtx = document.getElementById("deltaChart").getContext("2d");
 
+            // Bids and Asks Chart
+            bidsAsksChart = new Chart(bidsAsksCtx, {
+                type: "line",
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: "Top 10% Bids Sum",
+                            data: [],
+                            borderColor: "#4caf50",
+                            borderWidth: 2,
+                            fill: false,
+                        },
+                        {
+                            label: "Top 10% Asks Sum",
+                            data: [],
+                            borderColor: "#f44336",
+                            borderWidth: 2,
+                            fill: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Time" } },
+                        y: { title: { display: true, text: "Sum (USDT)" } }
+                    }
+                }
+            });
+
+            // Delta Chart
             deltaChart = new Chart(deltaCtx, {
                 type: "line",
                 data: {
@@ -133,12 +179,12 @@
             });
         }
 
-        // Initialize the chart and start updating
-        initializeDeltaChart();
-        updateDeltaChart();
+        // Initialize the charts and start updating
+        initializeCharts();
+        updateCharts();
 
         // Auto-update every second
-        setInterval(updateDeltaChart, 1000); // 1 second
+        setInterval(updateCharts, 1000); // 1 second
     </script>
 </body>
 </html>
