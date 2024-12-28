@@ -97,6 +97,15 @@
             const ratioElement = document.getElementById('bidAskRatio');
             ratioElement.innerHTML = `<h2>Bid/Ask Ratio: ${ratio.toFixed(2)}</h2>`; 
         }
+
+        // Function to update data periodically
+        async function updateData() {
+            await getOrderBookDepth();
+            setTimeout(updateData, 5000); // Update every 5 seconds
+        }
+
+        // Start the data update loop
+        updateData(); 
     </script>
 </body>
 </html>
