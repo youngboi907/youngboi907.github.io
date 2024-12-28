@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Book Depth Analysis</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -44,9 +45,7 @@
     <script>
         const symbol = "BTCUSDT";
         let bidsAsksChart, deltaChart;
-        let interval = "1m";
-        let limit = 60;
-
+        let intervalLimit = 60 * 1000; // Default: 1 minute
         const historicalData = {
             labels: [],
             bids: [],
@@ -170,7 +169,13 @@
                     scales: {
                         x: { title: { display: true, text: "Time" } },
                         y: { title: { display: true, text: "Sum (USDT)" } }
-                    }
+                    },
+                    plugins: {
+                        zoom: {
+                            pan: { enabled: true, mode: "x" },
+                            zoom: { enabled: true, mode: "x" },
+                        },
+                    },
                 }
             });
 
@@ -197,8 +202,11 @@
                         y: { title: { display: true, text: "Delta (USDT)" } }
                     },
                     plugins: {
-                        legend: { display: true }
-                    }
+                        zoom: {
+                            pan: { enabled: true, mode: "x" },
+                            zoom: { enabled: true, mode: "x" },
+                        },
+                    },
                 }
             });
         }
@@ -221,7 +229,6 @@
         });
 
         // Initialize charts and load data
-        let intervalLimit = 60 * 1000; // Default: 1 minute
         initializeCharts();
         updateCharts();
 
