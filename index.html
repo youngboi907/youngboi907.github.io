@@ -57,9 +57,8 @@
             return { timestamps, prices };
         }
 
-        async function fetchHistoricalDepthData(interval, limit) {
-            // Simulated depth data for demonstration
-            // Replace this with real historical depth data retrieval logic
+        async function fetchDepthDataMock(interval, limit) {
+            // Mock depth data
             const timestamps = [];
             const bids = [];
             const asks = [];
@@ -79,7 +78,7 @@
         async function updateCharts(interval, limit) {
             try {
                 const { timestamps: priceTimestamps, prices } = await fetchKlineData(interval, limit);
-                const { timestamps: depthTimestamps, bids, asks } = await fetchHistoricalDepthData(interval, limit);
+                const { timestamps: depthTimestamps, bids, asks } = await fetchDepthDataMock(interval, limit);
 
                 // Update Price Chart
                 priceChart.data.labels = priceTimestamps;
@@ -160,11 +159,11 @@
             let interval, limit;
 
             switch (value) {
-                case "5m": interval = 5 * 60 * 1000; limit = 12; break;  // Last 1 hour, 12 points
-                case "15m": interval = 15 * 60 * 1000; limit = 96; break; // Last 1 day, 96 points
-                case "1h": interval = 60 * 60 * 1000; limit = 168; break; // Last 1 week, 168 points
-                case "4h": interval = 4 * 60 * 60 * 1000; limit = 42; break; // Last 1 week, 42 points
-                case "1d": interval = 24 * 60 * 60 * 1000; limit = 7; break; // Last 1 week, 7 points
+                case "5m": interval = 5 * 60 * 1000; limit = 60; break;  // Last 5 minutes, 60 points
+                case "15m": interval = 15 * 60 * 1000; limit = 96; break; // Last 15 minutes, 96 points
+                case "1h": interval = 60 * 60 * 1000; limit = 168; break; // Last 1 hour, 168 points
+                case "4h": interval = 4 * 60 * 60 * 1000; limit = 42; break; // Last 4 hours, 42 points
+                case "1d": interval = 24 * 60 * 60 * 1000; limit = 7; break; // Last 1 day, 7 points
                 case "1w": interval = 24 * 60 * 60 * 1000; limit = 7; break; // Last 1 week, 7 points
                 default: interval = 60 * 60 * 1000; limit = 168; break;
             }
@@ -173,7 +172,7 @@
         });
 
         initializeCharts();
-        updateCharts(60 * 60 * 1000, 168); // Default: Last 1 week, hourly points
+        updateCharts(24 * 60 * 60 * 1000, 7); // Default: Last 1 week
     </script>
 </body>
 </html>
