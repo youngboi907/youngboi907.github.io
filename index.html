@@ -1,81 +1,88 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Binance Order Book Depth (1% - 2.5%)</title>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <title>Binance Spot BTC/USDT Order Book</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <h1>Binance Order Book Depth (1% - 2.5%)</h1>
-    <label for="symbol">Symbol:</label>
-    <input type="text" id="symbol" value="BTCUSDT">
-    <button onclick="getOrderBookDepth()">Get Data</button>
+  <h1>Binance Spot BTC/USDT Order Book</h1>
 
-    <div id="bids"></div>
-    <div id="asks"></div>
-    <div id="bidAskRatio"></div>
+  <div id="order-book-data">
+    <h2>Order Book Data (Placeholder - Replace with API Data)</h2>
+    <p>Best Bid: <span id="best-bid"></span></p>
+    <p>Best Ask: <span id="best-ask"></span></p>
+    <p>Bid Depth (Top 10): <span id="bid-depth"></span></p>
+    <p>Ask Depth (Top 10): <span id="ask-depth"></span></p>
+    <p>Bid/Ask Ratio: <span id="bid-ask-ratio"></span></p>
+  </div>
 
-    <script>
-        async function getOrderBookDepth() {
-            const symbol = document.getElementById('symbol').value;
-            try {
-                const response = await axios.get(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=100`); 
-                const bids = response.data.bids;
-                const asks = response.data.asks;
+  <div id="charts">
+    <h2>Order Book Depth Chart</h2>
+    <canvas id="depth-chart"></canvas>
 
-                // Calculate total volume of bids and asks
-                const totalBidsVolume = bids.reduce((acc, [price, quantity]) => acc + parseFloat(quantity), 0);
-                const totalAsksVolume = asks.reduce((acc, [price, quantity]) => acc + parseFloat(quantity), 0);
+    <h2>Bid/Ask Ratio Chart</h2>
+    <canvas id="ratio-chart"></canvas>
+  </div>
 
-                // Determine 1% and 2.5% of total volume
-                const onePercentBidsVolume = totalBidsVolume * 0.01;
-                const twoPointFivePercentBidsVolume = totalBidsVolume * 0.025;
-                const onePercentAsksVolume = totalAsksVolume * 0.01;
-                const twoPointFivePercentAsksVolume = totalAsksVolume * 0.025;
+  <script>
+    // **Important:**
+    // 1. Replace this with actual code to fetch order book data from Binance API.
+    // 2. Handle API authentication and error handling.
+    // 3. Implement real-time updates using WebSockets.
+    // 4. Calculate Bid Depth, Ask Depth, and Bid/Ask Ratio.
 
-                // Filter bids and asks within the desired volume range
-                const filteredBids = bids.filter(([price, quantity]) => {
-                    const cumulativeVolume = bids.slice(0, bids.indexOf([price, quantity]) + 1)
-                        .reduce((acc, [_, q]) => acc + parseFloat(q), 0);
-                    return cumulativeVolume >= onePercentBidsVolume && cumulativeVolume <= twoPointFivePercentBidsVolume;
-                });
+    const bidPrices = [30000, 29999, 29998]; // Placeholder data
+    const bidVolumes = [10, 20, 5]; 
+    const askPrices = [30001, 30002, 30003];
+    const askVolumes = [8, 15, 12];
 
-                const filteredAsks = asks.filter(([price, quantity]) => {
-                    const cumulativeVolume = asks.slice(0, asks.indexOf([price, quantity]) + 1)
-                        .reduce((acc, [_, q]) => acc + parseFloat(q), 0);
-                    return cumulativeVolume >= onePercentAsksVolume && cumulativeVolume <= twoPointFivePercentAsksVolume;
-                });
+    // Calculate Bid Depth (sum of top 10 bid volumes)
+    const bidDepth = bidVolumes.slice(0, 10).reduce((a, b) => a + b, 0);
 
-                // Calculate sum of filtered bids and asks
-                const sumBids = filteredBids.reduce((acc, [price, quantity]) => acc + parseFloat(quantity), 0);
-                const sumAsks = filteredAsks.reduce((acc, [price, quantity]) => acc + parseFloat(quantity), 0);
+    // Calculate Ask Depth (sum of top 10 ask volumes)
+    const askDepth = askVolumes.slice(0, 10).reduce((a, b) => a + b, 0);
 
-                // Calculate bid/ask ratio
-                const bidAskRatio = sumBids / sumAsks;
+    // Calculate Bid/Ask Ratio
+    const bidAskRatio = bidDepth / askDepth;
 
-                // Display the filtered data
-                displayData('bids', filteredBids);
-                displayData('asks', filteredAsks);
-                displayBidAskRatio(bidAskRatio);
+    // Update HTML elements with data
+    document.getElementById('best-bid').textContent = bidPrices[0];
+    document.getElementById('best-ask').textContent = askPrices[0];
+    document.getElementById('bid-depth').textContent = bidDepth;
+    document.getElementById('ask-depth').textContent = askDepth;
+    document.getElementById('bid-ask-ratio').textContent = bidAskRatio.toFixed(2);
 
-            } catch (error) {
-                console.error('Error fetching order book depth:', error);
-                alert('Error fetching order book depth. Please check the symbol and try again.');
-            }
+    // Create charts using Chart.js
+    const ctxDepth = document.getElementById('depth-chart').getContext('2d');
+    new Chart(ctxDepth, {
+      type: 'bar',
+      data: {
+        labels: ['Bid', 'Ask'],
+        datasets: [{
+          data: [bidDepth, askDepth],
+          backgroundColor: ['green', 'red'],
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true
+          }
         }
+      }
+    });
 
-        function displayData(elementId, data) {
-            const element = document.getElementById(elementId);
-            element.innerHTML = `<h2>${elementId}</h2><ul>`;
-            data.forEach(([price, quantity]) => {
-                element.innerHTML += `<li>${price} - ${quantity}</li>`;
-            });
-            element.innerHTML += '</ul>';
-        }
-
-        function displayBidAskRatio(ratio) {
-            const ratioElement = document.getElementById('bidAskRatio');
-            ratioElement.innerHTML = `<h2>Bid/Ask Ratio: ${ratio.toFixed(2)}</h2>`; 
-        }
-    </script>
+    const ctxRatio = document.getElementById('ratio-chart').getContext('2d');
+    new Chart(ctxRatio, {
+      type: 'bar',
+      data: {
+        labels: ['Bid/Ask Ratio'],
+        datasets: [{
+          data: [bidAskRatio],
+          backgroundColor: 'blue'
+        }]
+      }
+    });
+  </script>
 </body>
 </html>
