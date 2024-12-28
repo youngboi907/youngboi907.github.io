@@ -57,10 +57,31 @@
         table tr:nth-child(odd) {
             background-color: #444;
         }
+        .controls {
+            margin: 20px 0;
+        }
+        label, input {
+            color: white;
+            font-size: 14px;
+        }
+        input[type="number"] {
+            background-color: #333;
+            color: white;
+            padding: 5px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            width: 100px;
+        }
     </style>
 </head>
 <body>
     <h1>BTC/USDT High Volume Order Book (±10% Price Range)</h1>
+
+    <div class="controls">
+        <label for="minQuantity">Minimum Quantity (BTC):</label>
+        <input type="number" id="minQuantity" min="0.01" step="0.01" value="0.1">
+    </div>
+
     <div class="order-book-container">
         <!-- Bids Column -->
         <div class="order-book-column">
@@ -93,7 +114,7 @@
 
     <script>
         const symbol = "BTCUSDT";
-        const volumeThreshold = 0.1; // Orders with quantity above this will be shown
+        let minQuantity = 0.1; // Default minimum quantity
         const priceRangeFactor = 0.1; // ±10% range from the mid-price
         let orderBook = { bids: [], asks: [] }; // Order book data
 
@@ -119,13 +140,13 @@
             // Filter bids within the ±10% price range and volume threshold
             const filteredBids = data.bids
                 .map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }))
-                .filter(order => order.price >= priceRange.min && order.quantity >= volumeThreshold)
+                .filter(order => order.price >= priceRange.min && order.quantity >= minQuantity)
                 .sort((a, b) => b.price - a.price); // Sort bids by price (descending)
 
             // Filter asks within the ±10% price range and volume threshold
             const filteredAsks = data.asks
                 .map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }))
-                .filter(order => order.price <= priceRange.max && order.quantity >= volumeThreshold)
+                .filter(order => order.price <= priceRange.max && order.quantity >= minQuantity)
                 .sort((a, b) => a.price - b.price); // Sort asks by price (ascending)
 
             orderBook.bids = filteredBids;
@@ -167,6 +188,12 @@
                 row.style.backgroundColor = getColorForOrder(order.quantity); // Apply color
             });
         }
+
+        // Event listener for the minimum quantity input
+        document.getElementById('minQuantity').addEventListener('input', (event) => {
+            minQuantity = parseFloat(event.target.value);
+            fetchOrderBook(); // Re-fetch the order book with the new minimum quantity
+        });
 
         // Fetch the initial order book data
         fetchOrderBook();
