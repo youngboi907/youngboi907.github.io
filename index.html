@@ -1,72 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Historical Order Book Depth</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: white;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
-        }
-        h1, select {
-            margin: 10px 0;
-        }
-        canvas {
-            max-width: 95%;
-            margin: 20px 0;
-        }
-    </style>
-</head>
-<body>
-    <h1>BTC/USDT Historical Order Book Depth</h1>
-    <label for="timeframe">Select Time Frame:</label>
-    <select id="timeframe">
-        <option value="5m">Last 5 Minutes</option>
-        <option value="15m">Last 15 Minutes</option>
-        <option value="1h">Last 1 Hour</option>
-        <option value="4h">Last 4 Hours</option>
-        <option value="1d">Last 1 Day</option>
-        <option value="1w">Last 1 Week</option>
-    </select>
-    <canvas id="historicalOrderBookChart"></canvas>
-    <canvas id="orderBookChart"></canvas>
-
-    <script>
-        const symbol = "BTCUSDT";
-        let historicalOrderBookChart, orderBookChart;
-        let interval = "1m";
-        let limit = 60;
-
-        async function fetchOrderBookData() {
-            const url = `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-                const data = await response.json();
-                return calculateOrderBookStats(data);
-            } catch (error) {
-                console.error("Error fetching order book data:", error);
-                return { bidsSum: 0, asksSum: 0 };
-            }
-        }
-
-        function calculateOrderBookStats(data) {
-            const bids = data.bids.map(([price, quantity]) => ({
-                price: parseFloat(price),
-                quantity: parseFloat(quantity),
-                total: parseFloat(price) * parseFloat(quantity),
-            }));
-            const asks = data.asks.map(([price, quantity]) => ({
+const asks = data.asks.map(([price, quantity]) => ({
                 price: parseFloat(price),
                 quantity: parseFloat(quantity),
                 total: parseFloat(price) * parseFloat(quantity),
@@ -91,9 +23,18 @@
                 const { bidsSum, asksSum } = await fetchOrderBookData();
 
                 // Update Historical Order Book Chart
-                historicalOrderBookChart.data.labels.push(new Date().toLocaleString());
+                const currentTime = new Date().toLocaleString();
+                historicalOrderBookChart.data.labels.push(currentTime);
                 historicalOrderBookChart.data.datasets[0].data.push(bidsSum);
                 historicalOrderBookChart.data.datasets[1].data.push(asksSum);
+
+                // Keep data within selected time frame
+                if (historicalOrderBookChart.data.labels.length > limit) {
+                    historicalOrderBookChart.data.labels.shift();
+                    historicalOrderBookChart.data.datasets[0].data.shift();
+                    historicalOrderBookChart.data.datasets[1].data.shift();
+                }
+
                 historicalOrderBookChart.update();
 
                 // Update Current Order Book Chart
@@ -182,6 +123,10 @@
                 default: interval = "1m"; limit = 60; break;
             }
 
+            // Reset data
+            historicalOrderBookChart.data.labels = [];
+            historicalOrderBookChart.data.datasets[0].data = [];
+            historicalOrderBookChart.data.datasets[1].data = [];
             updateCharts();
         });
 
@@ -189,8 +134,8 @@
         initializeCharts();
         updateCharts();
 
-        // Auto-update every 10 seconds
-        setInterval(updateCharts, 10000); // 10 seconds
+        // Auto-update every second
+        setInterval(updateCharts, 1000); // 1 second
     </script>
 </body>
 </html>
