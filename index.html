@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT High Volume Order Book (±10% Range)</title>
+    <title>BTC/USDT High Volume Order Book (No Price Filter)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -75,7 +75,7 @@
     </style>
 </head>
 <body>
-    <h1>BTC/USDT High Volume Order Book (±10% Price Range)</h1>
+    <h1>BTC/USDT High Volume Order Book (No Price Filter)</h1>
 
     <div class="controls">
         <label for="minQuantity">Minimum Quantity (BTC):</label>
@@ -115,13 +115,12 @@
     <script>
         const symbol = "BTCUSDT";
         let minQuantity = 0.1; // Default minimum quantity
-        const priceRangeFactor = 0.1; // ±10% range from the mid-price
         let orderBook = { bids: [], asks: [] }; // Order book data
 
         // Function to fetch the order book data from Binance API
         async function fetchOrderBook() {
             try {
-                const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=100`);
+                const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
                 const data = await response.json();
                 processOrderBookData(data);
             } catch (error) {
@@ -129,24 +128,18 @@
             }
         }
 
-        // Function to process order book data and filter within ±10% of the mid-price
+        // Function to process the order book data
         function processOrderBookData(data) {
-            const midPrice = (parseFloat(data.bids[0][0]) + parseFloat(data.asks[0][0])) / 2;
-            const priceRange = {
-                min: midPrice * (1 - priceRangeFactor), // 10% below the mid price
-                max: midPrice * (1 + priceRangeFactor)  // 10% above the mid price
-            };
-
-            // Filter bids within the ±10% price range and volume threshold
+            // Filter bids with minimum quantity
             const filteredBids = data.bids
                 .map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }))
-                .filter(order => order.price >= priceRange.min && order.quantity >= minQuantity)
+                .filter(order => order.quantity >= minQuantity)
                 .sort((a, b) => b.price - a.price); // Sort bids by price (descending)
 
-            // Filter asks within the ±10% price range and volume threshold
+            // Filter asks with minimum quantity
             const filteredAsks = data.asks
                 .map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }))
-                .filter(order => order.price <= priceRange.max && order.quantity >= minQuantity)
+                .filter(order => order.quantity >= minQuantity)
                 .sort((a, b) => a.price - b.price); // Sort asks by price (ascending)
 
             orderBook.bids = filteredBids;
