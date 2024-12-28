@@ -32,39 +32,18 @@
                 const onePercentAsksVolume = totalAsksVolume * 0.01;
                 const twoPointFivePercentAsksVolume = totalAsksVolume * 0.025;
 
-                // Find the index range for 1% to 2.5% of the order book
-                let bidStartIndex = 0;
-                let bidEndIndex = bids.length - 1;
-                let askStartIndex = 0;
-                let askEndIndex = asks.length - 1;
+                // Filter bids and asks within the desired volume range
+                const filteredBids = bids.filter(([price, quantity]) => {
+                    const cumulativeVolume = bids.slice(0, bids.indexOf([price, quantity]) + 1)
+                        .reduce((acc, [_, q]) => acc + parseFloat(q), 0);
+                    return cumulativeVolume >= onePercentBidsVolume && cumulativeVolume <= twoPointFivePercentBidsVolume;
+                });
 
-                let cumulativeBidsVolume = 0;
-                while (bidStartIndex < bids.length && cumulativeBidsVolume < onePercentBidsVolume) {
-                    cumulativeBidsVolume += parseFloat(bids[bidStartIndex][1]);
-                    bidStartIndex++;
-                }
-
-                cumulativeBidsVolume = 0;
-                while (bidEndIndex >= 0 && cumulativeBidsVolume < twoPointFivePercentBidsVolume) {
-                    cumulativeBidsVolume += parseFloat(bids[bidEndIndex][1]);
-                    bidEndIndex--;
-                }
-
-                let cumulativeAsksVolume = 0;
-                while (askStartIndex < asks.length && cumulativeAsksVolume < onePercentAsksVolume) {
-                    cumulativeAsksVolume += parseFloat(asks[askStartIndex][1]);
-                    askStartIndex++;
-                }
-
-                cumulativeAsksVolume = 0;
-                while (askEndIndex >= 0 && cumulativeAsksVolume < twoPointFivePercentAsksVolume) {
-                    cumulativeAsksVolume += parseFloat(asks[askEndIndex][1]);
-                    askEndIndex--;
-                }
-
-                // Extract the desired range of orders
-                const filteredBids = bids.slice(bidStartIndex, bidEndIndex + 1);
-                const filteredAsks = asks.slice(askStartIndex, askEndIndex + 1);
+                const filteredAsks = asks.filter(([price, quantity]) => {
+                    const cumulativeVolume = asks.slice(0, asks.indexOf([price, quantity]) + 1)
+                        .reduce((acc, [_, q]) => acc + parseFloat(q), 0);
+                    return cumulativeVolume >= onePercentAsksVolume && cumulativeVolume <= twoPointFivePercentAsksVolume;
+                });
 
                 // Calculate sum of filtered bids and asks
                 const sumBids = filteredBids.reduce((acc, [price, quantity]) => acc + parseFloat(quantity), 0);
@@ -97,15 +76,6 @@
             const ratioElement = document.getElementById('bidAskRatio');
             ratioElement.innerHTML = `<h2>Bid/Ask Ratio: ${ratio.toFixed(2)}</h2>`; 
         }
-
-        // Function to update data periodically
-        async function updateData() {
-            await getOrderBookDepth();
-            setTimeout(updateData, 5000); // Update every 5 seconds
-        }
-
-        // Start the data update loop
-        updateData(); 
     </script>
 </body>
 </html>
