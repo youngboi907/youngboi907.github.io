@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Order Book</title>
+    <title>BTC/USDT Bid-Ask Summary</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -21,10 +21,6 @@
         h1 {
             margin-top: 20px;
         }
-        canvas {
-            max-width: 95%;
-            margin: 20px 0;
-        }
         .controls {
             display: flex;
             align-items: center;
@@ -37,10 +33,14 @@
         input[type="range"] {
             width: 200px;
         }
+        canvas {
+            max-width: 95%;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Order Book</h1>
+    <h1>BTC/USDT Bid-Ask Summary</h1>
     <div class="controls">
         <label for="priceRange">Price Range (%):</label>
         <input type="range" id="priceRange" min="1" max="10" value="2.5" step="0.1">
@@ -50,16 +50,16 @@
         <input type="range" id="timeSlider" min="0" max="100" value="100">
         <span id="timeSliderValue">Latest</span>
     </div>
-    <canvas id="orderBookChart"></canvas>
+    <canvas id="summaryChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
         let currentPrice = 0;
         let priceRange = 2.5;
         let historicalData = [];
-        let maxHistory = 500; // Max historical data points
-        let timeSliderValue = 100; // Default to latest
-        let orderBookChart;
+        const maxHistoryDuration = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
+        let timeSliderValue = 100;
+        let summaryChart;
 
         // Fetch current price
         async function fetchCurrentPrice() {
@@ -75,13 +75,17 @@
             const bids = data.b.map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }));
             const asks = data.a.map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }));
 
-            // Filter based on price range
+            // Calculate sums within the price range
             const filteredBids = bids.filter(order => order.price >= currentPrice * (1 - priceRange / 100));
             const filteredAsks = asks.filter(order => order.price <= currentPrice * (1 + priceRange / 100));
 
-            // Store historical data
-            if (historicalData.length >= maxHistory) historicalData.shift();
-            historicalData.push({ time: Date.now(), bids: filteredBids, asks: filteredAsks });
+            const bidSum = filteredBids.reduce((sum, order) => sum + order.quantity, 0);
+            const askSum = filteredAsks.reduce((sum, order) => sum + order.quantity, 0);
+
+            // Add to historical data
+            const now = Date.now();
+            historicalData = historicalData.filter(entry => entry.time >= now - maxHistoryDuration);
+            historicalData.push({ time: now, bidSum, askSum });
 
             // Update chart
             updateChart();
@@ -89,14 +93,14 @@
 
         // Initialize the chart
         function initializeChart() {
-            const ctx = document.getElementById("orderBookChart").getContext("2d");
-            orderBookChart = new Chart(ctx, {
+            const ctx = document.getElementById("summaryChart").getContext("2d");
+            summaryChart = new Chart(ctx, {
                 type: "line",
                 data: {
                     labels: [],
                     datasets: [
                         {
-                            label: "Bids",
+                            label: "Bid Volume",
                             data: [],
                             borderColor: "rgba(76, 175, 80, 0.8)", // Green
                             backgroundColor: "rgba(76, 175, 80, 0.2)",
@@ -104,18 +108,10 @@
                             tension: 0.3
                         },
                         {
-                            label: "Asks",
+                            label: "Ask Volume",
                             data: [],
                             borderColor: "rgba(244, 67, 54, 0.8)", // Red
                             backgroundColor: "rgba(244, 67, 54, 0.2)",
-                            fill: true,
-                            tension: 0.3
-                        },
-                        {
-                            label: "Delta",
-                            data: [],
-                            borderColor: "rgba(33, 150, 243, 0.8)", // Blue
-                            backgroundColor: "rgba(33, 150, 243, 0.2)",
                             fill: true,
                             tension: 0.3
                         }
@@ -125,11 +121,14 @@
                     responsive: true,
                     scales: {
                         x: {
-                            type: "linear",
-                            title: { display: true, text: "Time (seconds ago)" }
+                            type: "time",
+                            time: {
+                                unit: "minute"
+                            },
+                            title: { display: true, text: "Time" }
                         },
                         y: {
-                            title: { display: true, text: "Quantity (BTC)" }
+                            title: { display: true, text: "Volume (BTC)" }
                         }
                     }
                 }
@@ -141,18 +140,13 @@
             if (!historicalData.length) return;
 
             const index = Math.floor((timeSliderValue / 100) * (historicalData.length - 1));
-            const dataPoint = historicalData[index];
+            const dataToShow = historicalData.slice(0, index + 1);
 
-            const bidQuantities = dataPoint.bids.map(order => order.quantity);
-            const askQuantities = dataPoint.asks.map(order => order.quantity);
-            const deltaQuantities = bidQuantities.map((qty, i) => qty - (askQuantities[i] || 0));
+            summaryChart.data.labels = dataToShow.map(entry => new Date(entry.time));
+            summaryChart.data.datasets[0].data = dataToShow.map(entry => entry.bidSum);
+            summaryChart.data.datasets[1].data = dataToShow.map(entry => entry.askSum);
 
-            orderBookChart.data.labels = dataPoint.bids.map(order => order.price.toFixed(2));
-            orderBookChart.data.datasets[0].data = bidQuantities;
-            orderBookChart.data.datasets[1].data = askQuantities;
-            orderBookChart.data.datasets[2].data = deltaQuantities;
-
-            orderBookChart.update();
+            summaryChart.update();
         }
 
         // Event listeners
