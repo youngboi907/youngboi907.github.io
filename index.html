@@ -23,6 +23,7 @@
         }
         .controls {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             margin-bottom: 20px;
             gap: 20px;
@@ -30,8 +31,8 @@
         label {
             font-size: 1rem;
         }
-        input[type="range"] {
-            width: 200px;
+        input[type="range"], select {
+            margin-left: 10px;
         }
         canvas {
             max-width: 95%;
@@ -46,6 +47,14 @@
         <input type="range" id="priceRange" min="1" max="10" value="2.5" step="0.1">
         <span id="priceRangeValue">2.5%</span>
 
+        <label for="timeFrame">Timeframe:</label>
+        <select id="timeFrame">
+            <option value="1">1 Minute</option>
+            <option value="5" selected>5 Minutes</option>
+            <option value="15">15 Minutes</option>
+            <option value="60">1 Hour</option>
+        </select>
+
         <label for="timeSlider">Time Navigation:</label>
         <input type="range" id="timeSlider" min="0" max="100" value="100">
         <span id="timeSliderValue">Latest</span>
@@ -56,6 +65,7 @@
         const symbol = "BTCUSDT";
         let currentPrice = 0;
         let priceRange = 2.5;
+        let timeFrame = 5; // Default to 5 minutes
         let historicalData = [];
         const maxHistoryDuration = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
         let timeSliderValue = 100;
@@ -87,9 +97,33 @@
             historicalData = historicalData.filter(entry => entry.time >= now - maxHistoryDuration);
             historicalData.push({ time: now, bidSum, askSum });
 
+            // Aggregate data based on the timeframe
+            const aggregatedData = aggregateData(historicalData, timeFrame);
+
             // Update chart
-            updateChart();
+            updateChart(aggregatedData);
         };
+
+        // Aggregate data based on the selected timeframe
+        function aggregateData(data, interval) {
+            const aggregated = [];
+            let currentBucket = null;
+
+            data.forEach(entry => {
+                const bucketTime = Math.floor(entry.time / (interval * 60 * 1000)) * (interval * 60 * 1000);
+
+                if (!currentBucket || currentBucket.time !== bucketTime) {
+                    if (currentBucket) aggregated.push(currentBucket);
+                    currentBucket = { time: bucketTime, bidSum: 0, askSum: 0 };
+                }
+
+                currentBucket.bidSum += entry.bidSum;
+                currentBucket.askSum += entry.askSum;
+            });
+
+            if (currentBucket) aggregated.push(currentBucket);
+            return aggregated;
+        }
 
         // Initialize the chart
         function initializeChart() {
@@ -136,11 +170,11 @@
         }
 
         // Update the chart
-        function updateChart() {
-            if (!historicalData.length) return;
+        function updateChart(aggregatedData) {
+            if (!aggregatedData.length) return;
 
-            const index = Math.floor((timeSliderValue / 100) * (historicalData.length - 1));
-            const dataToShow = historicalData.slice(0, index + 1);
+            const index = Math.floor((timeSliderValue / 100) * (aggregatedData.length - 1));
+            const dataToShow = aggregatedData.slice(0, index + 1);
 
             summaryChart.data.labels = dataToShow.map(entry => new Date(entry.time));
             summaryChart.data.datasets[0].data = dataToShow.map(entry => entry.bidSum);
@@ -153,13 +187,19 @@
         document.getElementById("priceRange").addEventListener("input", (event) => {
             priceRange = parseFloat(event.target.value);
             document.getElementById("priceRangeValue").textContent = `${priceRange}%`;
-            updateChart();
+        });
+
+        document.getElementById("timeFrame").addEventListener("change", (event) => {
+            timeFrame = parseInt(event.target.value, 10);
+            const aggregatedData = aggregateData(historicalData, timeFrame);
+            updateChart(aggregatedData);
         });
 
         document.getElementById("timeSlider").addEventListener("input", (event) => {
             timeSliderValue = parseFloat(event.target.value);
             document.getElementById("timeSliderValue").textContent = timeSliderValue === 100 ? "Latest" : `${timeSliderValue}%`;
-            updateChart();
+            const aggregatedData = aggregateData(historicalData, timeFrame);
+            updateChart(aggregatedData);
         });
 
         // Initialize
