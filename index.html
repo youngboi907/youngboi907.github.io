@@ -48,7 +48,7 @@
     }
     .historical-ratios {
       margin-top: 30px;
-      height: 200px;
+      height: 300px;
       overflow-y: auto;
     }
     .ratio-item {
@@ -71,13 +71,13 @@
 
 <div class="ratio" id="ratio"></div>
 
-<h2>Historical Ratio (Past 24 Updates)</h2>
+<h2>Historical Ratio (Past 24 Hours)</h2>
 <div class="historical-ratios" id="historical-ratios"></div>
 
 <script>
   const apiUrl = 'https://api.binance.com';
 
-  // Array to store historical ratio data (for the past 24 updates)
+  // Array to store historical ratio data for the past 24 hours (1440 updates)
   const historicalRatios = [];
 
   // Fetch current BTC price
@@ -155,8 +155,8 @@
       document.getElementById('ratio').innerHTML = `Bids to Asks Ratio: ${ratio.toFixed(2)} (Bids: ${totalBids.toFixed(2)} / Asks: ${totalAsks.toFixed(2)})`;
 
       // Store the ratio in the historical array
-      if (historicalRatios.length >= 24) {
-        historicalRatios.shift(); // Remove the oldest ratio if we have more than 24
+      if (historicalRatios.length >= 1440) { // Keep data for 24 hours (1440 minutes)
+        historicalRatios.shift(); // Remove the oldest ratio if we have more than 1440
       }
       historicalRatios.push({ time: new Date().toLocaleTimeString(), ratio: ratio.toFixed(2) });
 
