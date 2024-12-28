@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Order Book Depth with Delta</title>
+    <title>BTC/USDT Order Book with Historical Data</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -11,190 +11,137 @@
             background-color: #121212;
             color: white;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: flex-start;
             min-height: 100vh;
         }
-
-        h1 {
+        h1, select {
+            margin: 10px 0;
+        }
+        canvas {
+            max-width: 95%;
             margin: 20px 0;
         }
-
-        .controls {
-            margin: 15px 0;
+        #controls {
             display: flex;
-            gap: 10px;
+            flex-direction: column;
             align-items: center;
+            margin-bottom: 20px;
         }
-
-        label {
-            margin-right: 5px;
-        }
-
-        input[type="range"] {
-            width: 200px;
-        }
-
-        canvas {
-            max-width: 90%;
-            margin-top: 20px;
-        }
-
-        .toggle-button {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .slider-container {
-            margin-top: 20px;
-            width: 90%;
-        }
-
         #slider {
-            width: 100%;
-        }
-
-        #slider-value {
-            margin-top: 10px;
+            width: 80%;
         }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Order Book Depth with Delta</h1>
-    <div class="controls">
-        <label for="priceRange">Price Range (%):</label>
-        <input id="priceRange" type="range" min="1" max="10" step="0.5" value="2.5">
-        <span id="rangeDisplay">2.5%</span>
-        <div class="toggle-button">
-            <label for="toggleView">Toggle to Time Axis:</label>
-            <input type="checkbox" id="toggleView">
-        </div>
-    </div>
-    <canvas id="depthChart"></canvas>
+    <h1>BTC/USDT Order Book with Historical Data</h1>
+    <div id="controls">
+        <label for="priceRange">Price Range: </label>
+        <input type="range" id="priceRange" min="1" max="10" value="2.5" step="0.1">
+        <span id="priceRangeValue">2.5%</span>
+        
+        <label for="toggleView">Toggle Time View</label>
+        <input type="checkbox" id="toggleView">
 
-    <!-- Slider for navigating through historical data -->
-    <div class="slider-container">
-        <input type="range" id="slider" min="0" max="100" step="1" value="100">
-        <div id="slider-value">Showing Data from Latest: 100%</div>
+        <label for="slider">Scroll Historical Data: </label>
+        <input type="range" id="slider" min="0" max="100" value="100">
+        <span id="slider-value">Showing Data from Latest: 100%</span>
     </div>
+
+    <canvas id="orderBookChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
+        let currentPrice = 0;
+        let topN = 10;
         let orderBook = { bids: [], asks: [] };
         let historicalData = [];
-        let currentPrice = 21000; // Placeholder until fetched
-        let rangePercentage = 2.5; // Default price range percentage
-        let timeView = false; // Default view is price-based
-        let historicalDataIndex = 0; // Keeps track of which historical data to display
-        let depthChart;
+        let historicalDataIndex = 0;
+        let timeView = false;
+        let priceRange = 2.5;
 
-        // Fetch current price from Binance API
-        async function fetchCurrentPrice() {
-            const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
-            const data = await response.json();
-            currentPrice = parseFloat(data.price);
-        }
+        let orderBookChart;
 
-        // WebSocket connection for real-time order book updates
         const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
-
+        
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-
-            // Update the order book
             updateOrderBook(data.b, data.a);
-
-            // Add a timestamp for historical data
-            const timestamp = new Date().toISOString();
-            historicalData.push({
-                time: timestamp,
-                bids: [...orderBook.bids],
-                asks: [...orderBook.asks],
-            });
-
-            // Update the chart
+            if (historicalData.length >= 1000) {
+                historicalData.shift();  // Keep historical data length manageable
+            }
+            historicalData.push({ time: Date.now(), bids: [...orderBook.bids], asks: [...orderBook.asks] });
             updateChart();
         };
 
-        // Update order book data
         function updateOrderBook(bids, asks) {
-            const processOrders = (orders) => {
-                let cumulativeVolume = 0;
-                return orders
-                    .map(([price, quantity]) => ({
-                        price: parseFloat(price),
-                        quantity: parseFloat(quantity),
-                    }))
-                    .filter(order => order.quantity > 0)
-                    .sort((a, b) => a.price - b.price)
-                    .map(order => {
-                        cumulativeVolume += order.quantity;
-                        return { ...order, cumulativeVolume };
-                    });
-            };
+            orderBook.bids = bids.map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }));
+            orderBook.asks = asks.map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }));
 
-            orderBook.bids = processOrders(bids);
-            orderBook.asks = processOrders(asks);
+            orderBook.bids.sort((a, b) => b.price - a.price);
+            orderBook.asks.sort((a, b) => a.price - b.price);
+            
+            orderBook.bids = orderBook.bids.slice(0, topN);
+            orderBook.asks = orderBook.asks.slice(0, topN);
         }
 
-        // Initialize the depth chart
-        function initializeChart() {
-            const ctx = document.getElementById("depthChart").getContext("2d");
+        function fetchCurrentPrice() {
+            return fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`)
+                .then(response => response.json())
+                .then(data => {
+                    currentPrice = parseFloat(data.price);
+                    updateChart();
+                });
+        }
 
-            depthChart = new Chart(ctx, {
+        function initializeChart() {
+            const ctx = document.getElementById("orderBookChart").getContext("2d");
+
+            orderBookChart = new Chart(ctx, {
                 type: "line",
                 data: {
+                    labels: [],
                     datasets: [
                         {
                             label: "Bids",
                             data: [],
                             borderColor: "rgba(76, 175, 80, 0.7)",
-                            backgroundColor: "rgba(76, 175, 80, 0.3)",
-                            fill: true,
-                            stepped: true,
+                            fill: false,
+                            lineTension: 0.1,
                         },
                         {
                             label: "Asks",
                             data: [],
                             borderColor: "rgba(244, 67, 54, 0.7)",
-                            backgroundColor: "rgba(244, 67, 54, 0.3)",
-                            fill: true,
-                            stepped: true,
+                            fill: false,
+                            lineTension: 0.1,
                         },
                         {
-                            label: "Delta (Bids - Asks)",
+                            label: "Delta",
                             data: [],
-                            borderColor: "rgba(33, 150, 243, 0.8)", // Blue color for delta
-                            backgroundColor: "rgba(33, 150, 243, 0.4)",
-                            fill: true,
-                            stepped: true,
-                            hidden: false,
+                            borderColor: "rgba(33, 150, 243, 0.7)",
+                            fill: false,
+                            lineTension: 0.1,
+                            borderWidth: 2,
                         }
                     ]
                 },
                 options: {
                     responsive: true,
-                    animation: false, // Prevent flickering
                     scales: {
                         x: {
-                            title: { display: true, text: "Time" },
+                            title: {
+                                display: true,
+                                text: "Time (Seconds)"
+                            }
                         },
                         y: {
-                            title: { display: true, text: "Cumulative Volume (BTC)" },
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => {
-                                    if (context.dataset.label === "Delta (Bids - Asks)") {
-                                        return `Delta: ${context.raw.y.toFixed(2)} BTC`;
-                                    }
-                                    return `${context.dataset.label}: ${context.raw.y.toFixed(2)} BTC`;
-                                }
+                            title: {
+                                display: true,
+                                text: "Quantity (BTC)"
                             }
                         }
                     }
@@ -202,59 +149,46 @@
             });
         }
 
-        // Update the chart with filtered data
         function updateChart() {
-            if (historicalData.length === 0) return;
+            let bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
+            let askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
+            let bidQuantities = orderBook.bids.map(order => order.quantity);
+            let askQuantities = orderBook.asks.map(order => order.quantity);
+            
+            let delta = bidQuantities.reduce((acc, quantity, i) => acc + quantity - askQuantities[i], 0);
 
-            if (timeView) {
-                // Historical Time-Based Data
-                const timeLabels = historicalData.map(data => data.time);
-                const bidVolumes = historicalData.map(data => data.bids.reduce((sum, order) => sum + order.quantity, 0));
-                const askVolumes = historicalData.map(data => data.asks.reduce((sum, order) => sum + order.quantity, 0));
-                const deltaVolumes = bidVolumes.map((b, i) => b - askVolumes[i]);
+            orderBookChart.data.labels = [...bidLabels, ...askLabels];
+            orderBookChart.data.datasets[0].data = bidQuantities;
+            orderBookChart.data.datasets[1].data = askQuantities;
+            orderBookChart.data.datasets[2].data = [delta]; // Delta dataset for Bids vs Asks
 
-                depthChart.data.labels = timeLabels;
-                depthChart.data.datasets[0].data = bidVolumes.map((y, i) => ({ x: timeLabels[i], y }));
-                depthChart.data.datasets[1].data = askVolumes.map((y, i) => ({ x: timeLabels[i], y }));
-                depthChart.data.datasets[2].data = deltaVolumes.map((y, i) => ({ x: timeLabels[i], y }));
-                depthChart.options.scales.x.title.text = "Time";
-                depthChart.options.scales.x.ticks.callback = null;
-            } else {
-                // Price-Based Data
-                const minPrice = currentPrice * (1 - rangePercentage / 100);
-                const maxPrice = currentPrice * (1 + rangePercentage / 100);
-
-                const bidData = orderBook.bids
-                    .filter(order => order.price >= minPrice && order.price <= currentPrice)
-                    .map(order => ({ x: order.price, y: order.cumulativeVolume }));
-
-                const askData = orderBook.asks
-                    .filter(order => order.price <= maxPrice && order.price >= currentPrice)
-                    .map(order => ({ x: order.price, y: order.cumulativeVolume }));
-
-                const deltaData = bidData.map((bid, i) => ({
-                    x: bid.x,
-                    y: bid.y - (askData[i]?.y || 0),
-                }));
-
-                depthChart.data.labels = [...bidData.map(o => o.x), ...askData.map(o => o.x)];
-                depthChart.data.datasets[0].data = bidData;
-                depthChart.data.datasets[1].data = askData;
-                depthChart.data.datasets[2].data = deltaData;
-                depthChart.options.scales.x.title.text = "Time";
-                depthChart.options.scales.x.ticks.callback = null;
-            }
-
-            depthChart.update();
+            orderBookChart.update();
         }
 
-        // Update range display and chart on slider change
+        // Price Range Selector
         document.getElementById("priceRange").addEventListener("input", (event) => {
-            rangePercentage = parseFloat(event.target.value);
-            document.getElementById("rangeDisplay").innerText = `${rangePercentage}%`;
+            priceRange = parseFloat(event.target.value);
+            document.getElementById("priceRangeValue").innerText = `${priceRange}%`;
             updateChart();
         });
 
-        // Toggle between time and price views
+        // Toggle Time View
         document.getElementById("toggleView").addEventListener("change", (event) => {
-            timeView = event.target.checked
+            timeView = event.target.checked;
+            updateChart();
+        });
+
+        // Slider for Historical Data
+        document.getElementById("slider").addEventListener("input", (event) => {
+            const sliderValue = parseFloat(event.target.value);
+            historicalDataIndex = Math.floor(historicalData.length * (sliderValue / 100));
+            document.getElementById("slider-value").innerText = `Showing Data from Latest: ${sliderValue}%`;
+            updateChart();
+        });
+
+        fetchCurrentPrice().then(() => {
+            initializeChart();
+        });
+    </script>
+</body>
+</html>
