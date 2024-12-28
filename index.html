@@ -161,7 +161,14 @@
   // Plot the line chart with historical data
   function plotRatioChart() {
     const ctx = document.getElementById('ratioChart').getContext('2d');
-    const chart = new Chart(ctx, {
+    
+    // Remove previous chart before redrawing
+    if (window.chart) {
+      window.chart.destroy();
+    }
+
+    // Create new chart with updated data
+    window.chart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: historicalTimes,
