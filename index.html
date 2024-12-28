@@ -20,16 +20,6 @@
       gap: 20px;
       margin-top: 20px;
     }
-    .box {
-      background-color: #1e1e1e;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 20px;
-      width: 250px;
-      text-align: center;
-      overflow-y: auto;
-      max-height: 300px;
-    }
     label, input, button {
       font-size: 16px;
       margin-top: 10px;
@@ -52,20 +42,20 @@
     button:hover {
       background-color: #ffa733;
     }
-    .order-list {
-      font-size: 14px;
-      margin-top: 10px;
-    }
-    .order-item {
-      margin-bottom: 10px;
-    }
-    .order-item span {
-      display: block;
-      font-size: 12px;
-    }
     .ratio {
       margin-top: 20px;
       font-size: 18px;
+    }
+    .historical-ratios {
+      margin-top: 30px;
+      height: 200px;
+      overflow-y: auto;
+    }
+    .ratio-item {
+      font-size: 14px;
+      padding: 5px;
+      background-color: #1e1e1e;
+      border-bottom: 1px solid #333;
     }
   </style>
 </head>
@@ -79,21 +69,16 @@
   <button onclick="updateOrderBook()">Update</button>
 </div>
 
-<div class="container">
-  <div class="box">
-    <h2>Bids</h2>
-    <div id="bids-list" class="order-list">Loading...</div>
-  </div>
-  <div class="box">
-    <h2>Asks</h2>
-    <div id="asks-list" class="order-list">Loading...</div>
-  </div>
-</div>
-
 <div class="ratio" id="ratio"></div>
+
+<h2>Historical Ratio (Past 24 Updates)</h2>
+<div class="historical-ratios" id="historical-ratios"></div>
 
 <script>
   const apiUrl = 'https://api.binance.com';
+
+  // Array to store historical ratio data (for the past 24 updates)
+  const historicalRatios = [];
 
   // Fetch current BTC price
   async function fetchCurrentPrice() {
@@ -163,44 +148,38 @@
       const { filteredBids, filteredAsks, priceRangeLow, priceRangeHigh } = filterOrderBookByRange(orderBook, currentPrice, percentage);
       const { totalBids, totalAsks } = calculateTotalQuantity(filteredBids, filteredAsks);
 
-      // Display filtered bids (non-cumulative order depth)
-      const bidsList = document.getElementById('bids-list');
-      bidsList.innerHTML = filteredBids.map(([price, quantity]) => {
-        return `
-          <div class="order-item">
-            <span>Price: $${parseFloat(price).toFixed(2)}</span>
-            <span>Quantity: ${quantity}</span>
-          </div>
-        `;
-      }).join('');
-
-      // Display filtered asks (non-cumulative order depth)
-      const asksList = document.getElementById('asks-list');
-      asksList.innerHTML = filteredAsks.map(([price, quantity]) => {
-        return `
-          <div class="order-item">
-            <span>Price: $${parseFloat(price).toFixed(2)}</span>
-            <span>Quantity: ${quantity}</span>
-          </div>
-        `;
-      }).join('');
-
-      // Display the price range used
-      document.getElementById('bids-list').innerHTML += `<div>Price Range: $${priceRangeLow.toFixed(2)} - $${currentPrice.toFixed(2)}</div>`;
-      document.getElementById('asks-list').innerHTML += `<div>Price Range: $${currentPrice.toFixed(2)} - $${priceRangeHigh.toFixed(2)}</div>`;
-
-      // Calculate and display the ratio of bids to asks
+      // Calculate the ratio of bids to asks
       const ratio = totalBids / totalAsks;
+
+      // Update the ratio display
       document.getElementById('ratio').innerHTML = `Bids to Asks Ratio: ${ratio.toFixed(2)} (Bids: ${totalBids.toFixed(2)} / Asks: ${totalAsks.toFixed(2)})`;
+
+      // Store the ratio in the historical array
+      if (historicalRatios.length >= 24) {
+        historicalRatios.shift(); // Remove the oldest ratio if we have more than 24
+      }
+      historicalRatios.push({ time: new Date().toLocaleTimeString(), ratio: ratio.toFixed(2) });
+
+      // Display the historical ratios
+      displayHistoricalRatios();
     } else {
-      document.getElementById('bids-list').textContent = 'Error';
-      document.getElementById('asks-list').textContent = 'Error';
       document.getElementById('ratio').textContent = 'Error';
     }
   }
 
+  // Display historical ratio data
+  function displayHistoricalRatios() {
+    const historicalRatiosContainer = document.getElementById('historical-ratios');
+    historicalRatiosContainer.innerHTML = historicalRatios.map(item => {
+      return `<div class="ratio-item">Time: ${item.time} - Ratio: ${item.ratio}</div>`;
+    }).join('');
+  }
+
   // Initial load
   updateOrderBook();
+
+  // Set interval to update the order book every second
+  setInterval(updateOrderBook, 1000);
 </script>
 
 </body>
