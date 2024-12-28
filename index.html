@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BTC Non-Cumulative Order Book Depth</title>
+  <title>BTC Non-Cumulative Order Book Depth with Ratio</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -63,11 +63,15 @@
       display: block;
       font-size: 12px;
     }
+    .ratio {
+      margin-top: 20px;
+      font-size: 18px;
+    }
   </style>
 </head>
 <body>
 
-<h1>BTC Non-Cumulative Order Book Depth</h1>
+<h1>BTC Non-Cumulative Order Book Depth with Ratio</h1>
 
 <div>
   <label for="percentage">Price Range Percentage: </label>
@@ -85,6 +89,8 @@
     <div id="asks-list" class="order-list">Loading...</div>
   </div>
 </div>
+
+<div class="ratio" id="ratio"></div>
 
 <script>
   const apiUrl = 'https://api.binance.com';
@@ -131,7 +137,23 @@
     return { filteredBids, filteredAsks, priceRangeLow, priceRangeHigh };
   }
 
-  // Update the order book data in the UI
+  // Calculate the total quantity for bids and asks
+  function calculateTotalQuantity(filteredBids, filteredAsks) {
+    let totalBids = 0;
+    let totalAsks = 0;
+
+    filteredBids.forEach(([price, quantity]) => {
+      totalBids += parseFloat(quantity);
+    });
+
+    filteredAsks.forEach(([price, quantity]) => {
+      totalAsks += parseFloat(quantity);
+    });
+
+    return { totalBids, totalAsks };
+  }
+
+  // Update the order book data and the ratio in the UI
   async function updateOrderBook() {
     const percentage = parseFloat(document.getElementById('percentage').value);
     const currentPrice = await fetchCurrentPrice();
@@ -139,6 +161,7 @@
 
     if (currentPrice && orderBook) {
       const { filteredBids, filteredAsks, priceRangeLow, priceRangeHigh } = filterOrderBookByRange(orderBook, currentPrice, percentage);
+      const { totalBids, totalAsks } = calculateTotalQuantity(filteredBids, filteredAsks);
 
       // Display filtered bids (non-cumulative order depth)
       const bidsList = document.getElementById('bids-list');
@@ -165,9 +188,14 @@
       // Display the price range used
       document.getElementById('bids-list').innerHTML += `<div>Price Range: $${priceRangeLow.toFixed(2)} - $${currentPrice.toFixed(2)}</div>`;
       document.getElementById('asks-list').innerHTML += `<div>Price Range: $${currentPrice.toFixed(2)} - $${priceRangeHigh.toFixed(2)}</div>`;
+
+      // Calculate and display the ratio of bids to asks
+      const ratio = totalBids / totalAsks;
+      document.getElementById('ratio').innerHTML = `Bids to Asks Ratio: ${ratio.toFixed(2)} (Bids: ${totalBids.toFixed(2)} / Asks: ${totalAsks.toFixed(2)})`;
     } else {
       document.getElementById('bids-list').textContent = 'Error';
       document.getElementById('asks-list').textContent = 'Error';
+      document.getElementById('ratio').textContent = 'Error';
     }
   }
 
