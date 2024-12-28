@@ -1,118 +1,177 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Binance Spot BTC/USDT Order Book</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC/USDT & Volume Delta</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+        }
+        h1, select {
+            margin: 10px 0;
+        }
+        canvas {
+            max-width: 95%;
+            margin: 20px 0;
+        }
+        #orderBookStats {
+            margin: 20px;
+            padding: 10px;
+            background: #1e1e1e;
+            border: 1px solid #4caf50;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
-  <h1>Binance Spot BTC/USDT Order Book</h1>
-  <div id="order-book-data">
-    <h2>Order Book Data</h2>
-    <p>Best Bid: <span id="best-bid"></span></p>
-    <p>Best Ask: <span id="best-ask"></span></p>
-    <p>Bid/Ask Ratio (Top 5% Depth): <span id="bid-ask-ratio"></span></p>
-  </div>
+    <h1>BTC/USDT Order Book Statistics</h1>
+    <label for="timeframe">Select Time Frame:</label>
+    <select id="timeframe">
+        <option value="1h">Last 1 Hour</option>
+        <option value="4h">Last 4 Hours</option>
+        <option value="1d">Last 1 Day</option>
+        <option value="1w">Last 1 Week</option>
+        <option value="1m">Last 1 Month</option>
+    </select>
+    <canvas id="priceChart"></canvas>
+    <canvas id="spotDeltaChart"></canvas>
+    <canvas id="futuresDeltaChart"></canvas>
 
-  <div id="charts">
-    <h2>Order Book Depth Chart (Top 5%)</h2>
-    <canvas id="depth-chart"></canvas>
-  </div>
+    <div id="orderBookStats">
+        <h2>Order Book Stats</h2>
+        <p id="bidsSum">Total Bids (Top 10%): Loading...</p>
+        <p id="asksSum">Total Asks (Top 10%): Loading...</p>
+        <p id="bidAskRatio">Bid/Ask Ratio: Loading...</p>
+    </div>
 
-  <script>
-    async function fetchOrderBook() {
-      try {
-        const response = await fetch('https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=100');
-        const data = await response.json();
+    <script>
+        const symbol = "BTCUSDT";
+        let priceChart, spotDeltaChart, futuresDeltaChart;
 
-        const bids = data.bids.map(item => parseFloat(item[0]));
-        const bidVolumes = data.bids.map(item => parseFloat(item[1]));
-        const asks = data.asks.map(item => parseFloat(item[0]));
-        const askVolumes = data.asks.map(item => parseFloat(item[1]));
-
-        const bestBid = bids[0];
-        const bestAsk = asks[0];
-
-        // Calculate mid price
-        const midPrice = (bestBid + bestAsk) / 2;
-
-        // Calculate order book depth at 5% of mid price
-        const depthPercentage = 0.05; 
-        let bidDepth5 = 0;
-        let askDepth5 = 0;
-
-        for (let i = 0; i < bids.length; i++) {
-          if (bids[i][0] >= midPrice * (1 - depthPercentage)) {
-            bidDepth5 += bids[i][1];
-          } else {
-            break; 
-          }
-        }
-
-        for (let i = 0; i < asks.length; i++) {
-          if (asks[i][0] <= asks[0][0] + (midPrice * depthPercentage)) { 
-            askDepth5 += asks[i][1];
-          } else {
-            break; 
-          }
-        }
-
-        // Calculate Bid/Ask Ratio 
-        let bidAskRatio;
-        if (askDepth5 === 0) {
-          bidAskRatio = Infinity; 
-        } else if (bidDepth5 === 0) {
-          bidAskRatio = 0;
-        } else {
-          bidAskRatio = bidDepth5 / askDepth5;
-        }
-
-        // Update UI
-        document.getElementById('best-bid').textContent = bestBid;
-        document.getElementById('best-ask').textContent = bestAsk;
-        document.getElementById('bid-ask-ratio').textContent = bidAskRatio.toFixed(2);
-
-        // Create Chart.js chart
-        const ctx = document.getElementById('depth-chart').getContext('2d');
-        const chartData = {
-          labels: ['Bid Depth (Top 5%)', 'Ask Depth (Top 5%)'],
-          datasets: [{
-            label: 'Depth',
-            data: [bidDepth5, askDepth5],
-            backgroundColor: ['green', 'red']
-          }]
-        };
-
-        if (chart) {
-          chart.data = chartData; 
-          chart.update();
-        } else {
-          chart = new Chart(ctx, {
-            type: 'bar',
-            data: chartData,
-            options: {
-              scales: {
-                y: {
-                  beginAtZero: true
-                }
-              }
+        async function fetchOrderBookData() {
+            const url = `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                const data = await response.json();
+                console.log("Order Book Data:", data);
+                calculateOrderBookStats(data);
+            } catch (error) {
+                console.error("Error fetching order book data:", error);
             }
-          });
         }
 
-      } catch (error) {
-        console.error("Error fetching order book:", error);
-        document.getElementById('best-bid').textContent = "N/A";
-        document.getElementById('best-ask').textContent = "N/A";
-        document.getElementById('bid-ask-ratio').textContent = "N/A";
-      }
-    }
+        function calculateOrderBookStats(data) {
+            const bids = data.bids.map(([price, quantity]) => ({
+                price: parseFloat(price),
+                quantity: parseFloat(quantity),
+                total: parseFloat(price) * parseFloat(quantity),
+            }));
+            const asks = data.asks.map(([price, quantity]) => ({
+                price: parseFloat(price),
+                quantity: parseFloat(quantity),
+                total: parseFloat(price) * parseFloat(quantity),
+            }));
 
-    // Fetch initial data
-    fetchOrderBook();
+            // Sort bids (highest to lowest) and asks (lowest to highest)
+            bids.sort((a, b) => b.price - a.price);
+            asks.sort((a, b) => a.price - b.price);
 
-    // Optional: Periodically refresh data (e.g., every second)
-    setInterval(fetchOrderBook, 1000); 
+            // Calculate top 10% sum
+            const top10PercentBids = bids.slice(0, Math.ceil(bids.length * 0.1));
+            const top10PercentAsks = asks.slice(0, Math.ceil(asks.length * 0.1));
 
-  </script>
+            const bidsSum = top10PercentBids.reduce((sum, bid) => sum + bid.total, 0);
+            const asksSum = top10PercentAsks.reduce((sum, ask) => sum + ask.total, 0);
+
+            const bidAskRatio = bidsSum / asksSum;
+
+            // Update HTML
+            document.getElementById("bidsSum").innerText = `Total Bids (Top 10%): ${bidsSum.toFixed(2)} USDT`;
+            document.getElementById("asksSum").innerText = `Total Asks (Top 10%): ${asksSum.toFixed(2)} USDT`;
+            document.getElementById("bidAskRatio").innerText = `Bid/Ask Ratio: ${bidAskRatio.toFixed(2)}`;
+        }
+
+        // Initialize Charts
+        function initializeCharts() {
+            const priceCtx = document.getElementById("priceChart").getContext("2d");
+            const spotDeltaCtx = document.getElementById("spotDeltaChart").getContext("2d");
+            const futuresDeltaCtx = document.getElementById("futuresDeltaChart").getContext("2d");
+
+            priceChart = new Chart(priceCtx, {
+                type: "line",
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: "BTC/USDT Price",
+                        data: [],
+                        borderColor: "#4caf50",
+                        borderWidth: 2,
+                        fill: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Time" } },
+                        y: { title: { display: true, text: "Price (USDT)" } }
+                    }
+                }
+            });
+
+            spotDeltaChart = new Chart(spotDeltaCtx, {
+                type: "bar",
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: "Spot Volume Delta",
+                        data: [],
+                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336",
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Time" } },
+                        y: { title: { display: true, text: "Volume Delta" } }
+                    }
+                }
+            });
+
+            futuresDeltaChart = new Chart(futuresDeltaCtx, {
+                type: "bar",
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: "Futures Volume Delta",
+                        data: [],
+                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336",
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Time" } },
+                        y: { title: { display: true, text: "Volume Delta" } }
+                    }
+                }
+            });
+        }
+
+        // Initialize
+        initializeCharts();
+        fetchOrderBookData();
+    </script>
 </body>
 </html>
