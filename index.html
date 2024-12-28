@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top N Orders by Volume - BTC/USDT Order Book</title>
+    <title>BTC/USDT Full Order Book with ±10% Price Range</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
@@ -19,7 +19,7 @@
             justify-content: flex-start;
             min-height: 100vh;
         }
-        h1, select {
+        h1 {
             margin: 10px 0;
         }
         canvas {
@@ -29,19 +29,11 @@
     </style>
 </head>
 <body>
-    <h1>Top N Orders by Volume in BTC/USDT Order Book</h1>
-    <label for="topNSelector">Select Top N:</label>
-    <select id="topNSelector">
-        <option value="5">Top 5</option>
-        <option value="10" selected>Top 10</option>
-        <option value="20">Top 20</option>
-        <option value="30">Top 30</option>
-    </select>
+    <h1>Full BTC/USDT Order Book with ±10% Price Range</h1>
     <canvas id="orderBookChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
-        let topN = 10; // Default to Top 10 orders
         let orderBook = { bids: [], asks: [] }; // Order book data
         let orderBookChart;
 
@@ -52,7 +44,7 @@
             processOrderBookData(data);
         }
 
-        // Function to process order book data and ensure 10% price range
+        // Function to process order book data and ensure ±10% price range
         function processOrderBookData(data) {
             const midPrice = (parseFloat(data.bids[0][0]) + parseFloat(data.asks[0][0])) / 2;
             const priceRange = {
@@ -60,20 +52,19 @@
                 max: midPrice * 1.1  // 10% above the mid price
             };
 
-            // Filter bids and asks within the 10% price range
+            // Filter bids and asks within the ±10% price range
             const filteredBids = data.bids
                 .map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }))
                 .filter(order => order.price >= priceRange.min)
-                .sort((a, b) => b.quantity * b.price - a.quantity * a.price); // Sort by volume
+                .sort((a, b) => b.price - a.price); // Sort bids by price (descending)
 
             const filteredAsks = data.asks
                 .map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }))
                 .filter(order => order.price <= priceRange.max)
-                .sort((a, b) => b.quantity * b.price - a.quantity * a.price); // Sort by volume
+                .sort((a, b) => a.price - b.price); // Sort asks by price (ascending)
 
-            // Limit to top N orders
-            orderBook.bids = filteredBids.slice(0, topN);
-            orderBook.asks = filteredAsks.slice(0, topN);
+            orderBook.bids = filteredBids;
+            orderBook.asks = filteredAsks;
 
             updateChart();
         }
@@ -154,12 +145,6 @@
 
             orderBookChart.update();
         }
-
-        // Event listener for the top N selector
-        document.getElementById("topNSelector").addEventListener("change", (event) => {
-            topN = parseInt(event.target.value, 10);
-            fetchOrderBook(); // Re-fetch the order book with the new top N value
-        });
 
         // Fetch the initial order book data
         fetchOrderBook();
