@@ -176,28 +176,4 @@
             orderBook.bids.forEach(order => {
                 const row = bidsTableBody.insertRow();
                 row.insertCell(0).textContent = order.price.toFixed(2);
-                row.insertCell(1).textContent = order.quantity.toFixed(6);
-                row.style.backgroundColor = getColorForOrder(order.quantity); // Apply color
-            });
-
-            // Populate the asks table
-            orderBook.asks.forEach(order => {
-                const row = asksTableBody.insertRow();
-                row.insertCell(0).textContent = order.price.toFixed(2);
-                row.insertCell(1).textContent = order.quantity.toFixed(6);
-                row.style.backgroundColor = getColorForOrder(order.quantity); // Apply color
-            });
-        }
-
-        // Event listener for the minimum quantity input
-        document.getElementById('minQuantity').addEventListener('input', (event) => {
-            minQuantity = parseFloat(event.target.value);
-            fetchOrderBook(); // Re-fetch the order book with the new minimum quantity
-        });
-
-        // Fetch the initial order book data
-        fetchOrderBook();
-        setInterval(fetchOrderBook, 10000); // Update every 10 seconds
-    </script>
-</body>
-</html>
+                row.insertCell(1).textContent = order.quantity.toFixed(6
