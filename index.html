@@ -19,105 +19,99 @@
   </div>
 
   <script>
-    const wsUrl = 'wss://stream.binance.com:9443/ws/btcusdt@depth@100ms'; 
-    let ws = new WebSocket(wsUrl);
-    let chart;
-    let bidDepth5 = 0;
-    let askDepth5 = 0; 
+    async function fetchOrderBook() {
+      try {
+        const response = await fetch('https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=100');
+        const data = await response.json();
 
-    function calculateDepth(bids, asks, midPrice) {
-      const depthPercentage = 0.05; // 5% 
-      let bidDepth = 0;
-      let askDepth = 0;
+        const bids = data.bids.map(item => parseFloat(item[0]));
+        const bidVolumes = data.bids.map(item => parseFloat(item[1]));
+        const asks = data.asks.map(item => parseFloat(item[0]));
+        const askVolumes = data.asks.map(item => parseFloat(item[1]));
 
-      for (let i = 0; i < bids.length; i++) {
-        if (bids[i][0] >= midPrice * (1 - depthPercentage)) {
-          bidDepth += bids[i][1];
-        } else {
-          break; 
+        const bestBid = bids[0];
+        const bestAsk = asks[0];
+
+        // Calculate mid price
+        const midPrice = (bestBid + bestAsk) / 2;
+
+        // Calculate order book depth at 5% of mid price
+        const depthPercentage = 0.05; 
+        let bidDepth5 = 0;
+        let askDepth5 = 0;
+
+        for (let i = 0; i < bids.length; i++) {
+          if (bids[i][0] >= midPrice * (1 - depthPercentage)) {
+            bidDepth5 += bids[i][1];
+          } else {
+            break; 
+          }
         }
-      }
 
-      for (let i = 0; i < asks.length; i++) {
-        if (asks[i][0] <= midPrice * (1 + depthPercentage)) {
-          askDepth += asks[i][1];
-        } else {
-          break; 
+        for (let i = 0; i < asks.length; i++) {
+          if (asks[i][0] <= asks[0][0] + (midPrice * depthPercentage)) { 
+            askDepth5 += asks[i][1];
+          } else {
+            break; 
+          }
         }
-      }
 
-      return { bidDepth, askDepth };
-    }
+        // Calculate Bid/Ask Ratio 
+        let bidAskRatio;
+        if (askDepth5 === 0) {
+          bidAskRatio = Infinity; 
+        } else if (bidDepth5 === 0) {
+          bidAskRatio = 0;
+        } else {
+          bidAskRatio = bidDepth5 / askDepth5;
+        }
 
-    function updateChart(bidDepth, askDepth) {
-      if (chart) {
-        chart.data.datasets[0].data = [bidDepth]; 
-        chart.data.datasets[1].data = [askDepth]; 
-        chart.update();
-      }
-    }
+        // Update UI
+        document.getElementById('best-bid').textContent = bestBid;
+        document.getElementById('best-ask').textContent = bestAsk;
+        document.getElementById('bid-ask-ratio').textContent = bidAskRatio.toFixed(2);
 
-    ws.onopen = function() {
-      console.log('WebSocket connection opened.');
-    };
-
-    ws.onmessage = function(event) {
-      const data = JSON.parse(event.data);
-      const bids = data.b.map(item => parseFloat(item[0]));
-      const bidVolumes = data.b.map(item => parseFloat(item[1]));
-      const asks = data.a.map(item => parseFloat(item[0]));
-      const askVolumes = data.a.map(item => parseFloat(item[1]));
-
-      const bestBid = bids[0];
-      const bestAsk = asks[0];
-
-      // Calculate mid price
-      const midPrice = (bestBid + bestAsk) / 2;
-
-      // Calculate top 5% depth
-      const { bidDepth: newBidDepth, askDepth: newAskDepth } = calculateDepth(bids, asks, midPrice);
-      bidDepth5 = newBidDepth;
-      askDepth5 = newAskDepth;
-
-      // Calculate Bid/Ask Ratio 
-      const bidAskRatio = bidDepth5 / askDepth5; 
-
-      // Update UI
-      document.getElementById('best-bid').textContent = bestBid;
-      document.getElementById('best-ask').textContent = bestAsk;
-      document.getElementById('bid-ask-ratio').textContent = bidAskRatio.toFixed(2);
-
-      // Update chart
-      updateChart(bidDepth5, askDepth5); 
-    };
-
-    ws.onclose = function() {
-      console.log('WebSocket connection closed.');
-      // Attempt to reconnect (optional)
-    };
-
-    // Create Chart.js chart
-    const ctx = document.getElementById('depth-chart').getContext('2d');
-    chart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Bid Depth (Top 5%)', 'Ask Depth (Top 5%)'],
-        datasets: [
-          {
+        // Create Chart.js chart
+        const ctx = document.getElementById('depth-chart').getContext('2d');
+        const chartData = {
+          labels: ['Bid Depth (Top 5%)', 'Ask Depth (Top 5%)'],
+          datasets: [{
             label: 'Depth',
-            data: [], 
-            backgroundColor: ['green', 'red'],
-          }
-        ]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true
-          }
+            data: [bidDepth5, askDepth5],
+            backgroundColor: ['green', 'red']
+          }]
+        };
+
+        if (chart) {
+          chart.data = chartData; 
+          chart.update();
+        } else {
+          chart = new Chart(ctx, {
+            type: 'bar',
+            data: chartData,
+            options: {
+              scales: {
+                y: {
+                  beginAtZero: true
+                }
+              }
+            }
+          });
         }
+
+      } catch (error) {
+        console.error("Error fetching order book:", error);
+        document.getElementById('best-bid').textContent = "N/A";
+        document.getElementById('best-ask').textContent = "N/A";
+        document.getElementById('bid-ask-ratio').textContent = "N/A";
       }
-    });
+    }
+
+    // Fetch initial data
+    fetchOrderBook();
+
+    // Optional: Periodically refresh data (e.g., every second)
+    setInterval(fetchOrderBook, 1000); 
 
   </script>
 </body>
