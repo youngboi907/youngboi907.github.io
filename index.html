@@ -1,46 +1,144 @@
-// Delta Chart
-deltaChart = new Chart(deltaCtx, {
-    type: "line",
-    data: {
-        labels: [],
-        datasets: [
-            {
-                label: "Delta (Bids - Asks)",
-                data: [],
-                borderColor: "#ffffff",
-                borderWidth: 2,
-                fill: true,
-                backgroundColor: function(context) {
-                    const value = context.dataset.data[context.dataIndex];
-                    return value >= 0 ? "rgba(76, 175, 80, 0.3)" : "rgba(244, 67, 54, 0.3)"; // Green for positive, red for negative
-                },
-            }
-        ]
-    },
-    options: {
-        responsive: true,
-        scales: {
-            x: { title: { display: true, text: "Time" } },
-            y: { title: { display: true, text: "Delta (USDT)" } }
-        },
-        plugins: {
-            legend: { display: true }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Book Delta</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
         }
-    }
-});
+        h1 {
+            margin: 20px 0;
+        }
+        canvas {
+            max-width: 95%;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Order Book Delta (Top 10%)</h1>
+    <canvas id="deltaChart"></canvas>
 
-// Update Delta Chart
-deltaChart.data.labels.push(currentTime);
-deltaChart.data.datasets[0].data.push(delta);
+    <script>
+        const symbol = "BTCUSDT";
+        let deltaChart;
+        let interval = "1m";
+        let limit = 60;
 
-if (deltaChart.data.labels.length > limit) {
-    deltaChart.data.labels.shift();
-    deltaChart.data.datasets[0].data.shift();
-}
+        function calculateOrderBookStats(data) {
+            const bids = data.bids.map(([price, quantity]) => ({
+                price: parseFloat(price),
+                quantity: parseFloat(quantity),
+                total: parseFloat(price) * parseFloat(quantity),
+            }));
+            const asks = data.asks.map(([price, quantity]) => ({
+                price: parseFloat(price),
+                quantity: parseFloat(quantity),
+                total: parseFloat(price) * parseFloat(quantity),
+            }));
 
-// Update Fill Color Dynamically
-deltaChart.data.datasets[0].backgroundColor = deltaChart.data.datasets[0].data.map(value =>
-    value >= 0 ? "rgba(76, 175, 80, 0.3)" : "rgba(244, 67, 54, 0.3)"
-);
+            // Sort bids (highest to lowest) and asks (lowest to highest)
+            bids.sort((a, b) => b.price - a.price);
+            asks.sort((a, b) => a.price - b.price);
 
-deltaChart.update();
+            // Calculate top 10% sum
+            const top10PercentBids = bids.slice(0, Math.ceil(bids.length * 0.1));
+            const top10PercentAsks = asks.slice(0, Math.ceil(asks.length * 0.1));
+
+            const bidsSum = top10PercentBids.reduce((sum, bid) => sum + bid.total, 0);
+            const asksSum = top10PercentAsks.reduce((sum, ask) => sum + ask.total, 0);
+
+            return { bidsSum, asksSum };
+        }
+
+        async function fetchOrderBookData() {
+            const url = `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                const data = await response.json();
+                return calculateOrderBookStats(data);
+            } catch (error) {
+                console.error("Error fetching order book data:", error);
+                return { bidsSum: 0, asksSum: 0 };
+            }
+        }
+
+        async function updateDeltaChart() {
+            try {
+                const { bidsSum, asksSum } = await fetchOrderBookData();
+                const delta = bidsSum - asksSum;
+                const currentTime = new Date().toLocaleTimeString();
+
+                // Update Delta Chart
+                deltaChart.data.labels.push(currentTime);
+                deltaChart.data.datasets[0].data.push(delta);
+
+                if (deltaChart.data.labels.length > limit) {
+                    deltaChart.data.labels.shift();
+                    deltaChart.data.datasets[0].data.shift();
+                }
+
+                // Update Fill Color Dynamically
+                deltaChart.data.datasets[0].backgroundColor = deltaChart.data.datasets[0].data.map(value =>
+                    value >= 0 ? "rgba(76, 175, 80, 0.3)" : "rgba(244, 67, 54, 0.3)"
+                );
+
+                deltaChart.update();
+            } catch (error) {
+                console.error("Error updating delta chart:", error);
+            }
+        }
+
+        function initializeDeltaChart() {
+            const deltaCtx = document.getElementById("deltaChart").getContext("2d");
+
+            deltaChart = new Chart(deltaCtx, {
+                type: "line",
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: "Delta (Bids - Asks)",
+                            data: [],
+                            borderColor: "#ffffff",
+                            borderWidth: 2,
+                            fill: true, // Enables fill under the line
+                            backgroundColor: [], // Will be updated dynamically
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Time" } },
+                        y: { title: { display: true, text: "Delta (USDT)" } }
+                    },
+                    plugins: {
+                        legend: { display: true }
+                    }
+                }
+            });
+        }
+
+        // Initialize the chart and start updating
+        initializeDeltaChart();
+        updateDeltaChart();
+
+        // Auto-update every second
+        setInterval(updateDeltaChart, 1000); // 1 second
+    </script>
+</body>
+</html>
