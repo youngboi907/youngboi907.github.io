@@ -18,8 +18,8 @@
             justify-content: flex-start;
             min-height: 100vh;
         }
-        h1 {
-            margin: 20px 0;
+        h1, select {
+            margin: 10px 0;
         }
         canvas {
             max-width: 95%;
@@ -29,6 +29,15 @@
 </head>
 <body>
     <h1>Order Book Depth Analysis (Top 10%)</h1>
+    <label for="timeframe">Select Time Frame:</label>
+    <select id="timeframe">
+        <option value="5m">Last 5 Minutes</option>
+        <option value="15m">Last 15 Minutes</option>
+        <option value="1h">Last 1 Hour</option>
+        <option value="4h">Last 4 Hours</option>
+        <option value="1d">Last 1 Day</option>
+        <option value="1w">Last 1 Week</option>
+    </select>
     <canvas id="bidsAsksChart"></canvas>
     <canvas id="deltaChart"></canvas>
 
@@ -37,6 +46,13 @@
         let bidsAsksChart, deltaChart;
         let interval = "1m";
         let limit = 60;
+
+        const historicalData = {
+            labels: [],
+            bids: [],
+            asks: [],
+            deltas: [],
+        };
 
         function calculateOrderBookStats(data) {
             const bids = data.bids.map(([price, quantity]) => ({
@@ -77,35 +93,43 @@
             }
         }
 
+        function filterHistoricalData(timeframeLimit) {
+            const now = Date.now();
+            const cutoffTime = now - timeframeLimit;
+            while (historicalData.labels.length > 0 && new Date(historicalData.labels[0]).getTime() < cutoffTime) {
+                historicalData.labels.shift();
+                historicalData.bids.shift();
+                historicalData.asks.shift();
+                historicalData.deltas.shift();
+            }
+        }
+
         async function updateCharts() {
             try {
                 const { bidsSum, asksSum } = await fetchOrderBookData();
                 const delta = bidsSum - asksSum;
-                const currentTime = new Date().toLocaleTimeString();
+                const currentTime = new Date().toLocaleString();
+
+                // Update historical data
+                historicalData.labels.push(currentTime);
+                historicalData.bids.push(bidsSum);
+                historicalData.asks.push(asksSum);
+                historicalData.deltas.push(delta);
+
+                filterHistoricalData(intervalLimit);
 
                 // Update Bids and Asks Chart
-                bidsAsksChart.data.labels.push(currentTime);
-                bidsAsksChart.data.datasets[0].data.push(bidsSum);
-                bidsAsksChart.data.datasets[1].data.push(asksSum);
-
-                if (bidsAsksChart.data.labels.length > limit) {
-                    bidsAsksChart.data.labels.shift();
-                    bidsAsksChart.data.datasets[0].data.shift();
-                    bidsAsksChart.data.datasets[1].data.shift();
-                }
+                bidsAsksChart.data.labels = historicalData.labels;
+                bidsAsksChart.data.datasets[0].data = historicalData.bids;
+                bidsAsksChart.data.datasets[1].data = historicalData.asks;
                 bidsAsksChart.update();
 
                 // Update Delta Chart
-                deltaChart.data.labels.push(currentTime);
-                deltaChart.data.datasets[0].data.push(delta);
-
-                if (deltaChart.data.labels.length > limit) {
-                    deltaChart.data.labels.shift();
-                    deltaChart.data.datasets[0].data.shift();
-                }
+                deltaChart.data.labels = historicalData.labels;
+                deltaChart.data.datasets[0].data = historicalData.deltas;
 
                 // Update Fill Color Dynamically
-                deltaChart.data.datasets[0].backgroundColor = deltaChart.data.datasets[0].data.map(value =>
+                deltaChart.data.datasets[0].backgroundColor = historicalData.deltas.map(value =>
                     value >= 0 ? "rgba(76, 175, 80, 0.3)" : "rgba(244, 67, 54, 0.3)"
                 );
 
@@ -179,7 +203,25 @@
             });
         }
 
-        // Initialize the charts and start updating
+        // Event listener for timeframe selector
+        document.getElementById("timeframe").addEventListener("change", (event) => {
+            const value = event.target.value;
+
+            switch (value) {
+                case "5m": intervalLimit = 5 * 60 * 1000; break;
+                case "15m": intervalLimit = 15 * 60 * 1000; break;
+                case "1h": intervalLimit = 60 * 60 * 1000; break;
+                case "4h": intervalLimit = 4 * 60 * 60 * 1000; break;
+                case "1d": intervalLimit = 24 * 60 * 60 * 1000; break;
+                case "1w": intervalLimit = 7 * 24 * 60 * 60 * 1000; break;
+                default: intervalLimit = 60 * 1000; break;
+            }
+
+            updateCharts();
+        });
+
+        // Initialize charts and load data
+        let intervalLimit = 60 * 1000; // Default: 1 minute
         initializeCharts();
         updateCharts();
 
