@@ -54,6 +54,11 @@
       font-size: 18px;
       margin-top: 10px;
     }
+    .price-range {
+      font-size: 14px;
+      margin-top: 5px;
+      color: #bbb;
+    }
   </style>
 </head>
 <body>
@@ -70,10 +75,12 @@
   <div class="box">
     <h2>Bids Sum</h2>
     <div id="bids-sum" class="result">Loading...</div>
+    <div id="bids-range" class="price-range"></div>
   </div>
   <div class="box">
     <h2>Asks Sum</h2>
     <div id="asks-sum" class="result">Loading...</div>
+    <div id="asks-range" class="price-range"></div>
   </div>
 </div>
 
@@ -128,7 +135,7 @@
       }
     });
 
-    return { bidsSum, asksSum };
+    return { bidsSum, asksSum, priceRangeLow, priceRangeHigh };
   }
 
   // Update the order book data in the UI
@@ -138,13 +145,19 @@
     const orderBook = await fetchOrderBook();
 
     if (currentPrice && orderBook) {
-      const { bidsSum, asksSum } = calculateSum(orderBook, currentPrice, percentage);
+      const { bidsSum, asksSum, priceRangeLow, priceRangeHigh } = calculateSum(orderBook, currentPrice, percentage);
 
       document.getElementById('bids-sum').textContent = bidsSum.toFixed(2);
       document.getElementById('asks-sum').textContent = asksSum.toFixed(2);
+
+      // Display the price range in the respective boxes
+      document.getElementById('bids-range').textContent = `Price Range: $${priceRangeLow.toFixed(2)} - $${currentPrice.toFixed(2)}`;
+      document.getElementById('asks-range').textContent = `Price Range: $${currentPrice.toFixed(2)} - $${priceRangeHigh.toFixed(2)}`;
     } else {
       document.getElementById('bids-sum').textContent = 'Error';
       document.getElementById('asks-sum').textContent = 'Error';
+      document.getElementById('bids-range').textContent = '';
+      document.getElementById('asks-range').textContent = '';
     }
   }
 
