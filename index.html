@@ -41,6 +41,12 @@
             max-width: 90%;
             margin-top: 20px;
         }
+
+        .toggle-button {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -49,35 +55,27 @@
         <label for="priceRange">Price Range (%):</label>
         <input id="priceRange" type="range" min="1" max="10" step="0.5" value="2.5">
         <span id="rangeDisplay">2.5%</span>
+        <div class="toggle-button">
+            <label for="toggleView">Toggle to Time Axis:</label>
+            <input type="checkbox" id="toggleView">
+        </div>
     </div>
     <canvas id="depthChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
         let orderBook = { bids: [], asks: [] };
+        let historicalData = [];
         let depthChart;
         let currentPrice = 21000; // Placeholder until fetched
         let rangePercentage = 2.5; // Default price range percentage
-        const historicalDataKey = "orderBookHistoricalData";
+        let timeView = false; // Default view is price-based
 
         // Fetch current price
         async function fetchCurrentPrice() {
             const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const data = await response.json();
             currentPrice = parseFloat(data.price);
-        }
-
-        // Load historical data from localStorage
-        function loadHistoricalData() {
-            const storedData = localStorage.getItem(historicalDataKey);
-            if (storedData) {
-                orderBook = JSON.parse(storedData);
-            }
-        }
-
-        // Save historical data to localStorage
-        function saveHistoricalData() {
-            localStorage.setItem(historicalDataKey, JSON.stringify(orderBook));
         }
 
         // WebSocket connection for real-time order book updates
@@ -89,11 +87,16 @@
             // Update the order book
             updateOrderBook(data.b, data.a);
 
+            // Add a timestamp for historical data
+            const timestamp = new Date().toISOString();
+            historicalData.push({
+                time: timestamp,
+                bids: [...orderBook.bids],
+                asks: [...orderBook.asks],
+            });
+
             // Update the chart
             updateChart();
-
-            // Save the updated order book to localStorage
-            saveHistoricalData();
         };
 
         // Update order book data
@@ -169,19 +172,36 @@
 
         // Update the chart with filtered data
         function updateChart() {
-            const minPrice = currentPrice * (1 - rangePercentage / 100);
-            const maxPrice = currentPrice * (1 + rangePercentage / 100);
+            if (timeView) {
+                // Historical Time-Based Data
+                const timeLabels = historicalData.map(data => data.time);
+                const bidVolumes = historicalData.map(data => data.bids.reduce((sum, order) => sum + order.quantity, 0));
+                const askVolumes = historicalData.map(data => data.asks.reduce((sum, order) => sum + order.quantity, 0));
 
-            const bidData = orderBook.bids
-                .filter(order => order.price >= minPrice && order.price <= currentPrice)
-                .map(order => ({ x: order.price, y: order.cumulativeVolume }));
+                depthChart.data.labels = timeLabels;
+                depthChart.data.datasets[0].data = bidVolumes.map((y, i) => ({ x: timeLabels[i], y }));
+                depthChart.data.datasets[1].data = askVolumes.map((y, i) => ({ x: timeLabels[i], y }));
+                depthChart.options.scales.x.title.text = "Time";
+                depthChart.options.scales.x.ticks.callback = null;
+            } else {
+                // Price-Based Data
+                const minPrice = currentPrice * (1 - rangePercentage / 100);
+                const maxPrice = currentPrice * (1 + rangePercentage / 100);
 
-            const askData = orderBook.asks
-                .filter(order => order.price <= maxPrice && order.price >= currentPrice)
-                .map(order => ({ x: order.price, y: order.cumulativeVolume }));
+                const bidData = orderBook.bids
+                    .filter(order => order.price >= minPrice && order.price <= currentPrice)
+                    .map(order => ({ x: order.price, y: order.cumulativeVolume }));
 
-            depthChart.data.datasets[0].data = bidData;
-            depthChart.data.datasets[1].data = askData;
+                const askData = orderBook.asks
+                    .filter(order => order.price <= maxPrice && order.price >= currentPrice)
+                    .map(order => ({ x: order.price, y: order.cumulativeVolume }));
+
+                depthChart.data.labels = [...bidData.map(o => o.x), ...askData.map(o => o.x)];
+                depthChart.data.datasets[0].data = bidData;
+                depthChart.data.datasets[1].data = askData;
+                depthChart.options.scales.x.title.text = "Price Levels (USDT)";
+                depthChart.options.scales.x.ticks.callback = value => `$${value}`;
+            }
 
             depthChart.update();
         }
@@ -193,8 +213,13 @@
             updateChart();
         });
 
+        // Toggle between time and price views
+        document.getElementById("toggleView").addEventListener("change", (event) => {
+            timeView = event.target.checked;
+            updateChart();
+        });
+
         // Load data and initialize
-        loadHistoricalData();
         fetchCurrentPrice().then(() => {
             initializeChart();
             updateChart();
