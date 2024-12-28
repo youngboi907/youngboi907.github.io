@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BTC Order Book</title>
+  <title>BTC Order Book (Non-Cumulative)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -25,8 +25,10 @@
       border: 1px solid #333;
       border-radius: 8px;
       padding: 20px;
-      width: 200px;
+      width: 250px;
       text-align: center;
+      overflow-y: auto;
+      max-height: 300px;
     }
     label, input, button {
       font-size: 16px;
@@ -50,37 +52,30 @@
     button:hover {
       background-color: #ffa733;
     }
-    .result {
-      font-size: 18px;
-      margin-top: 10px;
-    }
-    .price-range {
+    .order-list {
       font-size: 14px;
-      margin-top: 5px;
-      color: #bbb;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
 
-<h1>BTC Order Book</h1>
+<h1>BTC Order Book (Non-Cumulative)</h1>
 
 <div>
   <label for="percentage">Price Range Percentage: </label>
-  <input type="number" id="percentage" value="10" min="1" max="50">
+  <input type="number" id="percentage" value="1" min="1" max="10">
   <button onclick="updateOrderBook()">Update</button>
 </div>
 
 <div class="container">
   <div class="box">
-    <h2>Bids Sum</h2>
-    <div id="bids-sum" class="result">Loading...</div>
-    <div id="bids-range" class="price-range"></div>
+    <h2>Bids</h2>
+    <div id="bids-list" class="order-list">Loading...</div>
   </div>
   <div class="box">
-    <h2>Asks Sum</h2>
-    <div id="asks-sum" class="result">Loading...</div>
-    <div id="asks-range" class="price-range"></div>
+    <h2>Asks</h2>
+    <div id="asks-list" class="order-list">Loading...</div>
   </div>
 </div>
 
@@ -111,33 +106,22 @@
     }
   }
 
-  // Calculate sums for bids and asks based on the price range
-  function calculateSum(orderBook, currentPrice, percentage) {
+  // Filter the order book based on the price range and display non-cumulative data
+  function filterOrderBookByRange(orderBook, currentPrice, percentage) {
     const priceRangeLow = currentPrice - (currentPrice * (percentage / 100));
     const priceRangeHigh = currentPrice + (currentPrice * (percentage / 100));
 
-    let bidsSum = 0;
-    let asksSum = 0;
-
-    // Calculate bids sum: only consider bids within the range [priceRangeLow, currentPrice]
-    orderBook.bids.forEach(([price, quantity]) => {
-      price = parseFloat(price);
-      quantity = parseFloat(quantity);
-      if (price >= priceRangeLow && price <= currentPrice) {
-        bidsSum += price * quantity;
-      }
+    // Filter bids (price <= current price)
+    const filteredBids = orderBook.bids.filter(([price, quantity]) => {
+      return price >= priceRangeLow && price <= currentPrice;
     });
 
-    // Calculate asks sum: only consider asks within the range [currentPrice, priceRangeHigh]
-    orderBook.asks.forEach(([price, quantity]) => {
-      price = parseFloat(price);
-      quantity = parseFloat(quantity);
-      if (price >= currentPrice && price <= priceRangeHigh) {
-        asksSum += price * quantity;
-      }
+    // Filter asks (price >= current price)
+    const filteredAsks = orderBook.asks.filter(([price, quantity]) => {
+      return price >= currentPrice && price <= priceRangeHigh;
     });
 
-    return { bidsSum, asksSum, priceRangeLow, priceRangeHigh };
+    return { filteredBids, filteredAsks, priceRangeLow, priceRangeHigh };
   }
 
   // Update the order book data in the UI
@@ -147,19 +131,26 @@
     const orderBook = await fetchOrderBook();
 
     if (currentPrice && orderBook) {
-      const { bidsSum, asksSum, priceRangeLow, priceRangeHigh } = calculateSum(orderBook, currentPrice, percentage);
+      const { filteredBids, filteredAsks, priceRangeLow, priceRangeHigh } = filterOrderBookByRange(orderBook, currentPrice, percentage);
 
-      document.getElementById('bids-sum').textContent = bidsSum.toFixed(2);
-      document.getElementById('asks-sum').textContent = asksSum.toFixed(2);
+      // Display filtered bids
+      const bidsList = document.getElementById('bids-list');
+      bidsList.innerHTML = filteredBids.map(([price, quantity]) => {
+        return `<div>Price: $${parseFloat(price).toFixed(2)} | Quantity: ${quantity}</div>`;
+      }).join('');
 
-      // Display the price range in the respective boxes
-      document.getElementById('bids-range').textContent = `Price Range: $${priceRangeLow.toFixed(2)} - $${currentPrice.toFixed(2)}`;
-      document.getElementById('asks-range').textContent = `Price Range: $${currentPrice.toFixed(2)} - $${priceRangeHigh.toFixed(2)}`;
+      // Display filtered asks
+      const asksList = document.getElementById('asks-list');
+      asksList.innerHTML = filteredAsks.map(([price, quantity]) => {
+        return `<div>Price: $${parseFloat(price).toFixed(2)} | Quantity: ${quantity}</div>`;
+      }).join('');
+
+      // Display the price range used
+      document.getElementById('bids-list').innerHTML += `<div>Price Range: $${priceRangeLow.toFixed(2)} - $${currentPrice.toFixed(2)}</div>`;
+      document.getElementById('asks-list').innerHTML += `<div>Price Range: $${currentPrice.toFixed(2)} - $${priceRangeHigh.toFixed(2)}</div>`;
     } else {
-      document.getElementById('bids-sum').textContent = 'Error';
-      document.getElementById('asks-sum').textContent = 'Error';
-      document.getElementById('bids-range').textContent = '';
-      document.getElementById('asks-range').textContent = '';
+      document.getElementById('bids-list').textContent = 'Error';
+      document.getElementById('asks-list').textContent = 'Error';
     }
   }
 
