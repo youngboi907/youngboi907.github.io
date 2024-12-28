@@ -20,10 +20,28 @@
         h1 {
             margin: 20px 0;
         }
-        table {
-            width: 80%;
-            border-collapse: collapse;
+        .order-book-container {
+            display: flex;
+            justify-content: space-between;
+            width: 90%;
             margin-top: 20px;
+        }
+        .order-book-column {
+            width: 45%;
+            padding: 20px;
+            border: 1px solid #333;
+            background-color: #222;
+        }
+        .order-book-column h2 {
+            text-align: center;
+            color: #00FF00; /* Bids color */
+        }
+        .ask-column h2 {
+            color: #FF0000; /* Asks color */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
         }
         table th, table td {
             border: 1px solid #333;
@@ -34,43 +52,43 @@
             background-color: #444;
         }
         table tr:nth-child(even) {
-            background-color: #222;
-        }
-        table tr:nth-child(odd) {
             background-color: #333;
         }
-        .container {
-            display: flex;
-            justify-content: center;
-            flex-direction: column;
-            align-items: center;
+        table tr:nth-child(odd) {
+            background-color: #444;
         }
     </style>
 </head>
 <body>
     <h1>BTC/USDT Full Order Book (±10% Price Range)</h1>
-    <div class="container">
-        <h2>Bids</h2>
-        <table id="bidsTable">
-            <thead>
-                <tr>
-                    <th>Price (USDT)</th>
-                    <th>Quantity (BTC)</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+    <div class="order-book-container">
+        <!-- Bids Column -->
+        <div class="order-book-column">
+            <h2>Bids (Buy Orders)</h2>
+            <table id="bidsTable">
+                <thead>
+                    <tr>
+                        <th>Price (USDT)</th>
+                        <th>Quantity (BTC)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
 
-        <h2>Asks</h2>
-        <table id="asksTable">
-            <thead>
-                <tr>
-                    <th>Price (USDT)</th>
-                    <th>Quantity (BTC)</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <!-- Asks Column -->
+        <div class="order-book-column ask-column">
+            <h2>Asks (Sell Orders)</h2>
+            <table id="asksTable">
+                <thead>
+                    <tr>
+                        <th>Price (USDT)</th>
+                        <th>Quantity (BTC)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 
     <script>
