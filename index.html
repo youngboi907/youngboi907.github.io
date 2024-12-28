@@ -62,8 +62,9 @@
 
     <script>
         const symbol = "BTCUSDT";
-        let minQty = 0.001;
+        let minQty = 0.001; // Default minimum quantity filter
         let combinedChart, orderBookChart;
+        let orderBook = { bids: [], asks: [] }; // Order book data
 
         // --- COMBINED BTC/USDT AND OPEN INTEREST CHART ---
         async function fetchChartData(timeframe) {
@@ -145,7 +146,6 @@
         }
 
         // --- ORDER BOOK CHART ---
-        const orderBook = { bids: [], asks: [] };
         const wsOrderBook = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
 
         wsOrderBook.onmessage = (event) => {
@@ -158,7 +158,7 @@
             bids.forEach(([price, quantity]) => {
                 const priceNum = parseFloat(price);
                 const quantityNum = parseFloat(quantity);
-                if (quantityNum < minQty) return;
+                if (quantityNum < minQty) return; // Ignore bids below the minQty
                 const existing = orderBook.bids.find(order => order.price === priceNum);
                 if (existing) {
                     existing.quantity = quantityNum;
@@ -170,7 +170,7 @@
             asks.forEach(([price, quantity]) => {
                 const priceNum = parseFloat(price);
                 const quantityNum = parseFloat(quantity);
-                if (quantityNum < minQty) return;
+                if (quantityNum < minQty) return; // Ignore asks below the minQty
                 const existing = orderBook.asks.find(order => order.price === priceNum);
                 if (existing) {
                     existing.quantity = quantityNum;
@@ -179,8 +179,8 @@
                 }
             });
 
-            orderBook.bids.sort((a, b) => b.price - a.price);
-            orderBook.asks.sort((a, b) => a.price - b.price);
+            orderBook.bids.sort((a, b) => b.price - a.price); // Sort bids descending
+            orderBook.asks.sort((a, b) => a.price - b.price); // Sort asks ascending
         }
 
         function initializeOrderBookChart() {
@@ -225,12 +225,3 @@
 
         document.getElementById("minQty").addEventListener("input", (event) => {
             minQty = parseFloat(event.target.value);
-            updateOrderBookChart();
-        });
-
-        // --- INITIALIZATION ---
-        initializeOrderBookChart();
-        renderCombinedChart("1m"); // Default timeframe
-    </script>
-</body>
-</html>
