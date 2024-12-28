@@ -46,16 +46,10 @@
       margin-top: 20px;
       font-size: 18px;
     }
-    .historical-ratios {
+    canvas {
       margin-top: 30px;
-      height: 300px;
-      overflow-y: auto;
-    }
-    .ratio-item {
-      font-size: 14px;
-      padding: 5px;
-      background-color: #1e1e1e;
-      border-bottom: 1px solid #333;
+      width: 100%;
+      height: 400px;
     }
   </style>
 </head>
@@ -71,14 +65,17 @@
 
 <div class="ratio" id="ratio"></div>
 
-<h2>Historical Ratio (Past 24 Hours)</h2>
-<div class="historical-ratios" id="historical-ratios"></div>
+<h2>Historical Ratio (Past 24 Hours - Minus 1)</h2>
+<canvas id="ratioChart"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
   const apiUrl = 'https://api.binance.com';
 
   // Array to store historical ratio data for the past 24 hours (1440 updates)
   const historicalRatios = [];
+  const historicalTimes = [];
 
   // Fetch current BTC price
   async function fetchCurrentPrice() {
@@ -142,28 +139,72 @@
       // Calculate the ratio as the sum of bids divided by the sum of asks
       const ratio = bidSum / askSum;
 
-      // Update the ratio display
-      document.getElementById('ratio').innerHTML = `Bids to Asks Ratio: ${ratio.toFixed(2)} (Bids: ${bidSum.toFixed(2)} / Asks: ${askSum.toFixed(2)})`;
-
-      // Store the ratio in the historical array
+      // Store the ratio in the historical array (minus 1)
       if (historicalRatios.length >= 1440) { // Keep data for 24 hours (1440 minutes)
         historicalRatios.shift(); // Remove the oldest ratio if we have more than 1440
+        historicalTimes.shift(); // Remove the oldest time
       }
-      historicalRatios.push({ time: new Date().toLocaleTimeString(), ratio: ratio.toFixed(2) });
 
-      // Display the historical ratios
-      displayHistoricalRatios();
+      historicalRatios.push((ratio - 1).toFixed(4)); // Subtract 1 from ratio
+      historicalTimes.push(new Date().toLocaleTimeString());
+
+      // Update the ratio display
+      document.getElementById('ratio').innerHTML = `Bids to Asks Ratio (Minus 1): ${((ratio - 1).toFixed(4))} (Bids: ${bidSum.toFixed(2)} / Asks: ${askSum.toFixed(2)})`;
+
+      // Plot the chart with the historical data
+      plotRatioChart();
     } else {
       document.getElementById('ratio').textContent = 'Error';
     }
   }
 
-  // Display historical ratio data
-  function displayHistoricalRatios() {
-    const historicalRatiosContainer = document.getElementById('historical-ratios');
-    historicalRatiosContainer.innerHTML = historicalRatios.map(item => {
-      return `<div class="ratio-item">Time: ${item.time} - Ratio: ${item.ratio}</div>`;
-    }).join('');
+  // Plot the line chart with historical data
+  function plotRatioChart() {
+    const ctx = document.getElementById('ratioChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: historicalTimes,
+        datasets: [{
+          label: 'Ratio (Minus 1)',
+          data: historicalRatios,
+          borderColor: 'rgba(240, 165, 0, 1)',
+          backgroundColor: 'rgba(240, 165, 0, 0.2)',
+          borderWidth: 2,
+          pointRadius: 1,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            type: 'category',
+            title: {
+              display: true,
+              text: 'Time'
+            },
+            ticks: {
+              maxRotation: 90,
+              minRotation: 45
+            }
+          },
+          y: {
+            beginAtZero: false,
+            title: {
+              display: true,
+              text: 'Ratio (Minus 1)'
+            }
+          }
+        },
+        plugins: {
+          tooltip: {
+            mode: 'index',
+            intersect: false
+          }
+        }
+      }
+    });
   }
 
   // Initial load
