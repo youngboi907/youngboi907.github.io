@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BTC Non-Cumulative Order Book Depth with Ratio</title>
+  <title>BTC Non-Cumulative Order Book Depth with Full Range</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -61,7 +61,7 @@
 </head>
 <body>
 
-<h1>BTC Non-Cumulative Order Book Depth with Ratio</h1>
+<h1>BTC Non-Cumulative Order Book Depth with Full Range</h1>
 
 <div>
   <label for="percentage">Price Range Percentage: </label>
@@ -95,7 +95,7 @@
   // Fetch order book data
   async function fetchOrderBook() {
     try {
-      const response = await fetch(`${apiUrl}/api/v3/depth?symbol=BTCUSDT&limit=100`);
+      const response = await fetch(`${apiUrl}/api/v3/depth?symbol=BTCUSDT&limit=1000`);
       const data = await response.json();
       return data;
     } catch (error) {
@@ -104,32 +104,30 @@
     }
   }
 
-  // Filter the order book based on the price range and calculate the sum of bid and ask values
-  function filterOrderBookByRange(orderBook, currentPrice, percentage) {
-    const priceRangeLow = currentPrice - (currentPrice * (percentage / 100));
-    const priceRangeHigh = currentPrice + (currentPrice * (percentage / 100));
-
-    // Sum the bid values (price * quantity) where the price is <= current price and within the price range
+  // Sum all bids and asks across the entire order book (from 1 USD to 1 million USD)
+  function sumAllBidsAndAsks(orderBook) {
     let bidSum = 0;
+    let askSum = 0;
+
+    // Sum all bid values (price * quantity)
     orderBook.bids.forEach(([price, quantity]) => {
       price = parseFloat(price);
       quantity = parseFloat(quantity);
-      if (price >= priceRangeLow && price <= currentPrice) {
+      if (price >= 1 && price <= 1000000) {  // Consider bids from 1 USD to 1 million USD
         bidSum += price * quantity;
       }
     });
 
-    // Sum the ask values (price * quantity) where the price is >= current price and within the price range
-    let askSum = 0;
+    // Sum all ask values (price * quantity)
     orderBook.asks.forEach(([price, quantity]) => {
       price = parseFloat(price);
       quantity = parseFloat(quantity);
-      if (price <= priceRangeHigh && price >= currentPrice) {
+      if (price >= 1 && price <= 1000000) {  // Consider asks from 1 USD to 1 million USD
         askSum += price * quantity;
       }
     });
 
-    return { bidSum, askSum, priceRangeLow, priceRangeHigh };
+    return { bidSum, askSum };
   }
 
   // Update the order book data and the ratio in the UI
@@ -139,7 +137,7 @@
     const orderBook = await fetchOrderBook();
 
     if (currentPrice && orderBook) {
-      const { bidSum, askSum, priceRangeLow, priceRangeHigh } = filterOrderBookByRange(orderBook, currentPrice, percentage);
+      const { bidSum, askSum } = sumAllBidsAndAsks(orderBook);
 
       // Calculate the ratio as the sum of bids divided by the sum of asks
       const ratio = bidSum / askSum;
