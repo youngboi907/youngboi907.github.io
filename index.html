@@ -67,7 +67,7 @@
 
 <div>
   <label for="percentage">Price Range Percentage: </label>
-  <input type="number" id="percentage" value="2" min="1" max="10">
+  <input type="number" id="percentage" value="10" min="1" max="50">
   <button onclick="updateOrderBook()">Update</button>
 </div>
 
@@ -119,7 +119,7 @@
     let bidsSum = 0;
     let asksSum = 0;
 
-    // Calculate bids sum: bids are within range (price <= currentPrice)
+    // Calculate bids sum: only consider bids within the range [priceRangeLow, currentPrice]
     orderBook.bids.forEach(([price, quantity]) => {
       price = parseFloat(price);
       quantity = parseFloat(quantity);
@@ -128,7 +128,7 @@
       }
     });
 
-    // Calculate asks sum: asks are within range (price >= currentPrice)
+    // Calculate asks sum: only consider asks within the range [currentPrice, priceRangeHigh]
     orderBook.asks.forEach(([price, quantity]) => {
       price = parseFloat(price);
       quantity = parseFloat(quantity);
