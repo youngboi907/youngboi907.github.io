@@ -264,6 +264,12 @@
         // Initialize charts
         initializeOrderBookChart();
         renderCombinedChart("1m");
+
+        // Auto-refresh the data every 30 seconds (30000 ms)
+        setInterval(() => {
+            wsOrderBook.send(JSON.stringify({ method: "ping" }));
+            renderCombinedChart(document.getElementById("timeframe").value); // Re-render the combined chart
+        }, 30000); // Refresh interval
     </script>
 </body>
 </html>
