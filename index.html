@@ -143,27 +143,30 @@
 
         // Update the Order Book Chart
         function updateOrderBookChart() {
-            // Sort bids and asks and combine them
+            // Combine bids and asks, and sort them from lower to higher price
             const allOrders = [...orderBook.bids, ...orderBook.asks];
             allOrders.sort((a, b) => a.price - b.price); // Sort by price from low to high
 
-            const labels = allOrders.map(order => order.price.toFixed(2)); // Prices for X-axis
-            const bidQuantities = orderBook.bids.filter(order => order.quantity >= minQty).map(order => order.quantity);
-            const askQuantities = orderBook.asks.filter(order => order.quantity >= minQty).map(order => order.quantity);
+            // Labels: actual price levels from low to high
+            const labels = allOrders.map(order => order.price.toFixed(2)); 
 
-            const allQuantities = labels.map((label, index) => {
-                const bidOrder = orderBook.bids.find(order => order.price.toFixed(2) === label);
-                const askOrder = orderBook.asks.find(order => order.price.toFixed(2) === label);
-                return [
-                    bidOrder ? bidOrder.quantity : 0,
-                    askOrder ? askOrder.quantity : 0
-                ];
+            // Quantities for Bids and Asks
+            const bidQuantities = [];
+            const askQuantities = [];
+            allOrders.forEach(order => {
+                if (orderBook.bids.includes(order)) {
+                    bidQuantities.push(order.quantity);
+                    askQuantities.push(0); // No ask at this price level
+                } else {
+                    askQuantities.push(order.quantity);
+                    bidQuantities.push(0); // No bid at this price level
+                }
             });
 
             // Set the X-axis labels to actual price levels
             orderBookChart.data.labels = labels;
-            orderBookChart.data.datasets[0].data = allQuantities.map(item => item[0]); // Bids
-            orderBookChart.data.datasets[1].data = allQuantities.map(item => item[1]); // Asks
+            orderBookChart.data.datasets[0].data = bidQuantities; // Bids
+            orderBookChart.data.datasets[1].data = askQuantities; // Asks
 
             orderBookChart.update();
         }
