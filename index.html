@@ -7,17 +7,13 @@ deltaChart = new Chart(deltaCtx, {
             {
                 label: "Delta (Bids - Asks)",
                 data: [],
-                borderColor: function(context) {
-                    const value = context.dataset.data[context.dataIndex];
-                    return value >= 0 ? "#4caf50" : "#f44336"; // Green for positive, red for negative
-                },
+                borderColor: "#ffffff",
                 borderWidth: 2,
-                pointBackgroundColor: function(context) {
+                fill: true,
+                backgroundColor: function(context) {
                     const value = context.dataset.data[context.dataIndex];
-                    return value >= 0 ? "#4caf50" : "#f44336";
+                    return value >= 0 ? "rgba(76, 175, 80, 0.3)" : "rgba(244, 67, 54, 0.3)"; // Green for positive, red for negative
                 },
-                pointRadius: 5,
-                fill: false,
             }
         ]
     },
@@ -26,6 +22,9 @@ deltaChart = new Chart(deltaCtx, {
         scales: {
             x: { title: { display: true, text: "Time" } },
             y: { title: { display: true, text: "Delta (USDT)" } }
+        },
+        plugins: {
+            legend: { display: true }
         }
     }
 });
@@ -39,12 +38,9 @@ if (deltaChart.data.labels.length > limit) {
     deltaChart.data.datasets[0].data.shift();
 }
 
-// Apply color dynamically
-deltaChart.data.datasets[0].borderColor = deltaChart.data.datasets[0].data.map(value =>
-    value >= 0 ? "#4caf50" : "#f44336"
-);
-deltaChart.data.datasets[0].pointBackgroundColor = deltaChart.data.datasets[0].data.map(value =>
-    value >= 0 ? "#4caf50" : "#f44336"
+// Update Fill Color Dynamically
+deltaChart.data.datasets[0].backgroundColor = deltaChart.data.datasets[0].data.map(value =>
+    value >= 0 ? "rgba(76, 175, 80, 0.3)" : "rgba(244, 67, 54, 0.3)"
 );
 
 deltaChart.update();
