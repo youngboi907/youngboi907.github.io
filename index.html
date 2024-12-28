@@ -14,12 +14,13 @@
             color: white;
             margin: 0;
             padding: 20px;
+            box-sizing: border-box;
         }
         h1, label {
             margin: 10px 0;
         }
         canvas {
-            max-width: 95%;
+            max-width: 100%;
             margin: 20px auto;
         }
         .controls {
@@ -29,8 +30,8 @@
             align-items: center;
         }
         table {
-            width: 95%;
-            margin: 20px auto;
+            width: 100%;
+            margin: 20px 0;
             border-collapse: collapse;
         }
         th, td {
@@ -46,6 +47,14 @@
         }
         tr:nth-child(odd) {
             background-color: #1a1a1a;
+        }
+        @media (max-width: 768px) {
+            .controls {
+                width: 100%;
+            }
+            table, canvas {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -143,14 +152,14 @@
 
                 const filteredBids = data.bids
                     .map(([price, qty]) => ({
-                        price: parseFloat(price),
+                        price: Math.round(parseFloat(price)), // Round price to nearest integer
                         qty: parseFloat(qty),
                     }))
                     .filter((order) => order.price >= minPrice);
 
                 const filteredAsks = data.asks
                     .map(([price, qty]) => ({
-                        price: parseFloat(price),
+                        price: Math.round(parseFloat(price)), // Round price to nearest integer
                         qty: parseFloat(qty),
                     }))
                     .filter((order) => order.price <= maxPrice);
@@ -178,12 +187,12 @@
             tableBody.innerHTML = "";
 
             bids.forEach((bid) => {
-                const row = `<tr><td>BID</td><td>${bid.price.toFixed(2)}</td><td>${bid.qty.toFixed(6)}</td></tr>`;
+                const row = `<tr><td>BID</td><td>${bid.price}</td><td>${bid.qty.toFixed(6)}</td></tr>`;
                 tableBody.innerHTML += row;
             });
 
             asks.forEach((ask) => {
-                const row = `<tr><td>ASK</td><td>${ask.price.toFixed(2)}</td><td>${ask.qty.toFixed(6)}</td></tr>`;
+                const row = `<tr><td>ASK</td><td>${ask.price}</td><td>${ask.qty.toFixed(6)}</td></tr>`;
                 tableBody.innerHTML += row;
             });
         }
