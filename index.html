@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Order Book - Proportional Line Thickness</title>
+    <title>Top N Orders in BTC/USDT Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.0.0/dist/chartjs-plugin-zoom.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -18,61 +19,60 @@
             justify-content: flex-start;
             min-height: 100vh;
         }
-        h1, select, input {
+        h1, select {
             margin: 10px 0;
         }
-        #chartContainer {
-            position: relative;
-            width: 90%;
-            height: 500px;
-        }
         canvas {
-            width: 100%;
-            height: 100%;
+            max-width: 95%;
+            margin: 20px 0;
         }
-        #zoomSlider {
-            width: 90%;
+        #topNSelector {
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Order Book</h1>
-    <label for="topNSelector">Select Top N Orders:</label>
+    <h1>Top N Orders in BTC/USDT Order Book</h1>
+    <label for="topNSelector">Select Top N:</label>
     <select id="topNSelector">
         <option value="5">Top 5</option>
         <option value="10" selected>Top 10</option>
         <option value="20">Top 20</option>
         <option value="30">Top 30</option>
     </select>
-    <div id="chartContainer">
-        <canvas id="orderBookChart"></canvas>
-    </div>
-    <label for="zoomSlider">Zoom Y-Axis:</label>
-    <input type="range" id="zoomSlider" min="1" max="100" value="50">
+    <canvas id="orderBookChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
         let topN = 10; // Default to Top 10 orders
         let orderBook = { bids: [], asks: [] }; // Order book data
         let orderBookChart;
-        let zoomLevel = 50; // Initial zoom level for Y-axis
 
+        // Connect to Binance WebSocket for real-time depth updates
         const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
+
+            // Update the order book with the new data
             updateOrderBook(data.b, data.a);
+
+            // Update the chart
             updateChart();
         };
 
+        // Function to update the order book
         function updateOrderBook(bids, asks) {
-            // Update bids
+            // Process bids
             bids.forEach(([price, quantity]) => {
                 const priceNum = parseFloat(price);
                 const quantityNum = parseFloat(quantity);
+
                 if (quantityNum === 0) {
+                    // Remove the bid if quantity is 0
                     orderBook.bids = orderBook.bids.filter(order => order.price !== priceNum);
                 } else {
+                    // Update or add the bid
                     const existing = orderBook.bids.find(order => order.price === priceNum);
                     if (existing) {
                         existing.quantity = quantityNum;
@@ -82,13 +82,16 @@
                 }
             });
 
-            // Update asks
+            // Process asks
             asks.forEach(([price, quantity]) => {
                 const priceNum = parseFloat(price);
                 const quantityNum = parseFloat(quantity);
+
                 if (quantityNum === 0) {
+                    // Remove the ask if quantity is 0
                     orderBook.asks = orderBook.asks.filter(order => order.price !== priceNum);
                 } else {
+                    // Update or add the ask
                     const existing = orderBook.asks.find(order => order.price === priceNum);
                     if (existing) {
                         existing.quantity = quantityNum;
@@ -98,75 +101,93 @@
                 }
             });
 
+            // Sort bids (descending) and asks (ascending)
             orderBook.bids.sort((a, b) => b.price - a.price);
             orderBook.asks.sort((a, b) => a.price - b.price);
 
+            // Limit to top N entries
             orderBook.bids = orderBook.bids.slice(0, topN);
             orderBook.asks = orderBook.asks.slice(0, topN);
         }
 
+        // Initialize the chart
         function initializeChart() {
             const ctx = document.getElementById("orderBookChart").getContext("2d");
+
             orderBookChart = new Chart(ctx, {
-                type: "line",
+                type: "bar",
                 data: {
-                    labels: [], 
+                    labels: [], // Will be updated dynamically
                     datasets: [
                         {
                             label: "Bids",
                             data: [],
-                            borderColor: "rgba(76, 175, 80, 1)",
-                            borderWidth: (ctx) => {
-                                const index = ctx.dataIndex;
-                                return Math.min(Math.max(orderBook.bids[index]?.quantity || 0, 1), 10);
-                            },
-                            fill: false,
+                            backgroundColor: "rgba(76, 175, 80, 0.7)", // Green
                         },
                         {
                             label: "Asks",
                             data: [],
-                            borderColor: "rgba(244, 67, 54, 1)",
-                            borderWidth: (ctx) => {
-                                const index = ctx.dataIndex;
-                                return Math.min(Math.max(orderBook.asks[index]?.quantity || 0, 1), 10);
-                            },
-                            fill: false,
-                        },
+                            backgroundColor: "rgba(244, 67, 54, 0.7)", // Red
+                        }
                     ]
                 },
                 options: {
                     responsive: true,
                     scales: {
-                        x: { title: { display: true, text: "Order Index" } },
-                        y: { title: { display: true, text: "Price (USDT)" }, min: zoomLevel },
+                        x: {
+                            title: { display: true, text: "Price Levels (USDT)" },
+                            beginAtZero: false
+                        },
+                        y: {
+                            title: { display: true, text: "Quantity (BTC)" }
+                        }
+                    },
+                    plugins: {
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                                speed: 10,
+                            },
+                            zoom: {
+                                enabled: true,
+                                mode: 'xy',
+                                speed: 0.1,
+                            }
+                        }
                     }
                 }
             });
         }
 
+        // Update the chart
         function updateChart() {
-            const bidLabels = orderBook.bids.map(order => order.price);
-            const askLabels = orderBook.asks.map(order => order.price);
+            const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
+            const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
+
+            const bidQuantities = orderBook.bids.map(order => order.quantity);
+            const askQuantities = orderBook.asks.map(order => order.quantity);
 
             orderBookChart.data.labels = [...bidLabels, ...askLabels];
-            orderBookChart.data.datasets[0].data = orderBook.bids.map(order => order.quantity);
-            orderBookChart.data.datasets[1].data = orderBook.asks.map(order => order.quantity);
+            orderBookChart.data.datasets[0].data = bidQuantities;
+            orderBookChart.data.datasets[1].data = askQuantities;
+
             orderBookChart.update();
         }
 
-        // Top N selector
+        // Event listener for the top N selector
         document.getElementById("topNSelector").addEventListener("change", (event) => {
             topN = parseInt(event.target.value, 10);
+
+            // Re-sort and limit the data to the selected top N
+            orderBook.bids = orderBook.bids.slice(0, topN);
+            orderBook.asks = orderBook.asks.slice(0, topN);
+
+            // Update the chart
             updateChart();
         });
 
-        // Zoom slider
-        document.getElementById("zoomSlider").addEventListener("input", (event) => {
-            zoomLevel = parseFloat(event.target.value);
-            orderBookChart.options.scales.y.min = zoomLevel;
-            orderBookChart.update();
-        });
-
+        // Initialize the chart
         initializeChart();
     </script>
 </body>
