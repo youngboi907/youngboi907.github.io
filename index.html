@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT & Volume Delta</title>
+    <title>BTC/USDT Chart & Order Book Stats</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -31,11 +31,15 @@
             background: #1e1e1e;
             border: 1px solid #4caf50;
             border-radius: 5px;
+            text-align: center;
+        }
+        #orderBookStats p {
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Order Book Statistics</h1>
+    <h1>BTC/USDT Chart & Order Book Stats</h1>
     <label for="timeframe">Select Time Frame:</label>
     <select id="timeframe">
         <option value="1h">Last 1 Hour</option>
@@ -45,8 +49,6 @@
         <option value="1m">Last 1 Month</option>
     </select>
     <canvas id="priceChart"></canvas>
-    <canvas id="spotDeltaChart"></canvas>
-    <canvas id="futuresDeltaChart"></canvas>
 
     <div id="orderBookStats">
         <h2>Order Book Stats</h2>
@@ -57,7 +59,7 @@
 
     <script>
         const symbol = "BTCUSDT";
-        let priceChart, spotDeltaChart, futuresDeltaChart;
+        let priceChart;
 
         async function fetchOrderBookData() {
             const url = `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`;
@@ -103,13 +105,40 @@
             document.getElementById("bidAskRatio").innerText = `Bid/Ask Ratio: ${bidAskRatio.toFixed(2)}`;
         }
 
-        // Initialize Charts
-        function initializeCharts() {
-            const priceCtx = document.getElementById("priceChart").getContext("2d");
-            const spotDeltaCtx = document.getElementById("spotDeltaChart").getContext("2d");
-            const futuresDeltaCtx = document.getElementById("futuresDeltaChart").getContext("2d");
+        async function fetchKlineData(interval, limit) {
+            const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                const data = await response.json();
+                const timestamps = [], prices = [];
+                data.forEach(kline => {
+                    timestamps.push(new Date(kline[0]).toLocaleString());
+                    prices.push(parseFloat(kline[4])); // Close price
+                });
+                return { timestamps, prices };
+            } catch (error) {
+                console.error("Error fetching Kline data:", error);
+                return { timestamps: [], prices: [] };
+            }
+        }
 
-            priceChart = new Chart(priceCtx, {
+        async function updateChart(interval, limit) {
+            try {
+                const { timestamps, prices } = await fetchKlineData(interval, limit);
+
+                // Update Price Chart
+                priceChart.data.labels = timestamps;
+                priceChart.data.datasets[0].data = prices;
+                priceChart.update();
+            } catch (error) {
+                console.error("Error updating chart:", error);
+            }
+        }
+
+        function initializeChart() {
+            const ctx = document.getElementById("priceChart").getContext("2d");
+            priceChart = new Chart(ctx, {
                 type: "line",
                 data: {
                     labels: [],
@@ -129,49 +158,29 @@
                     }
                 }
             });
-
-            spotDeltaChart = new Chart(spotDeltaCtx, {
-                type: "bar",
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: "Spot Volume Delta",
-                        data: [],
-                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336",
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Volume Delta" } }
-                    }
-                }
-            });
-
-            futuresDeltaChart = new Chart(futuresDeltaCtx, {
-                type: "bar",
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: "Futures Volume Delta",
-                        data: [],
-                        backgroundColor: context => context.raw > 0 ? "#4caf50" : "#f44336",
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Volume Delta" } }
-                    }
-                }
-            });
         }
 
-        // Initialize
-        initializeCharts();
-        fetchOrderBookData();
+        // Event listener for the timeframe selector
+        document.getElementById("timeframe").addEventListener("change", (event) => {
+            const value = event.target.value;
+            let interval, limit;
+
+            switch (value) {
+                case "1h": interval = "1m"; limit = 60; break;
+                case "4h": interval = "5m"; limit = 48; break;
+                case "1d": interval = "15m"; limit = 96; break;
+                case "1w": interval = "1h"; limit = 168; break;
+                case "1m": interval = "1d"; limit = 30; break;
+                default: interval = "1m"; limit = 60; break;
+            }
+
+            updateChart(interval, limit);
+        });
+
+        // Initialize chart and load data
+        initializeChart();
+        updateChart("1m", 60); // Default: Last 1 hour
+        fetchOrderBookData(); // Fetch order book stats
     </script>
 </body>
 </html>
