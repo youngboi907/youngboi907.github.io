@@ -6,83 +6,63 @@
 </head>
 <body>
   <h1>Binance Spot BTC/USDT Order Book</h1>
-
   <div id="order-book-data">
-    <h2>Order Book Data (Placeholder - Replace with API Data)</h2>
+    <h2>Order Book Data</h2>
     <p>Best Bid: <span id="best-bid"></span></p>
     <p>Best Ask: <span id="best-ask"></span></p>
-    <p>Bid Depth (Top 10): <span id="bid-depth"></span></p>
-    <p>Ask Depth (Top 10): <span id="ask-depth"></span></p>
-    <p>Bid/Ask Ratio: <span id="bid-ask-ratio"></span></p>
   </div>
 
   <div id="charts">
     <h2>Order Book Depth Chart</h2>
     <canvas id="depth-chart"></canvas>
-
-    <h2>Bid/Ask Ratio Chart</h2>
-    <canvas id="ratio-chart"></canvas>
   </div>
 
   <script>
-    // **Important:**
-    // 1. Replace this with actual code to fetch order book data from Binance API.
-    // 2. Handle API authentication and error handling.
-    // 3. Implement real-time updates using WebSockets.
-    // 4. Calculate Bid Depth, Ask Depth, and Bid/Ask Ratio.
+    async function fetchOrderBook() {
+      try {
+        const response = await fetch('https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=100');
+        const data = await response.json();
 
-    const bidPrices = [30000, 29999, 29998]; // Placeholder data
-    const bidVolumes = [10, 20, 5]; 
-    const askPrices = [30001, 30002, 30003];
-    const askVolumes = [8, 15, 12];
+        const bids = data.bids.map(item => parseFloat(item[0]));
+        const bidVolumes = data.bids.map(item => parseFloat(item[1]));
+        const asks = data.asks.map(item => parseFloat(item[0]));
+        const askVolumes = data.asks.map(item => parseFloat(item[1]));
 
-    // Calculate Bid Depth (sum of top 10 bid volumes)
-    const bidDepth = bidVolumes.slice(0, 10).reduce((a, b) => a + b, 0);
+        // ... (Your calculations for order book depth at 1% to 10% here)
 
-    // Calculate Ask Depth (sum of top 10 ask volumes)
-    const askDepth = askVolumes.slice(0, 10).reduce((a, b) => a + b, 0);
+        // Update UI with best bid and ask
+        document.getElementById('best-bid').textContent = bids[0];
+        document.getElementById('best-ask').textContent = asks[0];
 
-    // Calculate Bid/Ask Ratio
-    const bidAskRatio = bidDepth / askDepth;
-
-    // Update HTML elements with data
-    document.getElementById('best-bid').textContent = bidPrices[0];
-    document.getElementById('best-ask').textContent = askPrices[0];
-    document.getElementById('bid-depth').textContent = bidDepth;
-    document.getElementById('ask-depth').textContent = askDepth;
-    document.getElementById('bid-ask-ratio').textContent = bidAskRatio.toFixed(2);
-
-    // Create charts using Chart.js
-    const ctxDepth = document.getElementById('depth-chart').getContext('2d');
-    new Chart(ctxDepth, {
-      type: 'bar',
-      data: {
-        labels: ['Bid', 'Ask'],
-        datasets: [{
-          data: [bidDepth, askDepth],
-          backgroundColor: ['green', 'red'],
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true
+        // Create Chart.js chart (example: simple bar chart)
+        const ctx = document.getElementById('depth-chart').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Bid', 'Ask'],
+            datasets: [{
+              label: 'Top 10 Volume',
+              data: [bidVolumes.slice(0, 10).reduce((a, b) => a + b, 0), 
+                     askVolumes.slice(0, 10).reduce((a, b) => a + b, 0)],
+              backgroundColor: ['green', 'red']
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            }
           }
-        }
-      }
-    });
+        });
 
-    const ctxRatio = document.getElementById('ratio-chart').getContext('2d');
-    new Chart(ctxRatio, {
-      type: 'bar',
-      data: {
-        labels: ['Bid/Ask Ratio'],
-        datasets: [{
-          data: [bidAskRatio],
-          backgroundColor: 'blue'
-        }]
+      } catch (error) {
+        console.error("Error fetching order book:", error);
+        // Handle error gracefully (e.g., display error message to user)
       }
-    });
+    }
+
+    fetchOrderBook(); 
   </script>
 </body>
 </html>
