@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BTC/USDT Price Chart with Historical Ratio</title>
+  <title>BTC/USDT Bid/Ask Ratio</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -42,7 +42,7 @@
 </head>
 <body>
 
-<h1>BTC/USDT Price Chart with Historical Ratio</h1>
+<h1>BTC/USDT Bid/Ask Ratio</h1>
 
 <div class="controls">
   <label for="timeFrame">Select Time Frame:</label>
@@ -55,7 +55,7 @@
 </div>
 
 <div class="chart-container">
-  <canvas id="priceChart"></canvas>
+  <canvas id="ratioChart"></canvas>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -63,8 +63,7 @@
 <script>
   const apiUrl = 'https://api.binance.com';
 
-  // Arrays to store historical BTC price and ratio data
-  const historicalPrices = [];
+  // Arrays to store historical ratio data
   const historicalRatios = [];
   const historicalTimes = [];
 
@@ -132,14 +131,12 @@
       // Calculate the ratio: sum of bids / sum of asks
       const ratio = bidSum / askSum;
 
-      // Store the ratio and the current price along with timestamp
-      if (historicalPrices.length >= 1440) {  // Keep data for 24 hours (1440 minutes)
-        historicalPrices.shift(); // Remove the oldest price
+      // Store the ratio and the current time
+      if (historicalRatios.length >= 1440) {  // Keep data for 24 hours (1440 minutes)
         historicalRatios.shift(); // Remove the oldest ratio
         historicalTimes.shift(); // Remove the oldest timestamp
       }
 
-      historicalPrices.push(currentPrice);
       historicalRatios.push(ratio.toFixed(4)); // Store ratio
       historicalTimes.push(new Date().toLocaleTimeString());
 
@@ -169,17 +166,16 @@
     }
 
     // Filter the historical data based on the selected time frame
-    const filteredPrices = historicalPrices.slice(-timeFrameMultiplier);
     const filteredRatios = historicalRatios.slice(-timeFrameMultiplier);
     const filteredTimes = historicalTimes.slice(-timeFrameMultiplier);
 
     // Update the chart with the filtered data
-    plotPriceChart(filteredPrices, filteredRatios, filteredTimes);
+    plotRatioChart(filteredRatios, filteredTimes);
   }
 
-  // Plot the BTC price chart and the ratio chart
-  function plotPriceChart(prices, ratios, timestamps) {
-    const ctx = document.getElementById('priceChart').getContext('2d');
+  // Plot the ratio chart
+  function plotRatioChart(ratios, timestamps) {
+    const ctx = document.getElementById('ratioChart').getContext('2d');
 
     // Destroy the previous chart before redrawing
     if (window.chart) {
@@ -192,15 +188,6 @@
       data: {
         labels: timestamps,
         datasets: [
-          {
-            label: 'BTC/USDT Price',
-            data: prices,
-            borderColor: 'rgba(240, 165, 0, 1)',
-            backgroundColor: 'rgba(240, 165, 0, 0.2)',
-            borderWidth: 2,
-            pointRadius: 1,
-            fill: false
-          },
           {
             label: 'Bid/Ask Ratio',
             data: ratios,
@@ -229,7 +216,10 @@
           y: {
             title: {
               display: true,
-              text: 'Price / Ratio'
+              text: 'Ratio (Sum of Bids / Sum of Asks)'
+            },
+            ticks: {
+              beginAtZero: true,
             }
           }
         },
