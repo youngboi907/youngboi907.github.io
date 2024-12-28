@@ -1,249 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Order Book Depth Delta</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: white;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
-        }
-        h1, select {
-            margin: 10px 0;
-        }
-        canvas {
-            max-width: 95%;
-            margin: 20px 0;
-        }
-    </style>
-</head>
-<body>
-    <h1>BTC/USDT Order Book Depth Delta</h1>
-    <label for="timeframe">Select Time Frame:</label>
-    <select id="timeframe">
-        <option value="5m">Last 5 Minutes</option>
-        <option value="15m">Last 15 Minutes</option>
-        <option value="1h">Last 1 Hour</option>
-        <option value="4h">Last 4 Hours</option>
-        <option value="1d">Last 1 Day</option>
-        <option value="1w">Last 1 Week</option>
-    </select>
-    <canvas id="historicalOrderBookChart"></canvas>
-    <canvas id="orderBookChart"></canvas>
-    <canvas id="deltaChart"></canvas>
-
-    <script>
-        const symbol = "BTCUSDT";
-        let historicalOrderBookChart, orderBookChart, deltaChart;
-        let interval = "1m";
-        let limit = 60;
-
-        async function fetchOrderBookData() {
-            const url = `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-                const data = await response.json();
-                return calculateOrderBookStats(data);
-            } catch (error) {
-                console.error("Error fetching order book data:", error);
-                return { bidsSum: 0, asksSum: 0, delta: 0 };
-            }
-        }
-
-        function calculateOrderBookStats(data) {
-            const bids = data.bids.map(([price, quantity]) => ({
-                price: parseFloat(price),
-                quantity: parseFloat(quantity),
-                total: parseFloat(price) * parseFloat(quantity),
-            }));
-            const asks = data.asks.map(([price, quantity]) => ({
-                price: parseFloat(price),
-                quantity: parseFloat(quantity),
-                total: parseFloat(price) * parseFloat(quantity),
-            }));
-
-            // Sort bids (highest to lowest) and asks (lowest to highest)
-            bids.sort((a, b) => b.price - a.price);
-            asks.sort((a, b) => a.price - b.price);
-
-            // Calculate top 10% sum
-            const top10PercentBids = bids.slice(0, Math.ceil(bids.length * 0.1));
-            const top10PercentAsks = asks.slice(0, Math.ceil(asks.length * 0.1));
-
-            const bidsSum = top10PercentBids.reduce((sum, bid) => sum + bid.total, 0);
-            const asksSum = top10PercentAsks.reduce((sum, ask) => sum + ask.total, 0);
-            const delta = bidsSum - asksSum;
-
-            return { bidsSum, asksSum, delta };
-        }
-
-        async function updateCharts() {
-            try {
-                const { bidsSum, asksSum, delta } = await fetchOrderBookData();
-
-                // Update Historical Order Book Chart
-                const currentTime = new Date().toLocaleString();
-                historicalOrderBookChart.data.labels.push(currentTime);
-                historicalOrderBookChart.data.datasets[0].data.push(bidsSum);
-                historicalOrderBookChart.data.datasets[1].data.push(asksSum);
-
-                // Keep data within selected time frame
-                if (historicalOrderBookChart.data.labels.length > limit) {
-                    historicalOrderBookChart.data.labels.shift();
-                    historicalOrderBookChart.data.datasets[0].data.shift();
-                    historicalOrderBookChart.data.datasets[1].data.shift();
-                }
-
-                historicalOrderBookChart.update();
-
-                // Update Current Order Book Chart
-                orderBookChart.data.datasets[0].data = [bidsSum];
-                orderBookChart.data.datasets[1].data = [asksSum];
-                orderBookChart.update();
-
-                // Update Delta Chart
-                deltaChart.data.labels.push(currentTime);
-                deltaChart.data.datasets[0].data.push(delta);
-
-                if (deltaChart.data.labels.length > limit) {
-                    deltaChart.data.labels.shift();
-                    deltaChart.data.datasets[0].data.shift();
-                }
-
-                deltaChart.update();
-            } catch (error) {
-                console.error("Error updating charts:", error);
-            }
-        }
-
-        function initializeCharts() {
-            const historicalOrderBookCtx = document.getElementById("historicalOrderBookChart").getContext("2d");
-            const orderBookCtx = document.getElementById("orderBookChart").getContext("2d");
-            const deltaCtx = document.getElementById("deltaChart").getContext("2d");
-
-            // Historical Order Book Chart
-            historicalOrderBookChart = new Chart(historicalOrderBookCtx, {
-                type: "line",
-                data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: "Top 10% Bids Sum",
-                            data: [],
-                            borderColor: "#4caf50",
-                            borderWidth: 2,
-                            fill: false,
-                        },
-                        {
-                            label: "Top 10% Asks Sum",
-                            data: [],
-                            borderColor: "#f44336",
-                            borderWidth: 2,
-                            fill: false,
-                        }
-                    ]
+// Delta Chart
+deltaChart = new Chart(deltaCtx, {
+    type: "line",
+    data: {
+        labels: [],
+        datasets: [
+            {
+                label: "Delta (Bids - Asks)",
+                data: [],
+                borderColor: function(context) {
+                    const value = context.dataset.data[context.dataIndex];
+                    return value >= 0 ? "#4caf50" : "#f44336"; // Green for positive, red for negative
                 },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Sum (USDT)" } }
-                    }
-                }
-            });
-
-            // Current Order Book Chart
-            orderBookChart = new Chart(orderBookCtx, {
-                type: "bar",
-                data: {
-                    labels: ["Top 10% Depth"],
-                    datasets: [
-                        {
-                            label: "Top 10% Bids",
-                            data: [],
-                            backgroundColor: "#4caf50",
-                        },
-                        {
-                            label: "Top 10% Asks",
-                            data: [],
-                            backgroundColor: "#f44336",
-                        }
-                    ]
+                borderWidth: 2,
+                pointBackgroundColor: function(context) {
+                    const value = context.dataset.data[context.dataIndex];
+                    return value >= 0 ? "#4caf50" : "#f44336";
                 },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Category" } },
-                        y: { title: { display: true, text: "USDT" } }
-                    }
-                }
-            });
-
-            // Delta Chart
-            deltaChart = new Chart(deltaCtx, {
-                type: "line",
-                data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: "Delta (Bids - Asks)",
-                            data: [],
-                            borderColor: "#ff9800",
-                            borderWidth: 2,
-                            fill: false,
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: { title: { display: true, text: "Delta (USDT)" } }
-                    }
-                }
-            });
-        }
-
-        // Event listener for the timeframe selector
-        document.getElementById("timeframe").addEventListener("change", (event) => {
-            const value = event.target.value;
-
-            switch (value) {
-                case "5m": interval = "1m"; limit = 5; break;
-                case "15m": interval = "1m"; limit = 15; break;
-                case "1h": interval = "1m"; limit = 60; break;
-                case "4h": interval = "5m"; limit = 48; break;
-                case "1d": interval = "15m"; limit = 96; break;
-                case "1w": interval = "1h"; limit = 168; break;
-                default: interval = "1m"; limit = 60; break;
+                pointRadius: 5,
+                fill: false,
             }
+        ]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            x: { title: { display: true, text: "Time" } },
+            y: { title: { display: true, text: "Delta (USDT)" } }
+        }
+    }
+});
 
-            // Reset data
-            historicalOrderBookChart.data.labels = [];
-            historicalOrderBookChart.data.datasets[0].data = [];
-            historicalOrderBookChart.data.datasets[1].data = [];
-            deltaChart.data.labels = [];
-            deltaChart.data.datasets[0].data = [];
-            updateCharts();
-        });
+// Update Delta Chart
+deltaChart.data.labels.push(currentTime);
+deltaChart.data.datasets[0].data.push(delta);
 
-        // Initialize charts and load data
-        initializeCharts();
-        updateCharts();
+if (deltaChart.data.labels.length > limit) {
+    deltaChart.data.labels.shift();
+    deltaChart.data.datasets[0].data.shift();
+}
 
-        // Auto-update every second
-        setInterval(updateCharts, 1000); // 1 second
-    </script>
-</body>
-</html>
+// Apply color dynamically
+deltaChart.data.datasets[0].borderColor = deltaChart.data.datasets[0].data.map(value =>
+    value >= 0 ? "#4caf50" : "#f44336"
+);
+deltaChart.data.datasets[0].pointBackgroundColor = deltaChart.data.datasets[0].data.map(value =>
+    value >= 0 ? "#4caf50" : "#f44336"
+);
+
+deltaChart.update();
