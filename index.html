@@ -147,8 +147,8 @@
                         {
                             label: "Delta (Bids - Asks)",
                             data: [],
-                            borderColor: "rgba(0, 0, 0, 0.9)",
-                            backgroundColor: "rgba(0, 0, 0, 0.6)",
+                            borderColor: "rgba(33, 150, 243, 0.8)", // Blue color for delta
+                            backgroundColor: "rgba(33, 150, 243, 0.4)",
                             fill: true,
                             stepped: true,
                             hidden: false,
@@ -157,6 +157,7 @@
                 },
                 options: {
                     responsive: true,
+                    animation: false, // Prevent flickering
                     scales: {
                         x: {
                             title: { display: true, text: "Price Levels (USDT)" },
