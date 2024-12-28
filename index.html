@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Order Book - Bids and Asks</title>
+    <title>BTC/USDT Order Book Analysis</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
@@ -13,32 +13,44 @@
             background-color: #121212;
             color: white;
             margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
+            padding: 20px;
         }
-        h1, label, select, input {
-            margin: 10px;
+        h1, label {
+            margin: 10px 0;
         }
         canvas {
             max-width: 95%;
-            margin: 20px 0;
+            margin: 20px auto;
         }
         .controls {
+            margin: 20px 0;
             display: flex;
-            flex-direction: row;
-            gap: 15px;
+            flex-direction: column;
             align-items: center;
-            flex-wrap: wrap;
-            justify-content: center;
+        }
+        table {
+            width: 95%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #444;
+        }
+        tr:nth-child(even) {
+            background-color: #2a2a2a;
+        }
+        tr:nth-child(odd) {
+            background-color: #1a1a1a;
         }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Order Book - Sum of Bids and Asks</h1>
+    <h1>BTC/USDT Order Book Analysis</h1>
     <div class="controls">
         <label for="priceRange">Price Range (%):</label>
         <input id="priceRange" type="number" value="2.5" step="0.1" min="0.1">
@@ -50,16 +62,26 @@
         </select>
     </div>
     <canvas id="orderBookChart"></canvas>
+    <h2>Order Book Data (Filtered by Price Range)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Price (USDT)</th>
+                <th>Quantity (BTC)</th>
+            </tr>
+        </thead>
+        <tbody id="orderBookTable"></tbody>
+    </table>
 
     <script>
-        const symbol = "BTCUSDT";
         const apiBase = "https://api.binance.com/api/v3";
+        const symbol = "BTCUSDT";
 
         let priceRangePercentage = 2.5;
         let timeframe = 86400000; // Default to 1 day
-        let historicalData = []; // Array to store historical data
+        let historicalData = [];
 
-        // Initialize the chart
         const ctx = document.getElementById("orderBookChart").getContext("2d");
         const chart = new Chart(ctx, {
             type: "line",
@@ -67,127 +89,129 @@
                 labels: [],
                 datasets: [
                     {
-                        label: "Bids Sum",
+                        label: "Sum of Bids",
                         data: [],
                         borderColor: "rgba(76, 175, 80, 0.7)", // Green
-                        fill: false,
+                        backgroundColor: "rgba(76, 175, 80, 0.3)",
+                        fill: true,
                         tension: 0.2,
                     },
                     {
-                        label: "Asks Sum",
+                        label: "Sum of Asks",
                         data: [],
                         borderColor: "rgba(244, 67, 54, 0.7)", // Red
-                        fill: false,
+                        backgroundColor: "rgba(244, 67, 54, 0.3)",
+                        fill: true,
                         tension: 0.2,
-                    }
-                ]
+                    },
+                ],
             },
             options: {
                 responsive: true,
                 scales: {
                     x: {
                         type: "time",
+                        time: { unit: "minute" },
                         title: { display: true, text: "Time" },
-                        time: {
-                            unit: "minute"
-                        }
                     },
                     y: {
-                        title: { display: true, text: "Volume (USDT)" }
-                    }
-                }
-            }
+                        title: { display: true, text: "Volume (BTC)" },
+                    },
+                },
+            },
         });
 
-        // Fetch order book data from Binance
+        document.getElementById("priceRange").addEventListener("change", (e) => {
+            priceRangePercentage = parseFloat(e.target.value);
+            fetchOrderBook();
+        });
+
+        document.getElementById("timeframe").addEventListener("change", (e) => {
+            timeframe = parseInt(e.target.value, 10);
+            updateChart();
+        });
+
         async function fetchOrderBook() {
-            const response = await fetch(`${apiBase}/depth?symbol=${symbol}&limit=1000`);
-            return response.json();
+            try {
+                const response = await fetch(`${apiBase}/depth?symbol=${symbol}&limit=1000`);
+                const data = await response.json();
+                const currentPrice = await getCurrentPrice();
+                const range = (priceRangePercentage / 100) * currentPrice;
+
+                const minPrice = currentPrice - range;
+                const maxPrice = currentPrice + range;
+
+                const filteredBids = data.bids
+                    .map(([price, qty]) => ({
+                        price: parseFloat(price),
+                        qty: parseFloat(qty),
+                    }))
+                    .filter((order) => order.price >= minPrice);
+
+                const filteredAsks = data.asks
+                    .map(([price, qty]) => ({
+                        price: parseFloat(price),
+                        qty: parseFloat(qty),
+                    }))
+                    .filter((order) => order.price <= maxPrice);
+
+                updateOrderBookTable(filteredBids, filteredAsks);
+                updateHistoricalData(filteredBids, filteredAsks);
+            } catch (error) {
+                console.error("Error fetching order book:", error);
+            }
         }
 
-        // Calculate the total sum of bids and asks within the price range
-        function calculateSums(orderBook, currentPrice, rangePercentage) {
-            const lowerBound = currentPrice * (1 - rangePercentage / 100);
-            const upperBound = currentPrice * (1 + rangePercentage / 100);
-
-            let bidsSum = 0;
-            let asksSum = 0;
-
-            // Calculate bids sum
-            orderBook.bids.forEach(([price, quantity]) => {
-                const priceNum = parseFloat(price);
-                if (priceNum >= lowerBound) {
-                    bidsSum += priceNum * parseFloat(quantity);
-                }
-            });
-
-            // Calculate asks sum
-            orderBook.asks.forEach(([price, quantity]) => {
-                const priceNum = parseFloat(price);
-                if (priceNum <= upperBound) {
-                    asksSum += priceNum * parseFloat(quantity);
-                }
-            });
-
-            return { bidsSum, asksSum };
+        async function getCurrentPrice() {
+            try {
+                const response = await fetch(`${apiBase}/ticker/price?symbol=${symbol}`);
+                const data = await response.json();
+                return parseFloat(data.price);
+            } catch (error) {
+                console.error("Error fetching current price:", error);
+                return 0;
+            }
         }
 
-        // Update the chart
+        function updateOrderBookTable(bids, asks) {
+            const tableBody = document.getElementById("orderBookTable");
+            tableBody.innerHTML = "";
+
+            bids.forEach((bid) => {
+                const row = `<tr><td>BID</td><td>${bid.price.toFixed(2)}</td><td>${bid.qty.toFixed(6)}</td></tr>`;
+                tableBody.innerHTML += row;
+            });
+
+            asks.forEach((ask) => {
+                const row = `<tr><td>ASK</td><td>${ask.price.toFixed(2)}</td><td>${ask.qty.toFixed(6)}</td></tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function updateHistoricalData(bids, asks) {
+            const now = Date.now();
+            const bidSum = bids.reduce((sum, order) => sum + order.qty, 0);
+            const askSum = asks.reduce((sum, order) => sum + order.qty, 0);
+
+            historicalData.push({ time: now, bids: bidSum, asks: askSum });
+            historicalData = historicalData.filter((data) => now - data.time <= timeframe);
+
+            updateChart();
+        }
+
         function updateChart() {
-            const filteredData = historicalData.filter(dataPoint =>
-                Date.now() - dataPoint.timestamp <= timeframe
-            );
+            const labels = historicalData.map((data) => data.time);
+            const bidSums = historicalData.map((data) => data.bids);
+            const askSums = historicalData.map((data) => data.asks);
 
-            chart.data.labels = filteredData.map(dataPoint =>
-                new Date(dataPoint.timestamp).toLocaleTimeString()
-            );
-            chart.data.datasets[0].data = filteredData.map(dataPoint => dataPoint.bidsSum);
-            chart.data.datasets[1].data = filteredData.map(dataPoint => dataPoint.asksSum);
-
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = bidSums;
+            chart.data.datasets[1].data = askSums;
             chart.update();
         }
 
-        // Fetch BTC price from Binance
-        async function fetchCurrentPrice() {
-            const response = await fetch(`${apiBase}/ticker/price?symbol=${symbol}`);
-            const data = await response.json();
-            return parseFloat(data.price);
-        }
-
-        // Periodically fetch data and update the chart
-        async function fetchAndUpdate() {
-            const currentPrice = await fetchCurrentPrice();
-            const orderBook = await fetchOrderBook();
-
-            const { bidsSum, asksSum } = calculateSums(orderBook, currentPrice, priceRangePercentage);
-
-            // Add data to historical data
-            historicalData.push({ timestamp: Date.now(), bidsSum, asksSum });
-
-            // Limit historical data to one week
-            historicalData = historicalData.filter(dataPoint =>
-                Date.now() - dataPoint.timestamp <= 7 * 86400000
-            );
-
-            updateChart();
-        }
-
-        // Event listeners
-        document.getElementById("priceRange").addEventListener("input", (event) => {
-            priceRangePercentage = parseFloat(event.target.value);
-            fetchAndUpdate();
-        });
-
-        document.getElementById("timeframe").addEventListener("change", (event) => {
-            timeframe = parseInt(event.target.value, 10);
-            updateChart();
-        });
-
-        // Fetch data every minute
-        setInterval(fetchAndUpdate, 60000);
-
-        // Initial fetch
-        fetchAndUpdate();
+        fetchOrderBook();
+        setInterval(fetchOrderBook, 60000); // Refresh data every 60 seconds
     </script>
 </body>
 </html>
