@@ -1,114 +1,69 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BTC Order Book</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    .container {
-      display: flex;
-      gap: 20px;
-    }
-    .box {
-      border: 1px solid #ccc;
-      padding: 10px;
-      width: 200px;
-    }
-    .box h2 {
-      text-align: center;
-      font-size: 18px;
-    }
-    .price-range {
-      margin-top: 10px;
-    }
-    .result {
-      font-size: 18px;
-      text-align: center;
-    }
-  </style>
-</head>
-<body>
+const apiUrl = 'https://api.binance.com';
 
-<h1>BTC Order Book</h1>
-
-<div>
-  <label for="percentage">Price Range Percentage: </label>
-  <input type="number" id="percentage" value="2" min="1" max="10">
-  <button onclick="updateOrderBook()">Update</button>
-</div>
-
-<div class="container">
-  <div class="box">
-    <h2>Bids Sum</h2>
-    <div id="bids-sum" class="result">Loading...</div>
-  </div>
-  <div class="box">
-    <h2>Asks Sum</h2>
-    <div id="asks-sum" class="result">Loading...</div>
-  </div>
-</div>
-
-<script>
-  const apiUrl = 'https://api.binance.com/api/v3/depth';  // Binance example API
-
-  async function fetchOrderBook() {
-    try {
-      const response = await fetch(apiUrl + '?symbol=BTCUSDT&limit=100');
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error fetching order book:', error);
-    }
+async function fetchCurrentPrice() {
+  try {
+    const response = await fetch(`${apiUrl}/api/v3/ticker/price?symbol=BTCUSDT`);
+    const data = await response.json();
+    return parseFloat(data.price);
+  } catch (error) {
+    console.error('Error fetching current price:', error);
   }
+}
 
-  function calculateSum(orderBook, percentage) {
-    const currentPrice = parseFloat(orderBook.lastUpdateId);  // Replace with current price from the order book
-    const priceRangeLow = currentPrice - (currentPrice * (percentage / 100));
-    const priceRangeHigh = currentPrice + (currentPrice * (percentage / 100));
-
-    let bidsSum = 0;
-    let asksSum = 0;
-
-    // Sum bids
-    orderBook.bids.forEach(bid => {
-      const price = parseFloat(bid[0]);
-      const quantity = parseFloat(bid[1]);
-      if (price >= priceRangeLow && price <= priceRangeHigh) {
-        bidsSum += price * quantity;
-      }
-    });
-
-    // Sum asks
-    orderBook.asks.forEach(ask => {
-      const price = parseFloat(ask[0]);
-      const quantity = parseFloat(ask[1]);
-      if (price >= priceRangeLow && price <= priceRangeHigh) {
-        asksSum += price * quantity;
-      }
-    });
-
-    return { bidsSum, asksSum };
+async function fetchOrderBook() {
+  try {
+    const response = await fetch(`${apiUrl}/api/v3/depth?symbol=BTCUSDT&limit=100`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching order book:', error);
   }
+}
 
-  async function updateOrderBook() {
-    const percentage = parseFloat(document.getElementById('percentage').value);
-    const orderBook = await fetchOrderBook();
-    if (orderBook) {
-      const { bidsSum, asksSum } = calculateSum(orderBook, percentage);
+function calculateSum(orderBook, currentPrice, percentage) {
+  const priceRangeLow = currentPrice - (currentPrice * (percentage / 100));
+  const priceRangeHigh = currentPrice + (currentPrice * (percentage / 100));
 
-      // Update the UI with the calculated sums
-      document.getElementById('bids-sum').textContent = bidsSum.toFixed(2);
-      document.getElementById('asks-sum').textContent = asksSum.toFixed(2);
+  let bidsSum = 0;
+  let asksSum = 0;
+
+  // Sum bids
+  orderBook.bids.forEach(([price, quantity]) => {
+    price = parseFloat(price);
+    quantity = parseFloat(quantity);
+    if (price >= priceRangeLow && price <= currentPrice) {
+      bidsSum += price * quantity;
     }
+  });
+
+  // Sum asks
+  orderBook.asks.forEach(([price, quantity]) => {
+    price = parseFloat(price);
+    quantity = parseFloat(quantity);
+    if (price <= priceRangeHigh && price >= currentPrice) {
+      asksSum += price * quantity;
+    }
+  });
+
+  return { bidsSum, asksSum };
+}
+
+async function updateOrderBook() {
+  const percentage = parseFloat(document.getElementById('percentage').value);
+  const currentPrice = await fetchCurrentPrice();
+  const orderBook = await fetchOrderBook();
+
+  if (currentPrice && orderBook) {
+    const { bidsSum, asksSum } = calculateSum(orderBook, currentPrice, percentage);
+
+    // Update the UI with the calculated sums
+    document.getElementById('bids-sum').textContent = bidsSum.toFixed(2);
+    document.getElementById('asks-sum').textContent = asksSum.toFixed(2);
+  } else {
+    document.getElementById('bids-sum').textContent = 'Error';
+    document.getElementById('asks-sum').textContent = 'Error';
   }
+}
 
-  // Initial load
-  updateOrderBook();
-</script>
-
-</body>
-</html>
+// Initial load
+updateOrderBook();
