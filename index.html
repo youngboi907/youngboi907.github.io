@@ -94,21 +94,26 @@
     <script>
         const symbol = "BTCUSDT";
         const volumeThreshold = 0.1; // Orders with quantity above this will be shown
+        const priceRangeFactor = 0.1; // ±10% range from the mid-price
         let orderBook = { bids: [], asks: [] }; // Order book data
 
         // Function to fetch the order book data from Binance API
         async function fetchOrderBook() {
-            const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`);
-            const data = await response.json();
-            processOrderBookData(data);
+            try {
+                const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=100`);
+                const data = await response.json();
+                processOrderBookData(data);
+            } catch (error) {
+                console.error("Error fetching order book:", error);
+            }
         }
 
         // Function to process order book data and filter within ±10% of the mid-price
         function processOrderBookData(data) {
             const midPrice = (parseFloat(data.bids[0][0]) + parseFloat(data.asks[0][0])) / 2;
             const priceRange = {
-                min: midPrice * 0.9, // 10% below the mid price
-                max: midPrice * 1.1  // 10% above the mid price
+                min: midPrice * (1 - priceRangeFactor), // 10% below the mid price
+                max: midPrice * (1 + priceRangeFactor)  // 10% above the mid price
             };
 
             // Filter bids within the ±10% price range and volume threshold
@@ -149,4 +154,23 @@
             // Populate the bids table
             orderBook.bids.forEach(order => {
                 const row = bidsTableBody.insertRow();
-                row.insertCell(0).textContent
+                row.insertCell(0).textContent = order.price.toFixed(2);
+                row.insertCell(1).textContent = order.quantity.toFixed(6);
+                row.style.backgroundColor = getColorForOrder(order.quantity); // Apply color
+            });
+
+            // Populate the asks table
+            orderBook.asks.forEach(order => {
+                const row = asksTableBody.insertRow();
+                row.insertCell(0).textContent = order.price.toFixed(2);
+                row.insertCell(1).textContent = order.quantity.toFixed(6);
+                row.style.backgroundColor = getColorForOrder(order.quantity); // Apply color
+            });
+        }
+
+        // Fetch the initial order book data
+        fetchOrderBook();
+        setInterval(fetchOrderBook, 10000); // Update every 10 seconds
+    </script>
+</body>
+</html>
