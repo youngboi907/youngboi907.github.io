@@ -104,38 +104,32 @@
     }
   }
 
-  // Filter the order book based on the price range and display non-cumulative data
+  // Filter the order book based on the price range and calculate the sum of bid and ask values
   function filterOrderBookByRange(orderBook, currentPrice, percentage) {
     const priceRangeLow = currentPrice - (currentPrice * (percentage / 100));
     const priceRangeHigh = currentPrice + (currentPrice * (percentage / 100));
 
-    // Filter bids (price <= current price)
-    const filteredBids = orderBook.bids.filter(([price, quantity]) => {
-      return price >= priceRangeLow && price <= currentPrice;
+    // Sum the bid values (price * quantity) where the price is <= current price and within the price range
+    let bidSum = 0;
+    orderBook.bids.forEach(([price, quantity]) => {
+      price = parseFloat(price);
+      quantity = parseFloat(quantity);
+      if (price >= priceRangeLow && price <= currentPrice) {
+        bidSum += price * quantity;
+      }
     });
 
-    // Filter asks (price >= current price)
-    const filteredAsks = orderBook.asks.filter(([price, quantity]) => {
-      return price >= currentPrice && price <= priceRangeHigh;
+    // Sum the ask values (price * quantity) where the price is >= current price and within the price range
+    let askSum = 0;
+    orderBook.asks.forEach(([price, quantity]) => {
+      price = parseFloat(price);
+      quantity = parseFloat(quantity);
+      if (price <= priceRangeHigh && price >= currentPrice) {
+        askSum += price * quantity;
+      }
     });
 
-    return { filteredBids, filteredAsks, priceRangeLow, priceRangeHigh };
-  }
-
-  // Calculate the total quantity for bids and asks
-  function calculateTotalQuantity(filteredBids, filteredAsks) {
-    let totalBids = 0;
-    let totalAsks = 0;
-
-    filteredBids.forEach(([price, quantity]) => {
-      totalBids += parseFloat(quantity);
-    });
-
-    filteredAsks.forEach(([price, quantity]) => {
-      totalAsks += parseFloat(quantity);
-    });
-
-    return { totalBids, totalAsks };
+    return { bidSum, askSum, priceRangeLow, priceRangeHigh };
   }
 
   // Update the order book data and the ratio in the UI
@@ -145,14 +139,13 @@
     const orderBook = await fetchOrderBook();
 
     if (currentPrice && orderBook) {
-      const { filteredBids, filteredAsks, priceRangeLow, priceRangeHigh } = filterOrderBookByRange(orderBook, currentPrice, percentage);
-      const { totalBids, totalAsks } = calculateTotalQuantity(filteredBids, filteredAsks);
+      const { bidSum, askSum, priceRangeLow, priceRangeHigh } = filterOrderBookByRange(orderBook, currentPrice, percentage);
 
-      // Calculate the ratio of bids to asks
-      const ratio = totalBids / totalAsks;
+      // Calculate the ratio as the sum of bids divided by the sum of asks
+      const ratio = bidSum / askSum;
 
       // Update the ratio display
-      document.getElementById('ratio').innerHTML = `Bids to Asks Ratio: ${ratio.toFixed(2)} (Bids: ${totalBids.toFixed(2)} / Asks: ${totalAsks.toFixed(2)})`;
+      document.getElementById('ratio').innerHTML = `Bids to Asks Ratio: ${ratio.toFixed(2)} (Bids: ${bidSum.toFixed(2)} / Asks: ${askSum.toFixed(2)})`;
 
       // Store the ratio in the historical array
       if (historicalRatios.length >= 1440) { // Keep data for 24 hours (1440 minutes)
