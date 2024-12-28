@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custom Top N Bids and Asks</title>
+    <title>Top N Bids and Asks - BTC/USDT Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -28,7 +28,7 @@
     </style>
 </head>
 <body>
-    <h1>Custom Top N Bids and Asks</h1>
+    <h1>Top N Bids and Asks with Duration</h1>
     <label for="topNSelector">Select Top N:</label>
     <select id="topNSelector">
         <option value="5">Top 5</option>
@@ -40,143 +40,77 @@
 
     <script>
         const symbol = "BTCUSDT";
-        let bidsAsksChart;
-        const orderDurations = {}; // Tracks the duration each order is in the order book
         let topN = 10; // Default to Top 10
+        let orderBook = { bids: [], asks: [] }; // Complete order book
+        const orderDurations = {}; // Tracks the duration each order has been in the book
+        let bidsAsksChart;
 
-        // Fetch order book data
-        async function fetchOrderBookData() {
-            const url = `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-                const data = await response.json();
+        // Connect to Binance WebSocket for real-time depth updates
+        const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
 
-                const bids = data.bids.map(([price, quantity]) => ({
-                    price: parseFloat(price),
-                    quantity: parseFloat(quantity),
-                }));
-                const asks = data.asks.map(([price, quantity]) => ({
-                    price: parseFloat(price),
-                    quantity: parseFloat(quantity),
-                }));
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
 
-                // Sort and extract top N bids and asks
-                bids.sort((a, b) => b.price - a.price);
-                asks.sort((a, b) => a.price - b.price);
+            // Update the order book
+            updateOrderBook(data.b, data.a);
 
-                const topNBids = bids.slice(0, topN);
-                const topNAsks = asks.slice(0, topN);
+            // Update the chart
+            updateChart();
+        };
 
-                // Update durations
-                const now = Date.now();
-                [...topNBids, ...topNAsks].forEach(order => {
-                    const key = `${order.price}-${order.quantity}`;
-                    if (!orderDurations[key]) {
-                        orderDurations[key] = { start: now, duration: 0 };
+        // Function to update the order book
+        function updateOrderBook(bids, asks) {
+            const now = Date.now();
+
+            // Update bids
+            bids.forEach(([price, quantity]) => {
+                const priceNum = parseFloat(price);
+                const quantityNum = parseFloat(quantity);
+                const key = `bid-${priceNum}`;
+
+                if (quantityNum === 0) {
+                    // Remove the bid if quantity is 0
+                    delete orderDurations[key];
+                    orderBook.bids = orderBook.bids.filter(order => order.price !== priceNum);
+                } else {
+                    // Update or add the bid
+                    const existing = orderBook.bids.find(order => order.price === priceNum);
+                    if (existing) {
+                        existing.quantity = quantityNum;
                     } else {
-                        orderDurations[key].duration = now - orderDurations[key].start;
+                        orderBook.bids.push({ price: priceNum, quantity: quantityNum });
+                        orderDurations[key] = now; // Track when the bid was added
                     }
-                });
-
-                return { topNBids, topNAsks };
-            } catch (error) {
-                console.error("Error fetching order book data:", error);
-                return { topNBids: [], topNAsks: [] };
-            }
-        }
-
-        // Format duration into hours, minutes, and seconds
-        function formatDuration(ms) {
-            const seconds = Math.floor(ms / 1000);
-            const minutes = Math.floor(seconds / 60);
-            const hours = Math.floor(minutes / 60);
-            return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
-        }
-
-        // Update the chart
-        async function updateChart() {
-            const { topNBids, topNAsks } = await fetchOrderBookData();
-
-            const bidLabels = topNBids.map(order => `$${order.price.toFixed(2)}`);
-            const askLabels = topNAsks.map(order => `$${order.price.toFixed(2)}`);
-
-            const bidDurations = topNBids.map(order => {
-                const key = `${order.price}-${order.quantity}`;
-                return orderDurations[key]?.duration || 0;
+                }
             });
 
-            const askDurations = topNAsks.map(order => {
-                const key = `${order.price}-${order.quantity}`;
-                return orderDurations[key]?.duration || 0;
+            // Update asks
+            asks.forEach(([price, quantity]) => {
+                const priceNum = parseFloat(price);
+                const quantityNum = parseFloat(quantity);
+                const key = `ask-${priceNum}`;
+
+                if (quantityNum === 0) {
+                    // Remove the ask if quantity is 0
+                    delete orderDurations[key];
+                    orderBook.asks = orderBook.asks.filter(order => order.price !== priceNum);
+                } else {
+                    // Update or add the ask
+                    const existing = orderBook.asks.find(order => order.price === priceNum);
+                    if (existing) {
+                        existing.quantity = quantityNum;
+                    } else {
+                        orderBook.asks.push({ price: priceNum, quantity: quantityNum });
+                        orderDurations[key] = now; // Track when the ask was added
+                    }
+                }
             });
 
-            const bidQuantities = topNBids.map(order => order.quantity);
-            const askQuantities = topNAsks.map(order => order.quantity);
-
-            bidsAsksChart.data.labels = [...bidLabels, ...askLabels];
-            bidsAsksChart.data.datasets[0].data = [...bidQuantities, ...askQuantities];
-            bidsAsksChart.data.datasets[0].backgroundColor = [
-                ...bidDurations.map(duration =>
-                    `rgba(76, 175, 80, ${Math.min(duration / 3600000, 1)})` // Green gradient for bids
-                ),
-                ...askDurations.map(duration =>
-                    `rgba(244, 67, 54, ${Math.min(duration / 3600000, 1)})` // Red gradient for asks
-                )
-            ];
-            bidsAsksChart.update();
+            // Sort bids (descending) and asks (ascending)
+            orderBook.bids.sort((a, b) => b.price - a.price);
+            orderBook.asks.sort((a, b) => a.price - b.price);
         }
 
         // Initialize the chart
         function initializeChart() {
-            const ctx = document.getElementById("bidsAsksChart").getContext("2d");
-            bidsAsksChart = new Chart(ctx, {
-                type: "bar",
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: "Order Quantities",
-                        data: [],
-                        backgroundColor: [],
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    const label = context.label || "";
-                                    const value = context.raw || 0;
-                                    const duration =
-                                        orderDurations[label]?.duration || 0;
-                                    return [
-                                        `Price: ${label}`,
-                                        `Quantity: ${value}`,
-                                        `Duration: ${formatDuration(duration)}`,
-                                    ];
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { title: { display: true, text: "Price Levels" } },
-                        y: { title: { display: true, text: "Quantity (BTC)" } }
-                    }
-                }
-            });
-        }
-
-        // Event listener for Top N selector
-        document.getElementById("topNSelector").addEventListener("change", (event) => {
-            topN = parseInt(event.target.value, 10);
-            updateChart();
-        });
-
-        // Initialize and auto-update
-        initializeChart();
-        updateChart();
-        setInterval(updateChart, 1000); // Update every second
-    </script>
-</body>
-</html>
+            const ctx = document.getElementById("bidsAsksChart
