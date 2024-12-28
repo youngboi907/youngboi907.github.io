@@ -60,6 +60,8 @@
     <script>
         const symbol = "BTCUSDT";
         let priceChart;
+        let interval = "1m";
+        let limit = 60;
 
         async function fetchOrderBookData() {
             const url = `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`;
@@ -67,7 +69,6 @@
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
                 const data = await response.json();
-                console.log("Order Book Data:", data);
                 calculateOrderBookStats(data);
             } catch (error) {
                 console.error("Error fetching order book data:", error);
@@ -123,7 +124,7 @@
             }
         }
 
-        async function updateChart(interval, limit) {
+        async function updateChart() {
             try {
                 const { timestamps, prices } = await fetchKlineData(interval, limit);
 
@@ -163,7 +164,6 @@
         // Event listener for the timeframe selector
         document.getElementById("timeframe").addEventListener("change", (event) => {
             const value = event.target.value;
-            let interval, limit;
 
             switch (value) {
                 case "1h": interval = "1m"; limit = 60; break;
@@ -174,13 +174,19 @@
                 default: interval = "1m"; limit = 60; break;
             }
 
-            updateChart(interval, limit);
+            updateChart();
         });
 
         // Initialize chart and load data
         initializeChart();
-        updateChart("1m", 60); // Default: Last 1 hour
-        fetchOrderBookData(); // Fetch order book stats
+        updateChart();
+        fetchOrderBookData();
+
+        // Auto-update every 10 seconds
+        setInterval(() => {
+            updateChart();
+            fetchOrderBookData();
+        }, 10000); // 10 seconds
     </script>
 </body>
 </html>
