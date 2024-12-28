@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Historical Order Book Depth</title>
+    <title>BTC/USDT Price & Order Book Depth</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -28,7 +28,7 @@
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Historical Order Book Depth</h1>
+    <h1>BTC/USDT Price & Aligned Order Book Depth</h1>
     <label for="timeframe">Select Time Frame:</label>
     <select id="timeframe">
         <option value="5m">Last 5 Minutes</option>
@@ -39,28 +39,49 @@
         <option value="1w">Last 1 Week</option>
     </select>
     <canvas id="priceChart"></canvas>
-    <canvas id="historicalOrderBookChart"></canvas>
-    <canvas id="orderBookChart"></canvas>
+    <canvas id="depthChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
-        let priceChart, historicalOrderBookChart, orderBookChart;
+        let priceChart, depthChart;
         let interval = "1m";
         let limit = 60;
 
-        async function fetchOrderBookData() {
+        // Fetch Kline (price) data
+        async function fetchKlineData(interval, limit) {
+            const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                const data = await response.json();
+                const timestamps = [], prices = [];
+                data.forEach(kline => {
+                    timestamps.push(new Date(kline[0]).toLocaleString());
+                    prices.push(parseFloat(kline[4])); // Close price
+                });
+                return { timestamps, prices };
+            } catch (error) {
+                console.error("Error fetching Kline data:", error);
+                return { timestamps: [], prices: [] };
+            }
+        }
+
+        // Fetch Order Book Depth Data
+        async function fetchOrderBookData(timestamp) {
             const url = `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=1000`;
             try {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
                 const data = await response.json();
-                return calculateOrderBookStats(data);
+                const { bidsSum, asksSum } = calculateOrderBookStats(data);
+                return { timestamp, bidsSum, asksSum };
             } catch (error) {
                 console.error("Error fetching order book data:", error);
-                return { bidsSum: 0, asksSum: 0 };
+                return { timestamp, bidsSum: 0, asksSum: 0 };
             }
         }
 
+        // Calculate top 10% bids and asks sum
         function calculateOrderBookStats(data) {
             const bids = data.bids.map(([price, quantity]) => ({
                 price: parseFloat(price),
@@ -87,53 +108,34 @@
             return { bidsSum, asksSum };
         }
 
-        async function fetchKlineData(interval, limit) {
-            const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-                const data = await response.json();
-                const timestamps = [], prices = [];
-                data.forEach(kline => {
-                    timestamps.push(new Date(kline[0]).toLocaleString());
-                    prices.push(parseFloat(kline[4])); // Close price
-                });
-                return { timestamps, prices };
-            } catch (error) {
-                console.error("Error fetching Kline data:", error);
-                return { timestamps: [], prices: [] };
-            }
-        }
-
+        // Update Charts
         async function updateCharts() {
             try {
+                // Fetch Kline data
                 const { timestamps, prices } = await fetchKlineData(interval, limit);
-                const { bidsSum, asksSum } = await fetchOrderBookData();
+
+                // Fetch and align Order Book data
+                const orderBookData = await Promise.all(timestamps.map(timestamp => fetchOrderBookData(timestamp)));
 
                 // Update Price Chart
                 priceChart.data.labels = timestamps;
                 priceChart.data.datasets[0].data = prices;
                 priceChart.update();
 
-                // Update Historical Order Book Chart
-                historicalOrderBookChart.data.labels.push(new Date().toLocaleString());
-                historicalOrderBookChart.data.datasets[0].data.push(bidsSum);
-                historicalOrderBookChart.data.datasets[1].data.push(asksSum);
-                historicalOrderBookChart.update();
-
-                // Update Current Order Book Chart
-                orderBookChart.data.datasets[0].data = [bidsSum];
-                orderBookChart.data.datasets[1].data = [asksSum];
-                orderBookChart.update();
+                // Update Depth Chart
+                depthChart.data.labels = orderBookData.map(data => data.timestamp);
+                depthChart.data.datasets[0].data = orderBookData.map(data => data.bidsSum);
+                depthChart.data.datasets[1].data = orderBookData.map(data => data.asksSum);
+                depthChart.update();
             } catch (error) {
                 console.error("Error updating charts:", error);
             }
         }
 
+        // Initialize Charts
         function initializeCharts() {
             const priceCtx = document.getElementById("priceChart").getContext("2d");
-            const historicalOrderBookCtx = document.getElementById("historicalOrderBookChart").getContext("2d");
-            const orderBookCtx = document.getElementById("orderBookChart").getContext("2d");
+            const depthCtx = document.getElementById("depthChart").getContext("2d");
 
             // BTC Price Chart
             priceChart = new Chart(priceCtx, {
@@ -157,8 +159,8 @@
                 }
             });
 
-            // Historical Order Book Chart
-            historicalOrderBookChart = new Chart(historicalOrderBookCtx, {
+            // Order Book Depth Chart
+            depthChart = new Chart(depthCtx, {
                 type: "line",
                 data: {
                     labels: [],
@@ -187,36 +189,9 @@
                     }
                 }
             });
-
-            // Current Order Book Chart
-            orderBookChart = new Chart(orderBookCtx, {
-                type: "bar",
-                data: {
-                    labels: ["Top 10% Depth"],
-                    datasets: [
-                        {
-                            label: "Top 10% Bids",
-                            data: [],
-                            backgroundColor: "#4caf50",
-                        },
-                        {
-                            label: "Top 10% Asks",
-                            data: [],
-                            backgroundColor: "#f44336",
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Category" } },
-                        y: { title: { display: true, text: "USDT" } }
-                    }
-                }
-            });
         }
 
-        // Event listener for the timeframe selector
+        // Event Listener for Timeframe Selector
         document.getElementById("timeframe").addEventListener("change", (event) => {
             const value = event.target.value;
 
@@ -233,12 +208,12 @@
             updateCharts();
         });
 
-        // Initialize charts and load data
+        // Initialize and Update Charts
         initializeCharts();
         updateCharts();
 
         // Auto-update every 10 seconds
-        setInterval(updateCharts, 10000); // 10 seconds
+        setInterval(updateCharts, 10000);
     </script>
 </body>
 </html>
