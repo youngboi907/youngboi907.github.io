@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Top N Orders by Volume - BTC/USDT Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -103,10 +104,26 @@
                     scales: {
                         x: {
                             title: { display: true, text: "Price Levels (USDT)" },
-                            beginAtZero: false
+                            beginAtZero: false,
                         },
                         y: {
                             title: { display: true, text: "Volume (BTC)" }
+                        }
+                    },
+                    plugins: {
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x', // Enable panning on x-axis (price axis)
+                                speed: 10,
+                                threshold: 10
+                            },
+                            zoom: {
+                                enabled: true,
+                                mode: 'x', // Enable zooming on x-axis (price axis)
+                                speed: 0.1,
+                                threshold: 1
+                            }
                         }
                     }
                 }
