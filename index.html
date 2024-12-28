@@ -10,7 +10,7 @@
     <h2>Order Book Data</h2>
     <p>Best Bid: <span id="best-bid"></span></p>
     <p>Best Ask: <span id="best-ask"></span></p>
-    <p>Bid/Ask Ratio: <span id="bid-ask-ratio"></span></p>
+    <p>Bid/Ask Ratio (Top 10% Depth): <span id="bid-ask-ratio"></span></p>
   </div>
 
   <div id="charts">
@@ -65,7 +65,7 @@
           askDepths.push(askDepth);
         }
 
-        // Calculate Bid/Ask Ratio (using top 10% depth as an example)
+        // Calculate Bid/Ask Ratio (using top 10% depth)
         const bidAskRatio = bidDepths[9] / askDepths[9]; 
 
         // Update UI with data
@@ -115,6 +115,9 @@
       } catch (error) {
         console.error("Error fetching order book:", error);
         // Handle error gracefully (e.g., display error message to user)
+        document.getElementById('best-bid').textContent = "N/A";
+        document.getElementById('best-ask').textContent = "N/A";
+        document.getElementById('bid-ask-ratio').textContent = "N/A";
       }
     }
 
