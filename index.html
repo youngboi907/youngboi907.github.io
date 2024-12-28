@@ -58,12 +58,26 @@
         let depthChart;
         let currentPrice = 21000; // Placeholder until fetched
         let rangePercentage = 2.5; // Default price range percentage
+        const historicalDataKey = "orderBookHistoricalData";
 
         // Fetch current price
         async function fetchCurrentPrice() {
             const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const data = await response.json();
             currentPrice = parseFloat(data.price);
+        }
+
+        // Load historical data from localStorage
+        function loadHistoricalData() {
+            const storedData = localStorage.getItem(historicalDataKey);
+            if (storedData) {
+                orderBook = JSON.parse(storedData);
+            }
+        }
+
+        // Save historical data to localStorage
+        function saveHistoricalData() {
+            localStorage.setItem(historicalDataKey, JSON.stringify(orderBook));
         }
 
         // WebSocket connection for real-time order book updates
@@ -77,6 +91,9 @@
 
             // Update the chart
             updateChart();
+
+            // Save the updated order book to localStorage
+            saveHistoricalData();
         };
 
         // Update order book data
@@ -176,9 +193,11 @@
             updateChart();
         });
 
-        // Initialize the chart and fetch data
+        // Load data and initialize
+        loadHistoricalData();
         fetchCurrentPrice().then(() => {
             initializeChart();
+            updateChart();
         });
     </script>
 </body>
