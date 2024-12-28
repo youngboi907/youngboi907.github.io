@@ -104,7 +104,7 @@
     }
   }
 
-  // Calculate sums for bids and asks
+  // Calculate sums for bids and asks based on the price range
   function calculateSum(orderBook, currentPrice, percentage) {
     const priceRangeLow = currentPrice - (currentPrice * (percentage / 100));
     const priceRangeHigh = currentPrice + (currentPrice * (percentage / 100));
