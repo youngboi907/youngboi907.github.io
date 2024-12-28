@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Chart & Order Book Stats</title>
+    <title>BTC/USDT Chart & Order Book Depth</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -25,21 +25,10 @@
             max-width: 95%;
             margin: 20px 0;
         }
-        #orderBookStats {
-            margin: 20px;
-            padding: 10px;
-            background: #1e1e1e;
-            border: 1px solid #4caf50;
-            border-radius: 5px;
-            text-align: center;
-        }
-        #orderBookStats p {
-            margin: 5px 0;
-        }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Chart & Order Book Stats</h1>
+    <h1>BTC/USDT Chart & Order Book Depth</h1>
     <label for="timeframe">Select Time Frame:</label>
     <select id="timeframe">
         <option value="1h">Last 1 Hour</option>
@@ -49,17 +38,11 @@
         <option value="1m">Last 1 Month</option>
     </select>
     <canvas id="priceChart"></canvas>
-
-    <div id="orderBookStats">
-        <h2>Order Book Stats</h2>
-        <p id="bidsSum">Total Bids (Top 10%): Loading...</p>
-        <p id="asksSum">Total Asks (Top 10%): Loading...</p>
-        <p id="bidAskRatio">Bid/Ask Ratio: Loading...</p>
-    </div>
+    <canvas id="orderBookChart"></canvas>
 
     <script>
         const symbol = "BTCUSDT";
-        let priceChart;
+        let priceChart, orderBookChart;
         let interval = "1m";
         let limit = 60;
 
@@ -69,9 +52,10 @@
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
                 const data = await response.json();
-                calculateOrderBookStats(data);
+                return calculateOrderBookStats(data);
             } catch (error) {
                 console.error("Error fetching order book data:", error);
+                return { bidsSum: 0, asksSum: 0 };
             }
         }
 
@@ -98,12 +82,7 @@
             const bidsSum = top10PercentBids.reduce((sum, bid) => sum + bid.total, 0);
             const asksSum = top10PercentAsks.reduce((sum, ask) => sum + ask.total, 0);
 
-            const bidAskRatio = bidsSum / asksSum;
-
-            // Update HTML
-            document.getElementById("bidsSum").innerText = `Total Bids (Top 10%): ${bidsSum.toFixed(2)} USDT`;
-            document.getElementById("asksSum").innerText = `Total Asks (Top 10%): ${asksSum.toFixed(2)} USDT`;
-            document.getElementById("bidAskRatio").innerText = `Bid/Ask Ratio: ${bidAskRatio.toFixed(2)}`;
+            return { bidsSum, asksSum };
         }
 
         async function fetchKlineData(interval, limit) {
@@ -124,22 +103,31 @@
             }
         }
 
-        async function updateChart() {
+        async function updateCharts() {
             try {
                 const { timestamps, prices } = await fetchKlineData(interval, limit);
+                const { bidsSum, asksSum } = await fetchOrderBookData();
 
                 // Update Price Chart
                 priceChart.data.labels = timestamps;
                 priceChart.data.datasets[0].data = prices;
                 priceChart.update();
+
+                // Update Order Book Chart
+                orderBookChart.data.datasets[0].data = [bidsSum];
+                orderBookChart.data.datasets[1].data = [asksSum];
+                orderBookChart.update();
             } catch (error) {
-                console.error("Error updating chart:", error);
+                console.error("Error updating charts:", error);
             }
         }
 
-        function initializeChart() {
-            const ctx = document.getElementById("priceChart").getContext("2d");
-            priceChart = new Chart(ctx, {
+        function initializeCharts() {
+            const priceCtx = document.getElementById("priceChart").getContext("2d");
+            const orderBookCtx = document.getElementById("orderBookChart").getContext("2d");
+
+            // BTC Price Chart
+            priceChart = new Chart(priceCtx, {
                 type: "line",
                 data: {
                     labels: [],
@@ -159,6 +147,33 @@
                     }
                 }
             });
+
+            // Order Book Depth Chart
+            orderBookChart = new Chart(orderBookCtx, {
+                type: "bar",
+                data: {
+                    labels: ["Top 10% Depth"],
+                    datasets: [
+                        {
+                            label: "Top 10% Bids",
+                            data: [],
+                            backgroundColor: "#4caf50",
+                        },
+                        {
+                            label: "Top 10% Asks",
+                            data: [],
+                            backgroundColor: "#f44336",
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Category" } },
+                        y: { title: { display: true, text: "USDT" } }
+                    }
+                }
+            });
         }
 
         // Event listener for the timeframe selector
@@ -174,19 +189,15 @@
                 default: interval = "1m"; limit = 60; break;
             }
 
-            updateChart();
+            updateCharts();
         });
 
-        // Initialize chart and load data
-        initializeChart();
-        updateChart();
-        fetchOrderBookData();
+        // Initialize charts and load data
+        initializeCharts();
+        updateCharts();
 
         // Auto-update every 10 seconds
-        setInterval(() => {
-            updateChart();
-            fetchOrderBookData();
-        }, 10000); // 10 seconds
+        setInterval(updateCharts, 10000); // 10 seconds
     </script>
 </body>
 </html>
