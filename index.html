@@ -47,6 +47,19 @@
             gap: 10px;
             align-items: center;
         }
+
+        .slider-container {
+            margin-top: 20px;
+            width: 90%;
+        }
+
+        #slider {
+            width: 100%;
+        }
+
+        #slider-value {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -62,14 +75,21 @@
     </div>
     <canvas id="depthChart"></canvas>
 
+    <!-- Slider for navigating through historical data -->
+    <div class="slider-container">
+        <input type="range" id="slider" min="0" max="100" step="1" value="100">
+        <div id="slider-value">Showing Data from Latest: 100%</div>
+    </div>
+
     <script>
         const symbol = "BTCUSDT";
         let orderBook = { bids: [], asks: [] };
         let historicalData = [];
-        let depthChart;
         let currentPrice = 21000; // Placeholder until fetched
         let rangePercentage = 2.5; // Default price range percentage
         let timeView = false; // Default view is price-based
+        let historicalDataIndex = 0; // Keeps track of which historical data to display
+        let depthChart;
 
         // Fetch current price from Binance API
         async function fetchCurrentPrice() {
@@ -184,6 +204,8 @@
 
         // Update the chart with filtered data
         function updateChart() {
+            if (historicalData.length === 0) return;
+
             if (timeView) {
                 // Historical Time-Based Data
                 const timeLabels = historicalData.map(data => data.time);
@@ -235,15 +257,4 @@
 
         // Toggle between time and price views
         document.getElementById("toggleView").addEventListener("change", (event) => {
-            timeView = event.target.checked;
-            updateChart();
-        });
-
-        // Load data and initialize
-        fetchCurrentPrice().then(() => {
-            initializeChart();
-            updateChart();
-        });
-    </script>
-</body>
-</html>
+            timeView = event.target.checked
