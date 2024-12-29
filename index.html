@@ -101,10 +101,20 @@
         // Function to fetch liquidation data from Binance API
         async function fetchLiquidationData() {
             try {
-                // Endpoint for Binance futures liquidation data
+                // Endpoint for Binance futures liquidation data (10 most recent liquidations)
                 const response = await fetch('https://fapi.binance.com/fapi/v1/liquidationOrders?symbol=BTCUSDT&limit=10');
+                
+                // Ensure the response is valid
+                if (!response.ok) {
+                    throw new Error('Failed to fetch liquidation data');
+                }
+
                 const data = await response.json();
-                displayLiquidationData(data);
+                if (data.length === 0) {
+                    console.log('No liquidation data available');
+                } else {
+                    displayLiquidationData(data);
+                }
             } catch (error) {
                 console.error('Error fetching liquidation data:', error);
             }
@@ -117,9 +127,9 @@
 
             data.forEach(item => {
                 const row = document.createElement('tr');
-                const time = new Date(item.time).toLocaleString();
-                const price = parseFloat(item.price).toFixed(2);
-                const amount = parseFloat(item.origQty).toFixed(2);
+                const time = new Date(item.time).toLocaleString();  // Convert timestamp to readable time
+                const price = parseFloat(item.price).toFixed(2); // Price with two decimal places
+                const amount = parseFloat(item.origQty).toFixed(2); // Amount with two decimal places
                 const side = item.side;
 
                 row.innerHTML = `
