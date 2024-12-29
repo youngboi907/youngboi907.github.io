@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView Chart, Volume Delta and Liquidation Data</title>
+    <title>TradingView Chart and Liquidation Data</title>
     <style>
         body, html {
             margin: 0;
@@ -21,21 +21,12 @@
             height: 70vh; /* TradingView chart container */
         }
 
-        #volumeDeltaContainer {
+        #liquidationContainer {
             position: absolute;
             top: 70vh;
             left: 0;
             width: 100%;
-            height: 15vh; /* Volume delta chart container */
-            background-color: black;
-        }
-
-        #liquidationContainer {
-            position: absolute;
-            top: 85vh;
-            left: 0;
-            width: 100%;
-            height: 15vh; /* Liquidation chart container */
+            height: 30vh; /* Liquidation chart container */
             background-color: black;
         }
 
@@ -50,12 +41,7 @@
 <!-- TradingView Chart Container -->
 <div id="tv_chart_container"></div>
 
-<!-- Volume Delta Container (below TradingView chart) -->
-<div id="volumeDeltaContainer">
-    <canvas id="volumeDeltaChart"></canvas>
-</div>
-
-<!-- Liquidation Data Container (below Volume Delta chart) -->
+<!-- Liquidation Data Container (below TradingView chart) -->
 <div id="liquidationContainer">
     <canvas id="liquidationChart"></canvas>
 </div>
@@ -88,63 +74,20 @@
         });
     };
 
-    // Volume Delta Chart Initialization (Chart.js)
-    const ctxVolumeDelta = document.getElementById("volumeDeltaChart").getContext("2d");
-
-    const volumeDeltaChart = new Chart(ctxVolumeDelta, {
-        type: 'bar',
-        data: {
-            labels: [],
-            datasets: [{
-                label: "Volume Delta",
-                data: [],
-                backgroundColor: '#ff6347',
-                borderColor: '#ff6347',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Timestamp'
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Volume Delta'
-                    },
-                    beginAtZero: true
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function (context) {
-                            return 'Delta: ' + context.raw;
-                        }
-                    }
-                }
-            }
-        }
-    });
-
     // Liquidation Chart Initialization (Chart.js)
     const ctxLiquidation = document.getElementById("liquidationChart").getContext("2d");
 
     const liquidationChart = new Chart(ctxLiquidation, {
-        type: 'bar',
+        type: 'candlestick',
         data: {
             labels: [],
             datasets: [{
                 label: "Liquidations",
                 data: [],
-                backgroundColor: '#34b7f1',
                 borderColor: '#34b7f1',
-                borderWidth: 1
+                borderWidth: 1,
+                backgroundColor: '#34b7f1',
+                borderRadius: 1,
             }]
         },
         options: {
@@ -159,16 +102,16 @@
                 y: {
                     title: {
                         display: true,
-                        text: 'Liquidation Volume'
+                        text: 'Price'
                     },
-                    beginAtZero: true
+                    beginAtZero: false
                 }
             },
             plugins: {
                 tooltip: {
                     callbacks: {
                         label: function (context) {
-                            return 'Liquidations: ' + context.raw;
+                            return 'Price: ' + context.raw.close;
                         }
                     }
                 }
@@ -176,69 +119,47 @@
         }
     });
 
-    // Fetch volume delta data from Binance API
-    async function fetchVolumeDelta() {
-        try {
-            // Fetch 5-minute candlestick data from Binance API for Volume Delta
-            const response = await fetch(`https://api.binance.com/api/v1/klines?symbol=BTCUSDT&interval=${tradingViewInterval}m&limit=10`);
-            const candles = await response.json();
-
-            const volumeData = [];
-            const timeStamps = [];
-
-            candles.forEach((candle) => {
-                const buyVolume = parseFloat(candle[5]); // Binance volume data
-                const sellVolume = parseFloat(candle[7]); // Example: assume sell volume is in the 7th field
-
-                // Calculate Volume Delta (buyVolume - sellVolume)
-                const delta = buyVolume - sellVolume;
-                volumeData.push(delta);
-
-                const timestamp = new Date(candle[0]).toISOString();
-                timeStamps.push(timestamp);
-            });
-
-            volumeDeltaChart.data.labels = timeStamps;
-            volumeDeltaChart.data.datasets[0].data = volumeData;
-            volumeDeltaChart.update();
-        } catch (error) {
-            console.error('Error fetching volume delta data:', error);
-        }
-    }
-
-    // Fetch liquidation data from Binance API
+    // Fetch Liquidation Data from Binance API
     async function fetchLiquidationData() {
         try {
             // Fetch liquidation data from Binance API (change URL to a valid API endpoint)
-            const response = await fetch(`https://api.binance.com/api/v1/liquidationOrders?symbol=BTCUSDT&limit=10`);
+            const response = await fetch(`https://api.binance.com/api/v1/liquidationOrders?symbol=BTCUSDT&limit=1000`);
             const liquidationData = await response.json();
 
-            const liquidationVolumes = [];
-            const liquidationTimestamps = [];
+            const liquidationCandles = [];
+            const timeStamps = [];
 
             liquidationData.forEach((liquidation) => {
-                const volume = parseFloat(liquidation.origQty); // Liquidation volume
-                const timestamp = new Date(liquidation.time).toISOString(); // Timestamp
+                const timestamp = new Date(liquidation.time).getTime();
+                const price = parseFloat(liquidation.price);  // Liquidation price
+                const volume = parseFloat(liquidation.origQty);  // Liquidation quantity
 
-                liquidationVolumes.push(volume);
-                liquidationTimestamps.push(timestamp);
+                // Create the candle data
+                liquidationCandles.push({
+                    x: timestamp,
+                    o: price,
+                    h: price,  // In this simple example, assuming open and high are same
+                    l: price,  // Low and close are the same
+                    c: price   // Close price
+                });
+
+                timeStamps.push(timestamp);
             });
 
-            liquidationChart.data.labels = liquidationTimestamps;
-            liquidationChart.data.datasets[0].data = liquidationVolumes;
+            // Update the liquidation chart
+            liquidationChart.data.labels = timeStamps;
+            liquidationChart.data.datasets[0].data = liquidationCandles;
             liquidationChart.update();
         } catch (error) {
             console.error('Error fetching liquidation data:', error);
         }
     }
 
-    // Sync volume delta and liquidation data with TradingView's time frame
+    // Sync Liquidation Data with TradingView's Timeframe
     function syncData() {
-        fetchVolumeDelta();  // Fetch volume delta data
         fetchLiquidationData();  // Fetch liquidation data
 
-        setInterval(fetchVolumeDelta, 300000); // Refresh every 5 minutes (5m interval)
-        setInterval(fetchLiquidationData, 300000); // Refresh liquidation data every 5 minutes
+        setInterval(fetchLiquidationData, 300000); // Refresh every 5 minutes (5m interval)
     }
 
     syncData(); // Start syncing immediately when the page loads
