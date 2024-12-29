@@ -1,67 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BTC/USDT Trading View</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #121212;
-      color: #ffffff;
-      margin: 0;
-      padding: 0;
-      height: 100vh;
-    }
-    #tradingview-chart {
-      width: 100%;
-      height: 100%;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradingView Chart Integration</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+        #tv_chart_container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 </head>
 <body>
 
-<!-- Hidden Order Book Boxes -->
-<!-- <div class="box">
-  <h2>Total Bids (0 - 1M USD)</h2>
-  <div id="bids-sum" class="result">Loading...</div>
-  <div id="bids-range" class="range"></div>
-</div>
+<!-- TradingView Chart Container -->
+<div id="tv_chart_container"></div>
 
-<div class="box">
-  <h2>Total Asks (0 - 1M USD)</h2>
-  <div id="asks-sum" class="result">Loading...</div>
-  <div id="asks-range" class="range"></div>
-</div>
-
-<div class="box">
-  <h2>Bids/Asks Ratio (%)</h2>
-  <div id="ratio" class="ratio">Loading...</div>
-</div> -->
-
-<!-- TradingView Chart -->
-<div id="tradingview-chart"></div>
-
-<!-- TradingView Script -->
-<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script type="text/javascript">
-  new TradingView.widget({
-    "width": "100%",
-    "height": "100%",
-    "symbol": "BINANCE:BTCUSDT",
-    "interval": "60",  // 1-hour timeframe
-    "timezone": "America/New_York",
-    "theme": "dark",
-    "style": "1",  // Line chart style
-    "locale": "en",
-    "toolbar_bg": "#121212",
-    "enable_publishing": false,
-    "hide_top_toolbar": true,
-    "hide_side_toolbar": true,
-    "withdateranges": true,
-    "save_image": false,
-    "container_id": "tradingview-chart"
-  });
+    new TradingView.widget({
+        "container_id": "tv_chart_container",
+        "autosize": true,
+        "symbol": "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
+        "interval": "60",  // 1 hour timeframe
+        "timezone": "Etc/UTC",
+        "theme": "dark",  // Theme: dark mode
+        "locale": "en",
+        "toolbar_bg": "#f1f3f6",
+        "enable_publishing": false,
+        "allow_symbol_change": true,
+        "studies": [
+            "MACD",
+            "RSI",
+            "StochasticRSI",
+            "Moving Average"
+        ],
+        "container_id": "tv_chart_container",
+    });
 </script>
 
 </body>
