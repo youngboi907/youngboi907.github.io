@@ -11,10 +11,11 @@
       color: #ffffff;
       margin: 0;
       padding: 0;
+      height: 100vh;
     }
     #tradingview-chart {
       width: 100%;
-      height: 100vh;
+      height: 100%;
     }
   </style>
 </head>
@@ -41,10 +42,12 @@
 <!-- TradingView Chart -->
 <div id="tradingview-chart"></div>
 
+<!-- TradingView Script -->
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script type="text/javascript">
   new TradingView.widget({
     "width": "100%",
-    "height": "100vh",
+    "height": "100%",
     "symbol": "BINANCE:BTCUSDT",
     "interval": "60",  // 1-hour timeframe
     "timezone": "America/New_York",
