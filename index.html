@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView with Volume Delta</title>
+    <title>TradingView with Volume Delta Bar Chart</title>
     <style>
         body, html {
             margin: 0;
@@ -27,23 +27,11 @@
             height: 20vh;
             background-color: #222;
             color: #fff;
-            overflow-y: scroll;
             padding: 10px;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table, th, td {
-            border: 1px solid #555;
-        }
-        th, td {
-            padding: 8px;
-            text-align: center;
-        }
-        .timeframe-sync {
-            margin-top: 10px;
-            font-size: 12px;
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
         }
     </style>
 </head>
@@ -52,28 +40,17 @@
 <!-- TradingView Chart Container -->
 <div id="tv_chart_container"></div>
 
-<!-- Volume Delta Display -->
+<!-- Volume Delta Bar Chart -->
 <div id="volume-delta">
-    <h3>Binance Volume Delta (BTCUSDT)</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>Bid Volume</th>
-                <th>Ask Volume</th>
-                <th>Volume Delta</th>
-            </tr>
-        </thead>
-        <tbody id="volume-delta-table-body">
-            <!-- Volume delta data will populate here -->
-        </tbody>
-    </table>
+    <h3>Binance Volume Delta (BTCUSDT) - Bar Chart</h3>
+    <canvas id="volumeDeltaChart"></canvas>
     <div class="timeframe-sync">
         <p>Syncs with the current TradingView chart timeframe.</p>
     </div>
 </div>
 
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script type="text/javascript">
     window.onload = function () {
@@ -98,6 +75,45 @@
             hide_side_toolbar: false, // Side toolbar with basic tools
         });
 
+        // Initialize the Chart.js chart for Volume Delta
+        const ctx = document.getElementById('volumeDeltaChart').getContext('2d');
+        const volumeDeltaChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [], // Time labels will be added dynamically
+                datasets: [{
+                    label: 'Volume Delta',
+                    data: [], // Volume delta values will be added dynamically
+                    backgroundColor: '#FF5733', // Color of the bars
+                    borderColor: '#FF5733',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Volume Delta'
+                        }
+                    }
+                }
+            }
+        });
+
         // Function to fetch the order book and calculate Volume Delta
         async function fetchVolumeDelta() {
             try {
@@ -118,31 +134,32 @@
                 // Get the current time in a readable format
                 const time = new Date().toLocaleString();
 
-                // Display the volume delta data
-                displayVolumeDelta(time, bidVolume.toFixed(2), askVolume.toFixed(2), volumeDelta.toFixed(2));
+                // Update the chart with the new volume delta data
+                updateVolumeDeltaChart(time, volumeDelta);
             } catch (error) {
                 console.error('Error fetching order book data:', error);
             }
         }
 
-        // Function to display the volume delta data in the table
-        function displayVolumeDelta(time, bidVolume, askVolume, volumeDelta) {
-            const tableBody = document.getElementById('volume-delta-table-body');
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${time}</td>
-                <td>${bidVolume}</td>
-                <td>${askVolume}</td>
-                <td>${volumeDelta}</td>
-            `;
-            tableBody.appendChild(row);
+        // Function to update the Volume Delta Bar Chart
+        function updateVolumeDeltaChart(time, volumeDelta) {
+            // Add the new time and volume delta data
+            if (volumeDeltaChart.data.labels.length > 10) {
+                volumeDeltaChart.data.labels.shift(); // Remove the first label (oldest)
+                volumeDeltaChart.data.datasets[0].data.shift(); // Remove the oldest data point
+            }
+            volumeDeltaChart.data.labels.push(time);
+            volumeDeltaChart.data.datasets[0].data.push(volumeDelta);
+
+            // Update the chart
+            volumeDeltaChart.update();
         }
 
-        // Function to sync data with TradingView chart timeframe
+        // Function to sync data with TradingView's chart timeframe
         function syncWithTimeframe() {
             const timeframe = widget.activeChart().getInterval();
             console.log('Current TradingView timeframe:', timeframe);
-            // You can now filter or adjust the volume delta based on the TradingView timeframe
+            // Adjust volume delta calculation logic if necessary
         }
 
         // Initial fetch of volume delta data
