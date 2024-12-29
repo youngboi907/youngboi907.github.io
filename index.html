@@ -26,7 +26,6 @@
 <div id="tv_chart_container"></div>
 
 <script type="text/javascript">
-    // Wait for the DOM to load before initializing the TradingView widget
     window.onload = function () {
         new TradingView.widget({
             "container_id": "tv_chart_container",
@@ -45,6 +44,22 @@
                 "StochasticRSI",
                 "Moving Average"
             ],
+            "drawing_tools": {
+                "enabled": true,  // Enable drawing tools (trend lines, channels, etc.)
+                "drawing": {
+                    "trend_line": true, // Allow trend line drawing
+                    "fib retracement": true, // Allow Fibonacci retracement
+                    "vertical_line": true, // Allow vertical line
+                    "horizontal_line": true, // Allow horizontal line
+                    "arrow_line": true, // Allow arrow line
+                    "pitchfork": true, // Allow pitchfork drawing
+                    "ellipse": true, // Allow ellipse drawing
+                    "rectangle": true // Allow rectangle drawing
+                }
+            },
+            "charts": {
+                "drawings": true // Ensure drawings are allowed
+            }
         });
     };
 </script>
