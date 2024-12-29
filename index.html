@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BTC/USDT Order Book</title>
   <style>
-    /* General Styles */
     body {
       margin: 0;
       padding: 0;
@@ -28,7 +27,6 @@
       text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
     }
 
-    /* Card Styles */
     .card-container {
       display: flex;
       flex-wrap: wrap;
@@ -76,14 +74,12 @@
       color: #ff6347;
     }
 
-    /* Full-Screen TradingView Chart Styles */
     .tradingview-widget-container {
       width: 100%;
-      height: 80vh; /* 80% of viewport height */
+      height: 80vh;
       margin-top: 30px;
     }
 
-    /* Ensure all other content stays in place when resizing */
     .container {
       width: 100%;
       max-width: 1200px;
@@ -197,8 +193,8 @@
       return;
     }
 
-    const priceRangeLow = currentPrice * 0.9; // 10% below the current price
-    const priceRangeHigh = currentPrice * 1.1; // 10% above the current price
+    const priceRangeLow = currentPrice * 0.9;
+    const priceRangeHigh = currentPrice * 1.1;
 
     let totalBids = 0;
     let totalAsks = 0;
@@ -228,7 +224,6 @@
   setInterval(updateData, 1000);
   updateData();
 
-  // Embed TradingView Chart
   const script = document.createElement('script');
   script.src = 'https://s3.tradingview.com/tv.js';
   script.onload = () => {
@@ -247,6 +242,10 @@
       allow_symbol_change: true,
     });
   };
+  script.onerror = (error) => {
+    console.error('Error loading TradingView script:', error);
+  };
+
   document.body.appendChild(script);
 </script>
 
