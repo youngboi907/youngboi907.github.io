@@ -49,13 +49,15 @@
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script type="text/javascript">
+    let tradingViewInterval = '5'; // Set the default interval for both charts to 5 minutes
+
     // TradingView Chart Initialization
     window.onload = function () {
         new TradingView.widget({
             container_id: "tv_chart_container",
             autosize: true,
             symbol: "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
-            interval: "5",  // 5-minute timeframe
+            interval: tradingViewInterval,  // Same 5-minute timeframe
             timezone: "Etc/UTC",
             theme: "dark",
             locale: "en",
@@ -120,7 +122,7 @@
     async function fetchVolumeDelta() {
         try {
             // Fetch 5-minute candlestick data from Binance API
-            const response = await fetch('https://api.binance.com/api/v1/klines?symbol=BTCUSDT&interval=5m&limit=10');
+            const response = await fetch(`https://api.binance.com/api/v1/klines?symbol=BTCUSDT&interval=${tradingViewInterval}m&limit=10`);
             const candles = await response.json();
 
             // Process the data to calculate volume delta
@@ -150,9 +152,13 @@
         }
     }
 
-    // Update the volume delta chart every 5 minutes to match the 5-minute candles
-    setInterval(fetchVolumeDelta, 5000); // 5 seconds refresh interval (align with 5-minute candles)
-    fetchVolumeDelta(); // Fetch data immediately when the page loads
+    // Sync volume delta with TradingView's time frame and update every 5 minutes
+    function syncData() {
+        fetchVolumeDelta();  // Fetch volume delta data every time
+        setInterval(fetchVolumeDelta, 300000); // Refresh every 5 minutes (matching TradingView chart's interval)
+    }
+
+    syncData(); // Start syncing immediately when the page loads
 
 </script>
 
