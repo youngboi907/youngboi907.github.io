@@ -49,10 +49,10 @@
     let liquidationLevels = [];
     let liquidationLines = [];
 
-    // Fetch liquidation data from Binance API (for example)
+    // Fetch liquidation data from Binance API
     async function fetchLiquidationData() {
         try {
-            const response = await fetch('https://fapi.binance.com/fapi/v1/liquidationOrders?symbol=BTCUSDT');
+            const response = await fetch('https://fapi.binance.com/fapi/v1/liquidationOrders?symbol=BTCUSDT&limit=10');
             const data = await response.json();
             if (data && Array.isArray(data)) {
                 return data;
@@ -67,9 +67,10 @@
     function addLiquidationLevels(chart) {
         liquidationLevels.forEach(level => {
             if (level.visible !== false) {
+                // Add horizontal line for liquidation level
                 let line = chart.createPriceLine({
                     price: level.price,
-                    color: level.color || '#FF0000', // Red color by default
+                    color: level.color || '#FF0000',  // Red color by default
                     width: 2,
                     style: TradingView.LineStyle.Solid
                 });
@@ -84,7 +85,7 @@
             container_id: "tv_chart_container",
             autosize: true,
             symbol: "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
-            interval: "60",  // 1-hour timeframe (can be adjusted)
+            interval: "60",  // 1-hour timeframe
             timezone: "Etc/UTC",
             theme: "dark",
             locale: "en",
