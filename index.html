@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView Chart Integration</title>
+    <title>TradingView Chart Integration with Liquidation Levels</title>
     <style>
         body, html {
             margin: 0;
@@ -34,7 +34,6 @@
             font-size: 16px;
             z-index: 10;
         }
-
     </style>
 </head>
 <body>
@@ -48,16 +47,14 @@
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script type="text/javascript">
     let liquidationLevels = [];
+    let liquidationLines = [];
 
     // Fetch liquidation data from Binance API (for example)
     async function fetchLiquidationData() {
         try {
-            const response = await fetch('https://api.binance.com/api/v1/liquidationOrders');
+            const response = await fetch('https://fapi.binance.com/fapi/v1/liquidationOrders?symbol=BTCUSDT');
             const data = await response.json();
             if (data && Array.isArray(data)) {
-                // Filter or process liquidation data
-                // Here, we are assuming the data provides price levels for liquidation orders
-                // You can customize this as per your data format
                 return data;
             }
         } catch (error) {
@@ -66,17 +63,18 @@
         }
     }
 
-    // Add liquidation levels to TradingView chart
+    // Plot liquidation levels on TradingView chart
     function addLiquidationLevels(chart) {
         liquidationLevels.forEach(level => {
-            // Add horizontal lines for liquidation levels
-            chart.createLine({
-                price: level.price,
-                color: level.color || '#FF0000',
-                width: 2,
-                style: TradingView.LineStyle.Solid,
-                extend: TradingView.LineExtend.Both
-            });
+            if (level.visible !== false) {
+                let line = chart.createPriceLine({
+                    price: level.price,
+                    color: level.color || '#FF0000', // Red color by default
+                    width: 2,
+                    style: TradingView.LineStyle.Solid
+                });
+                liquidationLines.push(line);
+            }
         });
     }
 
@@ -104,8 +102,9 @@
                 // Fetch liquidation data and add it to the chart
                 fetchLiquidationData().then(data => {
                     liquidationLevels = data.map((item) => ({
-                        price: item.price,
-                        color: item.x * 100 // Color for different x leverage, can modify logic
+                        price: item.price,  // Price where liquidation occurs
+                        color: item.leverage * 100 >= 100 ? '#FF0000' : '#00FF00',  // Color based on leverage
+                        visible: true  // Default to visible
                     }));
                     addLiquidationLevels(widget.chart());
                 });
@@ -114,10 +113,13 @@
 
         // Toggle button functionality
         document.getElementById('toggleButton').onclick = function () {
-            const isVisible = liquidationLevels.length > 0 && liquidationLevels[0].visible !== false;
+            const isVisible = liquidationLines.length > 0 && liquidationLines[0].visible !== false;
             liquidationLevels.forEach(level => {
                 level.visible = !isVisible;
             });
+            // Remove existing lines
+            liquidationLines.forEach(line => line.remove());
+            liquidationLines = [];
             addLiquidationLevels(widget.chart()); // Redraw the liquidation levels
         };
     };
