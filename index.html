@@ -24,7 +24,7 @@
         #orderBookContainer {
             width: 100%;
             height: 25vh; /* Height for the order book */
-            background-color: #1e1e1e;
+            background-color: #2a2d36; /* Matches TradingView chart background */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -48,6 +48,13 @@
         canvas {
             width: 100%;
             height: calc(100% - 40px); /* Adjust canvas height for controls */
+        }
+        input[type="number"] {
+            background-color: #2a2d36;
+            color: white;
+            border: 1px solid #3a3f4b;
+            padding: 5px;
+            border-radius: 5px;
         }
         @media (max-width: 768px) {
             #tv_chart_container {
@@ -89,10 +96,13 @@
             "enable_publishing": false,
             "allow_symbol_change": true,
             "studies": [
+                "MAExp@tv-basicstudies",  // EMA (default value is 200)
                 "RSI@tv-basicstudies",
-                "MACD@tv-basicstudies",
-                "MAExp@tv-basicstudies"
+                "MACD@tv-basicstudies"
             ],
+            "overrides": {
+                "movingAverage.length": 200 // Set EMA default length
+            },
             "details": true,
             "hotlist": true,
             "calendar": true,
