@@ -3,65 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView Chart with Order Book Data</title>
+    <title>TradingView with Binance Order Book</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body, html {
             margin: 0;
             padding: 0;
             height: 100%;
             width: 100%;
-            background-color: #121212;
-            font-family: Arial, sans-serif;
         }
-
         #tv_chart_container {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 80vh; /* TradingView chart occupies 80% of the screen height */
+            height: 80vh; /* Set height for TradingView chart */
         }
-
-        #orderBookBox {
+        #orderBookContainer {
             position: absolute;
-            top: 80vh;
+            bottom: 0;
             left: 0;
             width: 100%;
-            height: 20vh; /* Order book box occupies 20% of the screen height */
-            background-color: #2a2a2a;
-            color: #fff;
-            padding: 10px;
-            overflow-y: scroll; /* Allows scrolling if there are many orders */
-        }
-
-        #orderBookBox h3 {
-            margin-top: 0;
-        }
-
-        #orderBookChart {
+            height: 20vh; /* Height for the order book chart */
+            background-color: #121212;
+            color: white;
             display: flex;
-            justify-content: space-between;
-            height: 100%;
-            padding: 10px;
-            overflow-x: scroll;
+            justify-content: center;
+            align-items: center;
         }
-
-        .bar {
-            height: 100%;
-            margin: 0 2px;
-            display: inline-block;
-            border-radius: 5px;
-            background-color: #00FF00; /* Green for buy orders */
-        }
-
-        .sell-bar {
-            background-color: #FF0000; /* Red for sell orders */
-        }
-
-        .bar-label {
-            text-align: center;
-            font-size: 12px;
-            color: #fff;
+        canvas {
+            width: 95%;
+            height: 90%;
         }
     </style>
 </head>
@@ -70,116 +42,163 @@
 <!-- TradingView Chart Container -->
 <div id="tv_chart_container"></div>
 
-<!-- Order Book Box -->
-<div id="orderBookBox">
-    <h3>Order Book (Largest Buy & Sell Orders)</h3>
-    <div id="orderBookChart"></div>
+<!-- Order Book Chart Container -->
+<div id="orderBookContainer">
+    <canvas id="orderBookChart"></canvas>
 </div>
 
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script type="text/javascript">
+    // Initialize TradingView chart
     window.onload = function () {
-        // TradingView Widget Setup
         new TradingView.widget({
-            container_id: "tv_chart_container",
-            autosize: true,
-            symbol: "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
-            interval: "60",  // 1-hour timeframe
-            timezone: "Etc/UTC",
-            theme: "dark",
-            locale: "en",
-            toolbar_bg: "#f1f3f6",
-            enable_publishing: false,
-            allow_symbol_change: true,
-            save_image: false,
-            studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies", "MAExp@tv-basicstudies"], // Indicators
-            details: true,
-            hotlist: true,
-            calendar: true,
-            withdateranges: true,
-            hide_side_toolbar: false, // Side toolbar with basic tools
+            "container_id": "tv_chart_container",
+            "autosize": true,
+            "symbol": "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
+            "interval": "60",  // 1-hour timeframe
+            "timezone": "Etc/UTC",
+            "theme": "dark",  // Theme: dark mode
+            "locale": "en",
+            "toolbar_bg": "#f1f3f6",
+            "enable_publishing": false,
+            "allow_symbol_change": true,
+            "studies": [
+                "RSI@tv-basicstudies",
+                "MACD@tv-basicstudies",
+                "MAExp@tv-basicstudies"
+            ],
+            "details": true,
+            "hotlist": true,
+            "calendar": true,
+            "withdateranges": true,
+            "hide_side_toolbar": false, // Show side toolbar with basic tools
+        });
+    };
+
+    // Order book data variables
+    const symbol = "BTCUSDT";
+    let minQty = 0.001; // Default minimum quantity filter
+    let orderBook = { bids: [], asks: [] }; // Order book data
+    let orderBookChart;
+
+    // Connect to Binance WebSocket for real-time depth updates
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        // Update the order book with the new data
+        updateOrderBook(data.b, data.a);
+
+        // Update the chart
+        updateChart();
+    };
+
+    // Function to update the order book
+    function updateOrderBook(bids, asks) {
+        // Process bids
+        bids.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
+
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) {
+                return; // Ignore invalid bids
+            }
+
+            const existing = orderBook.bids.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.bids.push({ price: priceNum, quantity: quantityNum });
+            }
         });
 
-        // Fetch Order Book Data from Binance and Bybit
-        async function fetchOrderBookData() {
-            try {
-                // Fetch Binance Order Book
-                const binanceResponse = await fetch('https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=1000');
-                const binanceData = await binanceResponse.json();
+        // Process asks
+        asks.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
 
-                // Fetch Bybit Order Book
-                const bybitResponse = await fetch('https://api.bybit.com/v2/public/orderBook/L2?symbol=BTCUSDT');
-                const bybitData = await bybitResponse.json();
-
-                // Process Data and Display
-                displayOrderBookData(binanceData, bybitData);
-            } catch (error) {
-                console.error('Error fetching order book data:', error);
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) {
+                return; // Ignore invalid asks
             }
-        }
 
-        // Process and Display Order Book Data
-        function displayOrderBookData(binanceData, bybitData) {
-            const orderBookChart = document.getElementById('orderBookChart');
-            orderBookChart.innerHTML = ''; // Clear existing chart
+            const existing = orderBook.asks.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.asks.push({ price: priceNum, quantity: quantityNum });
+            }
+        });
 
-            // Filter orders within the price range of 0 to 1 million USD
-            const filteredBinanceBuys = binanceData.bids.filter(order => parseFloat(order[0]) <= 1000000);
-            const filteredBinanceSells = binanceData.asks.filter(order => parseFloat(order[0]) <= 1000000);
+        // Sort bids (descending) and asks (ascending)
+        orderBook.bids.sort((a, b) => b.price - a.price);
+        orderBook.asks.sort((a, b) => a.price - b.price);
+    }
 
-            const filteredBybitBuys = bybitData.result.filter(order => order.side === 'Buy' && parseFloat(order.price) <= 1000000);
-            const filteredBybitSells = bybitData.result.filter(order => order.side === 'Sell' && parseFloat(order.price) <= 1000000);
+    // Initialize the order book chart
+    function initializeChart() {
+        const ctx = document.getElementById("orderBookChart").getContext("2d");
 
-            // Create Bar Chart for Buy and Sell Orders
-            filteredBinanceBuys.forEach(order => {
-                const bar = document.createElement('div');
-                bar.className = 'bar';
-                bar.style.width = `${(parseFloat(order[1]) / 1000000) * 100}%`; // Scale bar width based on volume
-                const label = document.createElement('div');
-                label.className = 'bar-label';
-                label.textContent = `$${order[0]} - ${order[1]} BTC`; // Display price and volume
-                bar.appendChild(label);
-                orderBookChart.appendChild(bar);
-            });
+        orderBookChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: [], // Will be updated dynamically
+                datasets: [
+                    {
+                        label: "Bids",
+                        data: [],
+                        backgroundColor: "rgba(76, 175, 80, 0.7)", // Green for bids
+                    },
+                    {
+                        label: "Asks",
+                        data: [],
+                        backgroundColor: "rgba(244, 67, 54, 0.7)", // Red for asks
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: { display: true, text: "Price Levels (USDT)" }
+                    },
+                    y: {
+                        title: { display: true, text: "Quantity (BTC)" }
+                    }
+                }
+            }
+        });
+    }
 
-            filteredBinanceSells.forEach(order => {
-                const bar = document.createElement('div');
-                bar.className = 'sell-bar';
-                bar.style.width = `${(parseFloat(order[1]) / 1000000) * 100}%`; // Scale bar width based on volume
-                const label = document.createElement('div');
-                label.className = 'bar-label';
-                label.textContent = `$${order[0]} - ${order[1]} BTC`; // Display price and volume
-                bar.appendChild(label);
-                orderBookChart.appendChild(bar);
-            });
+    // Update the chart
+    function updateChart() {
+        const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
+        const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
 
-            // Add Bybit Order Book Data (Optional)
-            filteredBybitBuys.forEach(order => {
-                const bar = document.createElement('div');
-                bar.className = 'bar';
-                bar.style.width = `${(parseFloat(order.size) / 1000000) * 100}%`; // Scale bar width based on volume
-                const label = document.createElement('div');
-                label.className = 'bar-label';
-                label.textContent = `$${order.price} - ${order.size} BTC`; // Display price and volume
-                bar.appendChild(label);
-                orderBookChart.appendChild(bar);
-            });
+        const bidQuantities = orderBook.bids.map(order => order.quantity);
+        const askQuantities = orderBook.asks.map(order => order.quantity);
 
-            filteredBybitSells.forEach(order => {
-                const bar = document.createElement('div');
-                bar.className = 'sell-bar';
-                bar.style.width = `${(parseFloat(order.size) / 1000000) * 100}%`; // Scale bar width based on volume
-                const label = document.createElement('div');
-                label.className = 'bar-label';
-                label.textContent = `$${order.price} - ${order.size} BTC`; // Display price and volume
-                bar.appendChild(label);
-                orderBookChart.appendChild(bar);
-            });
-        }
+        orderBookChart.data.labels = [...bidLabels, ...askLabels];
+        orderBookChart.data.datasets[0].data = bidQuantities;
+        orderBookChart.data.datasets[1].data = askQuantities;
 
-        // Fetch order book data on page load
-        fetchOrderBookData();
-    };
+        orderBookChart.update();
+    }
+
+    // Event listener for the minimum quantity input
+    document.getElementById("minQty").addEventListener("input", (event) => {
+        minQty = parseFloat(event.target.value);
+
+        // Re-filter and update the order book with the new minimum quantity
+        orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
+        orderBook.asks = orderBook.asks.filter(order => order.quantity >= minQty);
+
+        // Update the chart
+        updateChart();
+    });
+
+    // Initialize the order book chart
+    initializeChart();
 </script>
 
 </body>
