@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView Chart with Liquidation Levels</title>
+    <title>TradingView Chart with Order Book Data</title>
     <style>
         body, html {
             margin: 0;
@@ -22,40 +22,46 @@
             height: 80vh; /* TradingView chart occupies 80% of the screen height */
         }
 
-        #liquidationLevelsBox {
+        #orderBookBox {
             position: absolute;
             top: 80vh;
             left: 0;
             width: 100%;
-            height: 20vh; /* Liquidation levels box occupies 20% of the screen height */
+            height: 20vh; /* Order book box occupies 20% of the screen height */
             background-color: #2a2a2a;
             color: #fff;
             padding: 10px;
-            overflow-y: scroll; /* Allows scrolling if there are many liquidation levels */
+            overflow-y: scroll; /* Allows scrolling if there are many orders */
         }
 
-        #liquidationLevelsBox h3 {
+        #orderBookBox h3 {
             margin-top: 0;
         }
 
-        .liquidationLevel {
-            background-color: #444;
-            margin-bottom: 10px;
+        #orderBookChart {
+            display: flex;
+            justify-content: space-between;
+            height: 100%;
             padding: 10px;
+            overflow-x: scroll;
+        }
+
+        .bar {
+            height: 100%;
+            margin: 0 2px;
+            display: inline-block;
             border-radius: 5px;
+            background-color: #00FF00; /* Green for buy orders */
         }
 
-        .liquidationLevel p {
-            margin: 5px 0;
+        .sell-bar {
+            background-color: #FF0000; /* Red for sell orders */
         }
 
-        .liquidationLevel .price {
-            font-size: 18px;
-            color: #FF0000; /* Red for liquidation price */
-        }
-
-        .liquidationLevel .leverage {
-            color: #00FF00; /* Green for leverage levels */
+        .bar-label {
+            text-align: center;
+            font-size: 12px;
+            color: #fff;
         }
     </style>
 </head>
@@ -64,71 +70,17 @@
 <!-- TradingView Chart Container -->
 <div id="tv_chart_container"></div>
 
-<!-- Liquidation Levels Box -->
-<div id="liquidationLevelsBox">
-    <h3>Liquidation Levels</h3>
-    <div id="liquidationLevelsList">Loading liquidation levels...</div>
+<!-- Order Book Box -->
+<div id="orderBookBox">
+    <h3>Order Book (Largest Buy & Sell Orders)</h3>
+    <div id="orderBookChart"></div>
 </div>
 
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script type="text/javascript">
-    let liquidationLevels = [];
-
-    // Fetch liquidation data from Binance API
-    async function fetchLiquidationData() {
-        try {
-            const response = await fetch('https://fapi.binance.com/fapi/v1/liquidationOrders?symbol=BTCUSDT&limit=10');
-            const data = await response.json();
-
-            console.log('Liquidation Data:', data); // Debugging log
-
-            if (data && Array.isArray(data)) {
-                return data;
-            } else {
-                console.error('Invalid data format:', data);
-                return [];
-            }
-        } catch (error) {
-            console.error('Error fetching liquidation data:', error);
-            return [];
-        }
-    }
-
-    // Display liquidation levels in the box below the chart
-    function displayLiquidationLevels() {
-        const liquidationLevelsList = document.getElementById('liquidationLevelsList');
-        liquidationLevelsList.innerHTML = ''; // Clear the list before adding new items
-
-        if (liquidationLevels.length === 0) {
-            liquidationLevelsList.innerHTML = 'No liquidation data available.';
-        } else {
-            liquidationLevels.forEach(level => {
-                const levelElement = document.createElement('div');
-                levelElement.className = 'liquidationLevel';
-
-                const priceElement = document.createElement('p');
-                priceElement.className = 'price';
-                priceElement.innerHTML = `Price: $${level.price}`;
-
-                const leverageElement = document.createElement('p');
-                leverageElement.className = 'leverage';
-                leverageElement.innerHTML = `Leverage: ${level.leverage}x`;
-
-                const timestampElement = document.createElement('p');
-                timestampElement.innerHTML = `Timestamp: ${new Date(level.time).toLocaleString()}`;
-
-                levelElement.appendChild(priceElement);
-                levelElement.appendChild(leverageElement);
-                levelElement.appendChild(timestampElement);
-
-                liquidationLevelsList.appendChild(levelElement);
-            });
-        }
-    }
-
     window.onload = function () {
-        // Initialize TradingView widget
-        const widget = new TradingView.widget({
+        // TradingView Widget Setup
+        new TradingView.widget({
             container_id: "tv_chart_container",
             autosize: true,
             symbol: "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
@@ -148,15 +100,85 @@
             hide_side_toolbar: false, // Side toolbar with basic tools
         });
 
-        // Fetch liquidation data and display it
-        fetchLiquidationData().then(data => {
-            liquidationLevels = data.map((item) => ({
-                price: item.price,  // Price where liquidation occurs
-                leverage: item.leverage,
-                time: item.time  // Timestamp of liquidation order
-            }));
-            displayLiquidationLevels();  // Update the box below the chart with liquidation levels
-        });
+        // Fetch Order Book Data from Binance and Bybit
+        async function fetchOrderBookData() {
+            try {
+                // Fetch Binance Order Book
+                const binanceResponse = await fetch('https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=1000');
+                const binanceData = await binanceResponse.json();
+
+                // Fetch Bybit Order Book
+                const bybitResponse = await fetch('https://api.bybit.com/v2/public/orderBook/L2?symbol=BTCUSDT');
+                const bybitData = await bybitResponse.json();
+
+                // Process Data and Display
+                displayOrderBookData(binanceData, bybitData);
+            } catch (error) {
+                console.error('Error fetching order book data:', error);
+            }
+        }
+
+        // Process and Display Order Book Data
+        function displayOrderBookData(binanceData, bybitData) {
+            const orderBookChart = document.getElementById('orderBookChart');
+            orderBookChart.innerHTML = ''; // Clear existing chart
+
+            // Filter orders within the price range of 0 to 1 million USD
+            const filteredBinanceBuys = binanceData.bids.filter(order => parseFloat(order[0]) <= 1000000);
+            const filteredBinanceSells = binanceData.asks.filter(order => parseFloat(order[0]) <= 1000000);
+
+            const filteredBybitBuys = bybitData.result.filter(order => order.side === 'Buy' && parseFloat(order.price) <= 1000000);
+            const filteredBybitSells = bybitData.result.filter(order => order.side === 'Sell' && parseFloat(order.price) <= 1000000);
+
+            // Create Bar Chart for Buy and Sell Orders
+            filteredBinanceBuys.forEach(order => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.width = `${(parseFloat(order[1]) / 1000000) * 100}%`; // Scale bar width based on volume
+                const label = document.createElement('div');
+                label.className = 'bar-label';
+                label.textContent = `$${order[0]} - ${order[1]} BTC`; // Display price and volume
+                bar.appendChild(label);
+                orderBookChart.appendChild(bar);
+            });
+
+            filteredBinanceSells.forEach(order => {
+                const bar = document.createElement('div');
+                bar.className = 'sell-bar';
+                bar.style.width = `${(parseFloat(order[1]) / 1000000) * 100}%`; // Scale bar width based on volume
+                const label = document.createElement('div');
+                label.className = 'bar-label';
+                label.textContent = `$${order[0]} - ${order[1]} BTC`; // Display price and volume
+                bar.appendChild(label);
+                orderBookChart.appendChild(bar);
+            });
+
+            // Add Bybit Order Book Data (Optional)
+            filteredBybitBuys.forEach(order => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.width = `${(parseFloat(order.size) / 1000000) * 100}%`; // Scale bar width based on volume
+                const label = document.createElement('div');
+                label.className = 'bar-label';
+                label.textContent = `$${order.price} - ${order.size} BTC`; // Display price and volume
+                bar.appendChild(label);
+                orderBookChart.appendChild(bar);
+            });
+
+            filteredBybitSells.forEach(order => {
+                const bar = document.createElement('div');
+                bar.className = 'sell-bar';
+                bar.style.width = `${(parseFloat(order.size) / 1000000) * 100}%`; // Scale bar width based on volume
+                const label = document.createElement('div');
+                label.className = 'bar-label';
+                label.textContent = `$${order.price} - ${order.size} BTC`; // Display price and volume
+                bar.appendChild(label);
+                orderBookChart.appendChild(bar);
+            });
+        }
+
+        // Fetch order book data on page load
+        fetchOrderBookData();
     };
 </script>
 
