@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView Chart Integration with Liquidation Levels</title>
+    <title>TradingView Chart with Liquidation Levels</title>
     <style>
         body, html {
             margin: 0;
@@ -11,6 +11,7 @@
             height: 100%;
             width: 100%;
             background-color: #121212;
+            font-family: Arial, sans-serif;
         }
 
         #tv_chart_container {
@@ -18,21 +19,43 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 100vh; /* Full screen TradingView chart */
+            height: 80vh; /* TradingView chart occupies 80% of the screen height */
         }
 
-        #toggleButton {
+        #liquidationLevelsBox {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 80vh;
+            left: 0;
+            width: 100%;
+            height: 20vh; /* Liquidation levels box occupies 20% of the screen height */
+            background-color: #2a2a2a;
+            color: #fff;
             padding: 10px;
-            background-color: #f1f3f6;
-            color: #121212;
-            border: none;
+            overflow-y: scroll; /* Allows scrolling if there are many liquidation levels */
+        }
+
+        #liquidationLevelsBox h3 {
+            margin-top: 0;
+        }
+
+        .liquidationLevel {
+            background-color: #444;
+            margin-bottom: 10px;
+            padding: 10px;
             border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            z-index: 10;
+        }
+
+        .liquidationLevel p {
+            margin: 5px 0;
+        }
+
+        .liquidationLevel .price {
+            font-size: 18px;
+            color: #FF0000; /* Red for liquidation price */
+        }
+
+        .liquidationLevel .leverage {
+            color: #00FF00; /* Green for leverage levels */
         }
     </style>
 </head>
@@ -41,13 +64,15 @@
 <!-- TradingView Chart Container -->
 <div id="tv_chart_container"></div>
 
-<!-- Toggle Button -->
-<button id="toggleButton">Toggle Liquidation Levels</button>
+<!-- Liquidation Levels Box -->
+<div id="liquidationLevelsBox">
+    <h3>Liquidation Levels</h3>
+    <div id="liquidationLevelsList"></div>
+</div>
 
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script type="text/javascript">
     let liquidationLevels = [];
-    let liquidationLines = [];
 
     // Fetch liquidation data from Binance API
     async function fetchLiquidationData() {
@@ -63,19 +88,31 @@
         }
     }
 
-    // Plot liquidation levels on TradingView chart
-    function addLiquidationLevels(chart) {
+    // Display liquidation levels in the box below the chart
+    function displayLiquidationLevels() {
+        const liquidationLevelsList = document.getElementById('liquidationLevelsList');
+        liquidationLevelsList.innerHTML = ''; // Clear the list before adding new items
+
         liquidationLevels.forEach(level => {
-            if (level.visible !== false) {
-                // Add horizontal line for liquidation level
-                let line = chart.createPriceLine({
-                    price: level.price,
-                    color: level.color || '#FF0000',  // Red color by default
-                    width: 2,
-                    style: TradingView.LineStyle.Solid
-                });
-                liquidationLines.push(line);
-            }
+            const levelElement = document.createElement('div');
+            levelElement.className = 'liquidationLevel';
+
+            const priceElement = document.createElement('p');
+            priceElement.className = 'price';
+            priceElement.innerHTML = `Price: $${level.price}`;
+
+            const leverageElement = document.createElement('p');
+            leverageElement.className = 'leverage';
+            leverageElement.innerHTML = `Leverage: ${level.leverage}x`;
+
+            const timestampElement = document.createElement('p');
+            timestampElement.innerHTML = `Timestamp: ${new Date(level.time).toLocaleString()}`;
+
+            levelElement.appendChild(priceElement);
+            levelElement.appendChild(leverageElement);
+            levelElement.appendChild(timestampElement);
+
+            liquidationLevelsList.appendChild(levelElement);
         });
     }
 
@@ -99,30 +136,17 @@
             calendar: true,
             withdateranges: true,
             hide_side_toolbar: false, // Side toolbar with basic tools
-            onChartReady: function () {
-                // Fetch liquidation data and add it to the chart
-                fetchLiquidationData().then(data => {
-                    liquidationLevels = data.map((item) => ({
-                        price: item.price,  // Price where liquidation occurs
-                        color: item.leverage * 100 >= 100 ? '#FF0000' : '#00FF00',  // Color based on leverage
-                        visible: true  // Default to visible
-                    }));
-                    addLiquidationLevels(widget.chart());
-                });
-            }
         });
 
-        // Toggle button functionality
-        document.getElementById('toggleButton').onclick = function () {
-            const isVisible = liquidationLines.length > 0 && liquidationLines[0].visible !== false;
-            liquidationLevels.forEach(level => {
-                level.visible = !isVisible;
-            });
-            // Remove existing lines
-            liquidationLines.forEach(line => line.remove());
-            liquidationLines = [];
-            addLiquidationLevels(widget.chart()); // Redraw the liquidation levels
-        };
+        // Fetch liquidation data and display it
+        fetchLiquidationData().then(data => {
+            liquidationLevels = data.map((item) => ({
+                price: item.price,  // Price where liquidation occurs
+                leverage: item.leverage,
+                time: item.time  // Timestamp of liquidation order
+            }));
+            displayLiquidationLevels();  // Update the box below the chart with liquidation levels
+        });
     };
 </script>
 
