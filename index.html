@@ -3,35 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView with Volume Delta Candlesticks</title>
+    <title>TradingView Chart and Volume Delta</title>
     <style>
         body, html {
             margin: 0;
             padding: 0;
             height: 100%;
             width: 100%;
-            font-family: Arial, sans-serif;
+            background-color: #121212;
         }
+
         #tv_chart_container {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 80vh; /* Chart takes 80% of the viewport height */
+            height: 70vh; /* Set the TradingView chart container to 70% of screen height */
         }
-        #volume-delta {
+
+        #volumeDeltaContainer {
             position: absolute;
-            top: 80vh; /* Place below the TradingView chart */
+            top: 70vh;
             left: 0;
             width: 100%;
-            height: 20vh;
-            background-color: #000; /* Black background */
-            color: #fff;
-            padding: 10px;
+            height: 30vh; /* Set the volume delta chart container to 30% of screen height */
+            background-color: black;
         }
+
         canvas {
-            width: 100% !important;
-            height: 100% !important;
+            width: 100%;
+            height: 100%;
         }
     </style>
 </head>
@@ -40,33 +41,27 @@
 <!-- TradingView Chart Container -->
 <div id="tv_chart_container"></div>
 
-<!-- Volume Delta Candlestick Chart -->
-<div id="volume-delta">
-    <h3>Binance Volume Delta (BTCUSDT) - 5 Minute Candlesticks</h3>
+<!-- Volume Delta Container (below the TradingView chart) -->
+<div id="volumeDeltaContainer">
     <canvas id="volumeDeltaChart"></canvas>
-    <div class="timeframe-sync">
-        <p>Syncs with the current TradingView chart timeframe.</p>
-    </div>
 </div>
 
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script type="text/javascript">
+    // TradingView Chart Initialization
     window.onload = function () {
-        // Initialize TradingView widget
-        const widget = new TradingView.widget({
+        new TradingView.widget({
             container_id: "tv_chart_container",
             autosize: true,
             symbol: "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
-            interval: "60",  // 1-hour timeframe
+            interval: "5",  // 5-minute timeframe
             timezone: "Etc/UTC",
             theme: "dark",
             locale: "en",
             toolbar_bg: "#f1f3f6",
             enable_publishing: false,
             allow_symbol_change: true,
-            save_image: false, // Disable save chart image
+            save_image: false,
             studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies", "MAExp@tv-basicstudies"], // Indicators
             details: true,
             hotlist: true,
@@ -74,119 +69,93 @@
             withdateranges: true,
             hide_side_toolbar: false, // Side toolbar with basic tools
         });
+    };
 
-        // Initialize the Chart.js chart for Volume Delta (Candlesticks)
-        const ctx = document.getElementById('volumeDeltaChart').getContext('2d');
-        const volumeDeltaChart = new Chart(ctx, {
-            type: 'candlestick',
-            data: {
-                labels: [], // Time labels will be added dynamically
-                datasets: [{
-                    label: 'Volume Delta',
-                    data: [], // Volume delta data will be added dynamically
-                    borderColor: '#FF5733',
-                    borderWidth: 1,
-                    backgroundColor: '#FF5733',
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false,
-                    },
+    // Volume Delta Chart Initialization
+    const ctx = document.getElementById("volumeDeltaChart").getContext("2d");
+
+    const volumeDeltaChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Volume Delta",
+                data: [],
+                backgroundColor: '#ff6347',
+                borderColor: '#ff6347',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Timestamp'
+                    }
                 },
-                scales: {
-                    x: {
-                        type: 'category',
-                        ticks: {
-                            font: {
-                                size: 10
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Time'
-                        }
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Volume Delta'
                     },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Volume Delta'
-                        },
-                        min: 0,
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return 'Delta: ' + context.raw;
+                        }
                     }
                 }
             }
-        });
+        }
+    });
 
-        // Function to fetch the order book and calculate Volume Delta
-        async function fetchVolumeDelta() {
-            try {
-                // Endpoint for Binance futures order book (BTC/USDT)
-                const response = await fetch('https://fapi.binance.com/fapi/v1/depth?symbol=BTCUSDT&limit=1000');
+    // Fetch volume delta data from Binance API
+    async function fetchVolumeDelta() {
+        try {
+            const response = await fetch('https://api.binance.com/api/v3/aggTrades?symbol=BTCUSDT&limit=1000');
+            const trades = await response.json();
+
+            // Process volume delta (difference between buy and sell volume)
+            const volumeData = [];
+            let timeStamps = [];
+
+            let buyVolume = 0;
+            let sellVolume = 0;
+
+            trades.forEach((trade) => {
+                const timestamp = new Date(trade.timestamp).toISOString();
+                timeStamps.push(timestamp);
                 
-                // Ensure the response is valid
-                if (!response.ok) {
-                    throw new Error('Failed to fetch order book data');
+                // Assuming buy trades have a positive quantity and sell trades have a negative quantity
+                if (trade.isBuy) {
+                    buyVolume += parseFloat(trade.qty);
+                } else {
+                    sellVolume += parseFloat(trade.qty);
                 }
 
-                const data = await response.json();
+                // Calculate Volume Delta (difference between buy and sell volume)
+                const delta = buyVolume - sellVolume;
+                volumeData.push(delta);
+            });
 
-                const bidVolume = data.bids.reduce((sum, item) => sum + parseFloat(item[1]), 0);
-                const askVolume = data.asks.reduce((sum, item) => sum + parseFloat(item[1]), 0);
-                const volumeDelta = bidVolume - askVolume;
-
-                // Get the current time in a readable format
-                const time = new Date().toLocaleString();
-
-                // Update the chart with the new volume delta data
-                updateVolumeDeltaChart(time, volumeDelta);
-            } catch (error) {
-                console.error('Error fetching order book data:', error);
-            }
-        }
-
-        // Function to update the Volume Delta Candlestick Chart
-        function updateVolumeDeltaChart(time, volumeDelta) {
-            // Add the new time and volume delta data (5-minute candlestick)
-            if (volumeDeltaChart.data.labels.length > 12) {
-                volumeDeltaChart.data.labels.shift(); // Remove the first label (oldest)
-                volumeDeltaChart.data.datasets[0].data.shift(); // Remove the oldest data point
-            }
-
-            const candle = {
-                t: Date.now(), // Time in milliseconds
-                o: volumeDelta, // Open (initial value)
-                h: volumeDelta, // High (same as open initially)
-                l: volumeDelta, // Low (same as open initially)
-                c: volumeDelta, // Close (same as open initially)
-            };
-
-            volumeDeltaChart.data.labels.push(time);
-            volumeDeltaChart.data.datasets[0].data.push(candle);
-
-            // Update the chart
+            // Update the chart with new data
+            volumeDeltaChart.data.labels = timeStamps;
+            volumeDeltaChart.data.datasets[0].data = volumeData;
             volumeDeltaChart.update();
+        } catch (error) {
+            console.error('Error fetching volume delta data:', error);
         }
+    }
 
-        // Function to sync data with TradingView's chart timeframe
-        function syncWithTimeframe() {
-            const timeframe = widget.activeChart().getInterval();
-            console.log('Current TradingView timeframe:', timeframe);
-            // Adjust volume delta calculation logic if necessary
-        }
+    // Update the volume delta chart every second
+    setInterval(fetchVolumeDelta, 5000); // 5 seconds refresh interval (align with 5-minute candles)
 
-        // Initial fetch of volume delta data
-        fetchVolumeDelta();
-
-        // Sync data with TradingView's chart timeframe (you can also call this every few seconds to update)
-        setInterval(syncWithTimeframe, 10000);  // Sync every 10 seconds
-
-        // Update volume delta every second (new data)
-        setInterval(fetchVolumeDelta, 1000);  // Fetch new volume data every 1 second
-    };
 </script>
 
 </body>
