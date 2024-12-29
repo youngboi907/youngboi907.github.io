@@ -27,7 +27,7 @@
             left: 0;
             width: 100%;
             height: 30vh; /* Liquidation chart container */
-            background-color: black;
+            background-color: #121212; /* Ensure background is dark for liquidations */
         }
 
         canvas {
@@ -84,9 +84,9 @@
             datasets: [{
                 label: "Liquidations",
                 data: [],
-                borderColor: '#34b7f1',
+                borderColor: '#ff0000',
                 borderWidth: 1,
-                backgroundColor: '#34b7f1',
+                backgroundColor: '#ff0000',
                 borderRadius: 1,
             }]
         },
@@ -111,7 +111,7 @@
                 tooltip: {
                     callbacks: {
                         label: function (context) {
-                            return 'Price: ' + context.raw.close;
+                            return 'Price: ' + context.raw.c; // Show close price on tooltip
                         }
                     }
                 }
@@ -129,16 +129,17 @@
             const liquidationCandles = [];
             const timeStamps = [];
 
+            // Process the data and convert it into candle format
             liquidationData.forEach((liquidation) => {
                 const timestamp = new Date(liquidation.time).getTime();
                 const price = parseFloat(liquidation.price);  // Liquidation price
                 const volume = parseFloat(liquidation.origQty);  // Liquidation quantity
 
-                // Create the candle data
+                // Create a candle (using open, high, low, close all the same for simplicity)
                 liquidationCandles.push({
                     x: timestamp,
                     o: price,
-                    h: price,  // In this simple example, assuming open and high are same
+                    h: price,  // In this simple example, assuming open and high are the same
                     l: price,  // Low and close are the same
                     c: price   // Close price
                 });
@@ -146,10 +147,11 @@
                 timeStamps.push(timestamp);
             });
 
-            // Update the liquidation chart
+            // Update the liquidation chart with new data
             liquidationChart.data.labels = timeStamps;
             liquidationChart.data.datasets[0].data = liquidationCandles;
             liquidationChart.update();
+
         } catch (error) {
             console.error('Error fetching liquidation data:', error);
         }
@@ -157,12 +159,13 @@
 
     // Sync Liquidation Data with TradingView's Timeframe
     function syncData() {
-        fetchLiquidationData();  // Fetch liquidation data
+        fetchLiquidationData();  // Fetch liquidation data once
 
-        setInterval(fetchLiquidationData, 300000); // Refresh every 5 minutes (5m interval)
+        // Set up to fetch new liquidation data every 5 minutes (5m interval)
+        setInterval(fetchLiquidationData, 300000);
     }
 
-    syncData(); // Start syncing immediately when the page loads
+    syncData();  // Start syncing immediately when the page loads
 </script>
 
 </body>
