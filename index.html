@@ -61,13 +61,13 @@
 </div>
 
 <div class="box">
-  <h2>Bids (1% - 2.5% Range)</h2>
+  <h2>Bids (1% - 2.5% below current price)</h2>
   <div id="bids-sum-range" class="result">Loading...</div>
   <div id="bids-range-specific" class="range"></div>
 </div>
 
 <div class="box">
-  <h2>Asks (1% - 2.5% Range)</h2>
+  <h2>Asks (1% - 2.5% above current price)</h2>
   <div id="asks-sum-range" class="result">Loading...</div>
   <div id="asks-range-specific" class="range"></div>
 </div>
@@ -147,14 +147,17 @@
     const priceRangeLow = currentPrice * 0.9;  // 10% below the current price
     const priceRangeHigh = currentPrice * 1.1; // 10% above the current price
 
-    const range1Low = currentPrice * 0.975; // 1% below the current price
-    const range1High = currentPrice * 1.025; // 2.5% above the current price
+    const range1Low = currentPrice * 0.975; // 2.5% below the current price
+    const range1High = currentPrice * 0.99;  // 1% below the current price
+
+    const range2Low = currentPrice * 1.01;   // 1% above the current price
+    const range2High = currentPrice * 1.025; // 2.5% above the current price
 
     let totalBids = 0;
     let totalAsks = 0;
 
     let bidsSumRange1 = 0;
-    let asksSumRange1 = 0;
+    let asksSumRange2 = 0;
 
     for (const [exchange, url] of Object.entries(exchangeApis)) {
       const data = await fetchOrderBookFromExchange(url);
@@ -163,9 +166,11 @@
         totalBids += bidsSum;
         totalAsks += asksSum;
 
-        const { bidsSum: bidsSum1, asksSum: asksSum1 } = calculateSum(data, exchange, range1Low, range1High);
+        const { bidsSum: bidsSum1, asksSum: asksSum2 } = calculateSum(data, exchange, range1Low, range1High);
         bidsSumRange1 += bidsSum1;
-        asksSumRange1 += asksSum1;
+
+        const { bidsSum: bidsSum2, asksSum: asksSum3 } = calculateSum(data, exchange, range2Low, range2High);
+        asksSumRange2 += asksSum2;
       }
     }
 
@@ -177,30 +182,26 @@
 
       document.getElementById('bids-range').textContent = `Price Range: ${priceRangeLow.toFixed(2)} - ${priceRangeHigh.toFixed(2)} USD`;
       document.getElementById('asks-range').textContent = `Price Range: ${priceRangeLow.toFixed(2)} - ${priceRangeHigh.toFixed(2)} USD`;
-    } else {
-      document.getElementById('bids-sum').textContent = 'Error';
-      document.getElementById('asks-sum').textContent = 'Error';
-      document.getElementById('ratio').textContent = 'Error';
-      document.getElementById('bids-range').textContent = '';
-      document.getElementById('asks-range').textContent = '';
     }
 
-    // 1% - 2.5% range data
-    if (bidsSumRange1 > 0 && asksSumRange1 > 0) {
+    // For 1% - 2.5% range (Bids and Asks)
+    if (bidsSumRange1 > 0) {
       document.getElementById('bids-sum-range').textContent = bidsSumRange1.toFixed(2);
-      document.getElementById('asks-sum-range').textContent = asksSumRange1.toFixed(2);
       document.getElementById('bids-range-specific').textContent = `Price Range: ${range1Low.toFixed(2)} - ${range1High.toFixed(2)} USD`;
-      document.getElementById('asks-range-specific').textContent = `Price Range: ${range1Low.toFixed(2)} - ${range1High.toFixed(2)} USD`;
     } else {
-      document.getElementById('bids-sum-range').textContent = 'Error';
-      document.getElementById('asks-sum-range').textContent = 'Error';
-      document.getElementById('bids-range-specific').textContent = '';
-      document.getElementById('asks-range-specific').textContent = '';
+      document.getElementById('bids-sum-range').textContent = 'No Data';
+    }
+
+    if (asksSumRange2 > 0) {
+      document.getElementById('asks-sum-range').textContent = asksSumRange2.toFixed(2);
+      document.getElementById('asks-range-specific').textContent = `Price Range: ${range2Low.toFixed(2)} - ${range2High.toFixed(2)} USD`;
+    } else {
+      document.getElementById('asks-sum-range').textContent = 'No Data';
     }
   }
 
-  setInterval(updateData, 1000);
-  updateData();
+  setInterval(updateData, 1000);  // Update every second
+  updateData();  // Initial load
 </script>
 
 </body>
