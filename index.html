@@ -166,10 +166,12 @@
         totalBids += bidsSum;
         totalAsks += asksSum;
 
-        const { bidsSum: bidsSum1, asksSum: asksSum2 } = calculateSum(data, exchange, range1Low, range1High);
+        // Bids in 1% - 2.5% below the current price range
+        const { bidsSum: bidsSum1, asksSum: asksSum1 } = calculateSum(data, exchange, range1Low, range1High);
         bidsSumRange1 += bidsSum1;
 
-        const { bidsSum: bidsSum2, asksSum: asksSum3 } = calculateSum(data, exchange, range2Low, range2High);
+        // Asks in 1% - 2.5% above the current price range
+        const { bidsSum: bidsSum2, asksSum: asksSum2 } = calculateSum(data, exchange, range2Low, range2High);
         asksSumRange2 += asksSum2;
       }
     }
@@ -193,16 +195,4 @@
     }
 
     if (asksSumRange2 > 0) {
-      document.getElementById('asks-sum-range').textContent = asksSumRange2.toFixed(2);
-      document.getElementById('asks-range-specific').textContent = `Price Range: ${range2Low.toFixed(2)} - ${range2High.toFixed(2)} USD`;
-    } else {
-      document.getElementById('asks-sum-range').textContent = 'No Data';
-    }
-  }
-
-  setInterval(updateData, 1000);  // Update every second
-  updateData();  // Initial load
-</script>
-
-</body>
-</html>
+      document.getElementById('asks-sum-range').textContent = asks
