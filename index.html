@@ -3,48 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView Chart Integration</title>
+    <title>TradingView Chart with Liquidation Data</title>
     <style>
         body, html {
             margin: 0;
             padding: 0;
             height: 100%;
             width: 100%;
+            background-color: #121212;
         }
         #tv_chart_container {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 100vh; /* Full screen chart */
+            height: 100vh; /* Fullscreen chart */
+        }
+        #liquidation-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            pointer-events: none; /* Allow interaction with chart below */
+            display: none; /* Hidden by default */
+        }
+        #toggle-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            padding: 10px 20px;
+            background-color: #f0a500;
+            border: none;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #toggle-overlay:hover {
+            background-color: #e59500;
         }
     </style>
 </head>
 <body>
 
+<!-- Toggle Button -->
+<button id="toggle-overlay">Show Liquidations</button>
+
 <!-- TradingView Chart Container -->
 <div id="tv_chart_container"></div>
 
+<!-- Liquidation Overlay -->
+<canvas id="liquidation-overlay"></canvas>
+
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script type="text/javascript">
+    // Initialize TradingView Chart
     new TradingView.widget({
         container_id: "tv_chart_container",
         autosize: true,
-        symbol: "BINANCE:BTCUSDT",  // BTC/USDT on Binance
-        interval: "60",  // 1-hour timeframe
+        symbol: "BINANCE:BTCUSDT",
+        interval: "60",
         timezone: "Etc/UTC",
         theme: "dark",
         locale: "en",
         toolbar_bg: "#f1f3f6",
         enable_publishing: false,
         allow_symbol_change: true,
-        save_image: false, // Disable save chart image
-        studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies", "MAExp@tv-basicstudies"], // Indicators
+        studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies", "MAExp@tv-basicstudies"],
         details: true,
         hotlist: true,
         calendar: true,
         withdateranges: true,
-        hide_side_toolbar: false, // Side toolbar with basic tools
+        hide_side_toolbar: false,
+    });
+
+    const overlayCanvas = document.getElementById("liquidation-overlay");
+    const ctx = overlayCanvas.getContext("2d");
+
+    // Resize canvas to fit the chart container
+    function resizeCanvas() {
+        overlayCanvas.width = window.innerWidth;
+        overlayCanvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    // Fetch Liquidation Data from Binance Futures API
+    async function fetchLiquidationData() {
+        try {
+            const response = await fetch("https://fapi.binance.com/fapi/v1/allForceOrders");
+            const data = await response.json();
+            return data.filter(order => order.symbol === "BTCUSDT"); // Filter for BTCUSDT
+        } catch (error) {
+            console.error("Error fetching liquidation data:", error);
+            return [];
+        }
+    }
+
+    // Draw Liquidation Data on Canvas
+    async function drawLiquidations() {
+        const liquidations = await fetchLiquidationData();
+        ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        ctx.fillStyle = "rgba(255, 69, 0, 0.8)"; // Red color for liquidations
+
+        liquidations.forEach(order => {
+            // Map liquidation data to chart coordinates
+            const price = parseFloat(order.price);
+            const x = overlayCanvas.width / 2; // Placeholder for x (modify based on actual mapping logic)
+            const y = overlayCanvas.height - (price / 100); // Placeholder for y (modify based on actual mapping logic)
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+    }
+
+    // Toggle Overlay Visibility
+    const toggleButton = document.getElementById("toggle-overlay");
+    toggleButton.addEventListener("click", () => {
+        const overlay = document.getElementById("liquidation-overlay");
+        if (overlay.style.display === "none") {
+            overlay.style.display = "block";
+            toggleButton.textContent = "Hide Liquidations";
+            drawLiquidations(); // Fetch and draw liquidations
+        } else {
+            overlay.style.display = "none";
+            toggleButton.textContent = "Show Liquidations";
+            ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height); // Clear canvas
+        }
     });
 </script>
 
