@@ -4,69 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TradingView Full Chart</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-        }
-        #tv_chart_container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh; /* Chart fills the screen height */
-        }
-    </style>
 </head>
-<body>
+<body style="margin: 0; padding: 0;">
 
-<!-- TradingView Chart Container -->
-<div id="tv_chart_container"></div>
-
-<script type="text/javascript">
-    window.onload = function () {
-        new TradingView.widget({
-            "container_id": "tv_chart_container",    // ID of the container for the chart
-            "autosize": true,                         // Make the chart automatically resize to fit the container
-            "symbol": "BINANCE:BTCUSDT",              // Default symbol, BTC/USDT on Binance
-            "interval": "60",                         // Default timeframe (1 hour)
-            "timezone": "Etc/UTC",                    // Set timezone to UTC
-            "theme": "dark",                          // Set the chart theme to dark
-            "locale": "en",                           // Set the language to English
-            "toolbar_bg": "#f1f3f6",                  // Background color for the toolbar
-            "enable_publishing": false,               // Disable publishing of charts
-            "allow_symbol_change": true,              // Allow changing of symbols
-            "studies": [
-                "MACD",                              // Example of default technical indicators
-                "RSI",
-                "Moving Average"
-            ],
-            "drawings_access": {
-                "type": "black",                      // Allow all drawing tools for the user
-                "tools": [{
-                    "name": "trend_line",             // Trend Line tool enabled
-                    "short_name": "T"                
-                }, {
-                    "name": "horizontal_line",        // Horizontal Line tool enabled
-                    "short_name": "H"
-                }, {
-                    "name": "vertical_line",          // Vertical Line tool enabled
-                    "short_name": "V"
-                }, {
-                    "name": "fibonacci_retracement",  // Fibonacci retracement tool enabled
-                    "short_name": "F"
-                }]
-            },
-            "fullscreen": true,                       // Enable full-screen mode (optional)
-            "container_id": "tv_chart_container"      // Specify container for the chart
-        });
-    };
-</script>
-
-<!-- TradingView Widget Script -->
-<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<!-- Full-Fledged TradingView Chart -->
+<iframe
+    src="https://www.tradingview.com/chart/"
+    style="width: 100%; height: 100vh; border: none;">
+</iframe>
 
 </body>
 </html>
