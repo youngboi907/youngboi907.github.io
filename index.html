@@ -3,42 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView Chart with Liquidation Data</title>
+    <title>TradingView Chart Integration</title>
     <style>
         body, html {
             margin: 0;
             padding: 0;
             height: 100%;
             width: 100%;
-            overflow: hidden;
         }
         #tv_chart_container {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 100vh; /* Fullscreen chart */
-        }
-        #overlay {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(30, 30, 30, 0.8);
-            color: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            z-index: 10;
-            max-width: 300px;
-        }
-        #overlay h4 {
-            margin: 0 0 10px;
-            font-size: 16px;
-            color: #f0a500;
-        }
-        #overlay div {
-            margin-bottom: 8px;
+            height: 100vh; /* Full screen chart */
         }
     </style>
 </head>
@@ -47,20 +25,12 @@
 <!-- TradingView Chart Container -->
 <div id="tv_chart_container"></div>
 
-<!-- Overlay for Liquidation Data -->
-<div id="overlay">
-    <h4>Liquidation Data (Binance Futures)</h4>
-    <div id="longs">Long Liquidations: Loading...</div>
-    <div id="shorts">Short Liquidations: Loading...</div>
-</div>
-
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-<script>
-    // TradingView Chart
+<script type="text/javascript">
     new TradingView.widget({
         container_id: "tv_chart_container",
         autosize: true,
-        symbol: "BINANCE:BTCUSDT",  // Default symbol
+        symbol: "BINANCE:BTCUSDT",  // BTC/USDT on Binance
         interval: "60",  // 1-hour timeframe
         timezone: "Etc/UTC",
         theme: "dark",
@@ -68,41 +38,14 @@
         toolbar_bg: "#f1f3f6",
         enable_publishing: false,
         allow_symbol_change: true,
+        save_image: false, // Disable save chart image
+        studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies", "MAExp@tv-basicstudies"], // Indicators
+        details: true,
+        hotlist: true,
+        calendar: true,
         withdateranges: true,
+        hide_side_toolbar: false, // Side toolbar with basic tools
     });
-
-    // Function to fetch liquidation data
-    async function fetchLiquidationData() {
-        const apiUrl = "https://fapi.binance.com/fapi/v1/liquidationOrders?symbol=BTCUSDT&limit=10"; // Binance Futures API
-
-        try {
-            const response = await fetch(apiUrl);
-            const data = await response.json();
-
-            // Separate liquidations into longs and shorts
-            const longLiquidations = data.filter(order => order.side === "SELL");
-            const shortLiquidations = data.filter(order => order.side === "BUY");
-
-            const longsSummary = longLiquidations
-                .map(order => `Qty: ${parseFloat(order.origQty).toFixed(2)}, Price: ${parseFloat(order.price).toFixed(2)}`)
-                .join("<br>");
-            const shortsSummary = shortLiquidations
-                .map(order => `Qty: ${parseFloat(order.origQty).toFixed(2)}, Price: ${parseFloat(order.price).toFixed(2)}`)
-                .join("<br>");
-
-            // Update the overlay with fetched data
-            document.getElementById("longs").innerHTML = `<strong>Longs:</strong><br>${longsSummary || "No data"}`;
-            document.getElementById("shorts").innerHTML = `<strong>Shorts:</strong><br>${shortsSummary || "No data"}`;
-        } catch (error) {
-            console.error("Error fetching liquidation data:", error);
-            document.getElementById("longs").textContent = "Error loading data";
-            document.getElementById("shorts").textContent = "Error loading data";
-        }
-    }
-
-    // Fetch liquidation data every 5 seconds
-    setInterval(fetchLiquidationData, 5000);
-    fetchLiquidationData();
 </script>
 
 </body>
