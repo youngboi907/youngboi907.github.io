@@ -3,15 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView Full Chart</title>
+    <title>TradingView Chart</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .tradingview-widget {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 </head>
-<body style="margin: 0; padding: 0;">
+<body>
 
-<!-- Full-Fledged TradingView Chart -->
-<iframe
-    src="https://www.tradingview.com/chart/"
-    style="width: 100%; height: 100vh; border: none;">
-</iframe>
+<!-- TradingView Widget -->
+<div class="tradingview-widget">
+    <div id="tradingview-container"></div>
+</div>
+
+<script type="text/javascript">
+    new TradingView.widget({
+        container_id: "tradingview-container",
+        autosize: true,
+        symbol: "BINANCE:BTCUSDT",
+        interval: "60",
+        timezone: "Etc/UTC",
+        theme: "dark",
+        style: "1",
+        locale: "en",
+        toolbar_bg: "#f1f3f6",
+        enable_publishing: false,
+        allow_symbol_change: true,
+        save_image: false,
+        studies: [],
+    });
+</script>
+
+<script src="https://s3.tradingview.com/tv.js"></script>
 
 </body>
 </html>
