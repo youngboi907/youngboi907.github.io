@@ -37,27 +37,46 @@
       color: #ff6347;
       margin-top: 10px;
     }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
   </style>
 </head>
 <body>
 
 <h1>BTC/USDT Order Book (Binance & Bybit)</h1>
 
-<div class="box">
-  <h2>Total Bids (0 - 1M USD)</h2>
-  <div id="bids-sum" class="result">Loading...</div>
-  <div id="bids-range" class="range"></div>
-</div>
+<div class="container">
+  <div class="box">
+    <h2>Total Bids (0 - 1M USD)</h2>
+    <div id="bids-sum" class="result">Loading...</div>
+    <div id="bids-range" class="range"></div>
+  </div>
 
-<div class="box">
-  <h2>Total Asks (0 - 1M USD)</h2>
-  <div id="asks-sum" class="result">Loading...</div>
-  <div id="asks-range" class="range"></div>
-</div>
+  <div class="box">
+    <h2>Total Asks (0 - 1M USD)</h2>
+    <div id="asks-sum" class="result">Loading...</div>
+    <div id="asks-range" class="range"></div>
+  </div>
 
-<div class="box">
-  <h2>Bids/Asks Ratio (%)</h2>
-  <div id="ratio" class="ratio">Loading...</div>
+  <div class="box">
+    <h2>Bids (1% - 2.5%)</h2>
+    <div id="bids-range-sum" class="result">Loading...</div>
+    <div id="bids-range-small" class="range"></div>
+  </div>
+
+  <div class="box">
+    <h2>Asks (1% - 2.5%)</h2>
+    <div id="asks-range-sum" class="result">Loading...</div>
+    <div id="asks-range-small" class="range"></div>
+  </div>
+
+  <div class="box">
+    <h2>Bids/Asks Ratio (%)</h2>
+    <div id="ratio" class="ratio">Loading...</div>
+  </div>
 </div>
 
 <script>
@@ -129,15 +148,21 @@
     if (!currentPrice) {
       document.getElementById('bids-sum').textContent = 'Error';
       document.getElementById('asks-sum').textContent = 'Error';
+      document.getElementById('bids-range-sum').textContent = 'Error';
+      document.getElementById('asks-range-sum').textContent = 'Error';
       document.getElementById('ratio').textContent = 'Error';
       return;
     }
 
-    const priceRangeLow = currentPrice * 0.9; // 10% below the current price
-    const priceRangeHigh = currentPrice * 1.1; // 10% above the current price
+    const priceRangeLow = currentPrice * 0.9;
+    const priceRangeHigh = currentPrice * 1.1;
+    const smallRangeLow = currentPrice * 0.99;
+    const smallRangeHigh = currentPrice * 1.025;
 
     let totalBids = 0;
     let totalAsks = 0;
+    let smallRangeBids = 0;
+    let smallRangeAsks = 0;
 
     for (const [exchange, url] of Object.entries(exchangeApis)) {
       const data = await fetchOrderBookFromExchange(url);
@@ -145,22 +170,27 @@
         const { bidsSum, asksSum } = calculateSum(data, exchange, priceRangeLow, priceRangeHigh);
         totalBids += bidsSum;
         totalAsks += asksSum;
+
+        const { bidsSum: smallBids, asksSum: smallAsks } = calculateSum(data, exchange, smallRangeLow, smallRangeHigh);
+        smallRangeBids += smallBids;
+        smallRangeAsks += smallAsks;
       }
     }
 
-    if (totalBids > 0 && totalAsks > 0) {
-      document.getElementById('bids-sum').textContent = totalBids.toFixed(2);
-      document.getElementById('asks-sum').textContent = totalAsks.toFixed(2);
-      document.getElementById('ratio').textContent = ((totalBids / totalAsks) * 100).toFixed(2) + '%';
+    document.getElementById('bids-sum').textContent = totalBids.toFixed(2);
+    document.getElementById('asks-sum').textContent = totalAsks.toFixed(2);
+    document.getElementById('bids-range').textContent = `Price Range: ${priceRangeLow.toFixed(2)} - ${priceRangeHigh.toFixed(2)} USD`;
+    document.getElementById('asks-range').textContent = `Price Range: ${priceRangeLow.toFixed(2)} - ${priceRangeHigh.toFixed(2)} USD`;
 
-      document.getElementById('bids-range').textContent = `Price Range: ${priceRangeLow.toFixed(2)} - ${priceRangeHigh.toFixed(2)} USD`;
-      document.getElementById('asks-range').textContent = `Price Range: ${priceRangeLow.toFixed(2)} - ${priceRangeHigh.toFixed(2)} USD`;
+    document.getElementById('bids-range-sum').textContent = smallRangeBids.toFixed(2);
+    document.getElementById('asks-range-sum').textContent = smallRangeAsks.toFixed(2);
+    document.getElementById('bids-range-small').textContent = `Price Range: ${smallRangeLow.toFixed(2)} - ${smallRangeHigh.toFixed(2)} USD`;
+    document.getElementById('asks-range-small').textContent = `Price Range: ${smallRangeLow.toFixed(2)} - ${smallRangeHigh.toFixed(2)} USD`;
+
+    if (totalBids > 0 && totalAsks > 0) {
+      document.getElementById('ratio').textContent = ((totalBids / totalAsks) * 100).toFixed(2) + '%';
     } else {
-      document.getElementById('bids-sum').textContent = 'Error';
-      document.getElementById('asks-sum').textContent = 'Error';
       document.getElementById('ratio').textContent = 'Error';
-      document.getElementById('bids-range').textContent = '';
-      document.getElementById('asks-range').textContent = '';
     }
   }
 
