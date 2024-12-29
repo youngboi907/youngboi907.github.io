@@ -3,160 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView with RSI Zones</title>
+    <title>TradingView with Binance Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body {
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
             font-family: Arial, sans-serif;
             background-color: #121212;
             color: white;
-            margin: 0;
-            padding: 0;
+            overflow: hidden;
+        }
+        #tv_chart_container {
+            position: relative;
+            width: 100%;
+            height: 75vh; /* Adjust height for TradingView chart */
+        }
+        #orderBookContainer {
+            width: 100%;
+            height: 25vh; /* Height for the order book */
+            background-color: #2a2d36; /* Matches TradingView chart background */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            min-height: 100vh;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
         }
-
-        #tv_chart_container {
+        #orderBookControls {
             width: 100%;
-            height: 60vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap; /* Ensure controls fit in smaller screens */
         }
-
-        #orderBookContainer {
-            width: 100%;
-            max-width: 1200px;
-            margin: 20px 0;
+        label, input {
+            margin: 5px;
+            color: white;
         }
-
-        #rsiZoneChartContainer {
-            width: 100%;
-            max-width: 1200px;
-            margin: 20px 0;
-        }
-
         canvas {
-            background-color: #121212;
-            border: 1px solid #333;
-            max-width: 95%;
-            margin: 0 auto;
+            width: 100%;
+            height: calc(100% - 40px); /* Adjust canvas height for controls */
+        }
+        input[type="number"] {
+            background-color: #2a2d36;
+            color: white;
+            border: 1px solid #3a3f4b;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        @media (max-width: 768px) {
+            #tv_chart_container {
+                height: 65vh; /* Adjust chart height for smaller screens */
+            }
+            #orderBookContainer {
+                height: 35vh; /* Adjust order book height */
+            }
         }
     </style>
 </head>
 <body>
-    <!-- TradingView Chart Container -->
-    <div id="tv_chart_container"></div>
 
-    <!-- Order Book Filter -->
-    <div id="orderBookContainer">
-        <h2>Order Book Filter</h2>
+<!-- TradingView Chart Container -->
+<div id="tv_chart_container"></div>
+
+<!-- Order Book Chart Container -->
+<div id="orderBookContainer">
+    <div id="orderBookControls">
         <label for="minQty">Minimum Quantity (BTC):</label>
         <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
-        <canvas id="orderBookChart"></canvas>
     </div>
+    <canvas id="orderBookChart"></canvas>
+</div>
 
-    <!-- RSI Zone Chart -->
-    <div id="rsiZoneChartContainer">
-        <h2>RSI (13) Bullish/Bearish Zones</h2>
-        <canvas id="rsiZoneChart"></canvas>
-    </div>
-
-    <script src="https://s3.tradingview.com/tv.js"></script>
-    <script>
-        // Initialize TradingView widget
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<script type="text/javascript">
+    // Initialize TradingView chart
+    window.onload = function () {
         new TradingView.widget({
-            container_id: "tv_chart_container",
-            autosize: true,
-            symbol: "BINANCE:BTCUSDT",
-            interval: "60",
-            timezone: "Etc/UTC",
-            theme: "dark",
-            locale: "en",
-            toolbar_bg: "#f1f3f6",
-            enable_publishing: false,
-            allow_symbol_change: true,
-            studies: ["Moving Average@tv-basicstudies", "RSI@tv-basicstudies"],
+            "container_id": "tv_chart_container",
+            "autosize": true,
+            "symbol": "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
+            "interval": "60",  // 1-hour timeframe
+            "timezone": "Etc/UTC",
+            "theme": "dark",
+            "locale": "en",
+            "toolbar_bg": "#f1f3f6",
+            "enable_publishing": false,
+            "allow_symbol_change": true,
+            "studies": [
+                "MAExp@tv-basicstudies",  // EMA (default value is 200)
+                "RSI@tv-basicstudies",
+                "MACD@tv-basicstudies"
+            ],
+            "overrides": {
+                "movingAverage.length": 200 // Set EMA default length
+            },
+            "details": true,
+            "hotlist": true,
+            "calendar": true,
+            "withdateranges": true,
+            "hide_side_toolbar": false, // Show side toolbar with basic tools
+        });
+    };
+
+    // Order book data variables
+    const symbol = "BTCUSDT";
+    let minQty = 0.001; // Default minimum quantity filter
+    let orderBook = { bids: [], asks: [] }; // Order book data
+    let orderBookChart;
+
+    // Connect to Binance WebSocket for real-time depth updates
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        // Update the order book with the new data
+        updateOrderBook(data.b, data.a);
+
+        // Update the chart
+        updateChart();
+    };
+
+    // Function to update the order book
+    function updateOrderBook(bids, asks) {
+        // Process bids
+        bids.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
+
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) {
+                return; // Ignore invalid bids
+            }
+
+            const existing = orderBook.bids.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.bids.push({ price: priceNum, quantity: quantityNum });
+            }
         });
 
-        // Order Book Filter Logic
-        const orderBook = { bids: [], asks: [] };
-        const orderBookChart = new Chart(document.getElementById("orderBookChart").getContext("2d"), {
+        // Process asks
+        asks.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
+
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) {
+                return; // Ignore invalid asks
+            }
+
+            const existing = orderBook.asks.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.asks.push({ price: priceNum, quantity: quantityNum });
+            }
+        });
+
+        // Sort bids (descending) and asks (ascending)
+        orderBook.bids.sort((a, b) => b.price - a.price);
+        orderBook.asks.sort((a, b) => a.price - b.price);
+    }
+
+    // Initialize the order book chart
+    function initializeChart() {
+        const ctx = document.getElementById("orderBookChart").getContext("2d");
+
+        orderBookChart = new Chart(ctx, {
             type: "bar",
             data: {
-                labels: [],
+                labels: [], // Will be updated dynamically
                 datasets: [
-                    { label: "Bids", backgroundColor: "green", data: [] },
-                    { label: "Asks", backgroundColor: "red", data: [] }
+                    {
+                        label: "Bids",
+                        data: [],
+                        backgroundColor: "rgba(76, 175, 80, 0.7)", // Green for bids
+                    },
+                    {
+                        label: "Asks",
+                        data: [],
+                        backgroundColor: "rgba(244, 67, 54, 0.7)", // Red for asks
+                    }
                 ]
-            },
-            options: { responsive: true }
-        });
-
-        // RSI Zone Chart Logic
-        const rsiZoneCtx = document.getElementById("rsiZoneChart").getContext("2d");
-        const rsiData = { time: [], value: [] }; // Placeholder RSI data
-
-        const rsiZoneChart = new Chart(rsiZoneCtx, {
-            type: "line",
-            data: {
-                labels: rsiData.time,
-                datasets: [{
-                    label: "RSI (13)",
-                    data: rsiData.value,
-                    borderColor: "#ffffff",
-                    borderWidth: 2,
-                    fill: false,
-                }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { display: true },
-                    annotation: {
-                        annotations: [
-                            {
-                                type: "box",
-                                yMin: 61,
-                                yMax: 100,
-                                backgroundColor: "rgba(0, 255, 0, 0.1)", // Bullish zone (green)
-                            },
-                            {
-                                type: "box",
-                                yMin: 0,
-                                yMax: 40,
-                                backgroundColor: "rgba(255, 0, 0, 0.1)", // Bearish zone (red)
-                            }
-                        ]
-                    }
-                },
+                maintainAspectRatio: false,
                 scales: {
                     x: {
-                        title: { display: true, text: "Timestamp" },
+                        title: { display: true, text: "Price Levels (USDT)" }
                     },
                     y: {
-                        title: { display: true, text: "RSI Value" },
-                        min: 0,
-                        max: 100,
+                        title: { display: true, text: "Quantity (BTC)" }
                     }
                 }
             }
         });
+    }
 
-        // Fetch RSI Data (Example Placeholder for Data Integration)
-        setInterval(() => {
-            const now = new Date().toLocaleTimeString();
-            const rsiValue = Math.random() * 100; // Simulated RSI value
-            rsiData.time.push(now);
-            rsiData.value.push(rsiValue);
+    // Update the chart
+    function updateChart() {
+        const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
+        const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
 
-            if (rsiData.time.length > 50) { // Limit the number of data points
-                rsiData.time.shift();
-                rsiData.value.shift();
-            }
+        const bidQuantities = orderBook.bids.map(order => order.quantity);
+        const askQuantities = orderBook.asks.map(order => order.quantity);
 
-            rsiZoneChart.update();
-        }, 5000); // Update every 5 seconds
-    </script>
+        orderBookChart.data.labels = [...bidLabels, ...askLabels];
+        orderBookChart.data.datasets[0].data = bidQuantities;
+        orderBookChart.data.datasets[1].data = askQuantities;
+
+        orderBookChart.update();
+    }
+
+    // Event listener for the minimum quantity input
+    document.getElementById("minQty").addEventListener("input", (event) => {
+        minQty = parseFloat(event.target.value);
+
+        // Re-filter and update the order book with the new minimum quantity
+        orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
+        orderBook.asks = orderBook.asks.filter(order => order.quantity >= minQty);
+
+        // Update the chart
+        updateChart();
+    });
+
+    // Initialize the order book chart
+    initializeChart();
+</script>
+
 </body>
 </html>
