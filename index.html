@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView with Volume Delta Bar Chart</title>
+    <title>TradingView with Volume Delta Candlesticks</title>
     <style>
         body, html {
             margin: 0;
@@ -21,11 +21,11 @@
         }
         #volume-delta {
             position: absolute;
-            top: 80vh; /* Place below the chart */
+            top: 80vh; /* Place below the TradingView chart */
             left: 0;
             width: 100%;
             height: 20vh;
-            background-color: #222;
+            background-color: #000; /* Black background */
             color: #fff;
             padding: 10px;
         }
@@ -40,9 +40,9 @@
 <!-- TradingView Chart Container -->
 <div id="tv_chart_container"></div>
 
-<!-- Volume Delta Bar Chart -->
+<!-- Volume Delta Candlestick Chart -->
 <div id="volume-delta">
-    <h3>Binance Volume Delta (BTCUSDT) - Bar Chart</h3>
+    <h3>Binance Volume Delta (BTCUSDT) - 5 Minute Candlesticks</h3>
     <canvas id="volumeDeltaChart"></canvas>
     <div class="timeframe-sync">
         <p>Syncs with the current TradingView chart timeframe.</p>
@@ -75,25 +75,31 @@
             hide_side_toolbar: false, // Side toolbar with basic tools
         });
 
-        // Initialize the Chart.js chart for Volume Delta
+        // Initialize the Chart.js chart for Volume Delta (Candlesticks)
         const ctx = document.getElementById('volumeDeltaChart').getContext('2d');
         const volumeDeltaChart = new Chart(ctx, {
-            type: 'bar',
+            type: 'candlestick',
             data: {
                 labels: [], // Time labels will be added dynamically
                 datasets: [{
                     label: 'Volume Delta',
-                    data: [], // Volume delta values will be added dynamically
-                    backgroundColor: '#FF5733', // Color of the bars
+                    data: [], // Volume delta data will be added dynamically
                     borderColor: '#FF5733',
-                    borderWidth: 1
+                    borderWidth: 1,
+                    backgroundColor: '#FF5733',
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false,
+                    },
+                },
                 scales: {
                     x: {
+                        type: 'category',
                         ticks: {
                             font: {
                                 size: 10
@@ -108,7 +114,8 @@
                         title: {
                             display: true,
                             text: 'Volume Delta'
-                        }
+                        },
+                        min: 0,
                     }
                 }
             }
@@ -141,15 +148,24 @@
             }
         }
 
-        // Function to update the Volume Delta Bar Chart
+        // Function to update the Volume Delta Candlestick Chart
         function updateVolumeDeltaChart(time, volumeDelta) {
-            // Add the new time and volume delta data
-            if (volumeDeltaChart.data.labels.length > 10) {
+            // Add the new time and volume delta data (5-minute candlestick)
+            if (volumeDeltaChart.data.labels.length > 12) {
                 volumeDeltaChart.data.labels.shift(); // Remove the first label (oldest)
                 volumeDeltaChart.data.datasets[0].data.shift(); // Remove the oldest data point
             }
+
+            const candle = {
+                t: Date.now(), // Time in milliseconds
+                o: volumeDelta, // Open (initial value)
+                h: volumeDelta, // High (same as open initially)
+                l: volumeDelta, // Low (same as open initially)
+                c: volumeDelta, // Close (same as open initially)
+            };
+
             volumeDeltaChart.data.labels.push(time);
-            volumeDeltaChart.data.datasets[0].data.push(volumeDelta);
+            volumeDeltaChart.data.datasets[0].data.push(candle);
 
             // Update the chart
             volumeDeltaChart.update();
@@ -168,8 +184,8 @@
         // Sync data with TradingView's chart timeframe (you can also call this every few seconds to update)
         setInterval(syncWithTimeframe, 10000);  // Sync every 10 seconds
 
-        // Update volume delta every minute
-        setInterval(fetchVolumeDelta, 60000);  // Fetch new volume data every 60 seconds
+        // Update volume delta every second (new data)
+        setInterval(fetchVolumeDelta, 1000);  // Fetch new volume data every 1 second
     };
 </script>
 
