@@ -5,88 +5,89 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BTC/USDT Order Book</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
-
+    /* General Styles */
     body {
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #1f1c2c, #928dab);
-      color: #ffffff;
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: #ffffff;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
+      min-height: 100vh;
     }
 
     h1 {
-      color: #f6d365;
       font-size: 2.5rem;
+      font-weight: 700;
       margin-bottom: 30px;
       text-align: center;
-      text-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+      color: #f5a623;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
     }
 
-    .container {
+    /* Card Styles */
+    .card-container {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 20px;
     }
 
-    .box {
-      background: linear-gradient(135deg, #2c3e50, #4ca1af);
-      border-radius: 16px;
-      box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.4);
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      width: 300px;
       padding: 20px;
-      margin: 10px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
       text-align: center;
-      width: 280px;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      transition: transform 0.3s, box-shadow 0.3s;
     }
 
-    .box:hover {
+    .card:hover {
       transform: translateY(-10px);
-      box-shadow: 0px 12px 30px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     }
 
-    .box h2 {
-      font-size: 1.2rem;
-      color: #f6d365;
-      margin-bottom: 10px;
+    .card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 15px;
+      color: #f5a623;
     }
 
     .result {
-      font-size: 1.8rem;
-      font-weight: 600;
-      color: #ffffff;
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 10px;
     }
 
     .range {
-      font-size: 0.9rem;
-      color: #ffedbc;
-      margin-top: 8px;
+      font-size: 1rem;
+      color: #d1d1d1;
     }
 
     .ratio {
-      font-size: 1.6rem;
-      color: #f86d7d;
-      margin-top: 10px;
+      font-size: 1.8rem;
+      color: #ff6b6b;
     }
 
-    .footer {
-      margin-top: 40px;
+    /* Footer */
+    footer {
+      margin-top: 30px;
       font-size: 0.9rem;
-      color: #e4e4e4;
-      text-align: center;
+      color: #888;
     }
 
-    .footer a {
-      color: #f6d365;
+    footer a {
+      color: #f5a623;
       text-decoration: none;
-      font-weight: 600;
     }
 
-    .footer a:hover {
+    footer a:hover {
       text-decoration: underline;
     }
   </style>
@@ -95,43 +96,135 @@
 
 <h1>BTC/USDT Order Book</h1>
 
-<div class="container">
-  <div class="box">
+<div class="card-container">
+  <div class="card">
     <h2>Total Bids (0 - 1M USD)</h2>
     <div id="bids-sum" class="result">Loading...</div>
     <div id="bids-range" class="range"></div>
   </div>
 
-  <div class="box">
+  <div class="card">
     <h2>Total Asks (0 - 1M USD)</h2>
     <div id="asks-sum" class="result">Loading...</div>
     <div id="asks-range" class="range"></div>
   </div>
 
-  <div class="box">
+  <div class="card">
     <h2>Bids/Asks Ratio (%)</h2>
     <div id="ratio" class="ratio">Loading...</div>
   </div>
-
-  <div class="box">
-    <h2>Bids (1% - 2.5% below current price)</h2>
-    <div id="bids-sum-range" class="result">Loading...</div>
-    <div id="bids-range-specific" class="range"></div>
-  </div>
-
-  <div class="box">
-    <h2>Asks (1% - 2.5% above current price)</h2>
-    <div id="asks-sum-range" class="result">Loading...</div>
-    <div id="asks-range-specific" class="range"></div>
-  </div>
 </div>
 
-<div class="footer">
-  Powered by <a href="https://www.binance.com" target="_blank">Binance</a> and <a href="https://www.bybit.com" target="_blank">Bybit</a>.
-</div>
+<footer>
+  Powered by <a href="https://www.binance.com/" target="_blank">Binance</a> & <a href="https://www.bybit.com/" target="_blank">Bybit</a>.
+</footer>
 
 <script>
-  // JavaScript logic remains the same as provided earlier
+  const exchangeApis = {
+    binance: 'https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=1000',
+    bybit: 'https://api.bybit.com/v2/public/orderBook/L2?symbol=BTCUSDT'
+  };
+
+  async function fetchCurrentPrice() {
+    try {
+      const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+      const data = await response.json();
+      return parseFloat(data.price);
+    } catch (error) {
+      console.error('Error fetching current BTC price:', error);
+      return null;
+    }
+  }
+
+  async function fetchOrderBookFromExchange(url) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error(`Error: ${response.status} from ${url}`);
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error(`Fetch failed for ${url}:`, error);
+      return null;
+    }
+  }
+
+  function calculateSum(orderBook, exchange, priceRangeLow, priceRangeHigh) {
+    let bidsSum = 0;
+    let asksSum = 0;
+
+    try {
+      if (exchange === 'binance') {
+        orderBook.bids.forEach(([price, quantity]) => {
+          price = parseFloat(price);
+          quantity = parseFloat(quantity);
+          if (price >= priceRangeLow && price <= priceRangeHigh) bidsSum += price * quantity;
+        });
+        orderBook.asks.forEach(([price, quantity]) => {
+          price = parseFloat(price);
+          quantity = parseFloat(quantity);
+          if (price >= priceRangeLow && price <= priceRangeHigh) asksSum += price * quantity;
+        });
+      } else if (exchange === 'bybit') {
+        orderBook.result.forEach(order => {
+          const price = parseFloat(order.price);
+          const quantity = parseFloat(order.size);
+          if (price >= priceRangeLow && price <= priceRangeHigh) {
+            if (order.side === 'Buy') bidsSum += price * quantity;
+            else asksSum += price * quantity;
+          }
+        });
+      }
+    } catch (error) {
+      console.error(`Error processing data for ${exchange}:`, error);
+    }
+
+    return { bidsSum, asksSum };
+  }
+
+  async function updateData() {
+    const currentPrice = await fetchCurrentPrice();
+    if (!currentPrice) {
+      document.getElementById('bids-sum').textContent = 'Error';
+      document.getElementById('asks-sum').textContent = 'Error';
+      document.getElementById('ratio').textContent = 'Error';
+      return;
+    }
+
+    const priceRangeLow = currentPrice * 0.9; // 10% below the current price
+    const priceRangeHigh = currentPrice * 1.1; // 10% above the current price
+
+    let totalBids = 0;
+    let totalAsks = 0;
+
+    for (const [exchange, url] of Object.entries(exchangeApis)) {
+      const data = await fetchOrderBookFromExchange(url);
+      if (data) {
+        const { bidsSum, asksSum } = calculateSum(data, exchange, priceRangeLow, priceRangeHigh);
+        totalBids += bidsSum;
+        totalAsks += asksSum;
+      }
+    }
+
+    if (totalBids > 0 && totalAsks > 0) {
+      document.getElementById('bids-sum').textContent = totalBids.toFixed(2);
+      document.getElementById('asks-sum').textContent = totalAsks.toFixed(2);
+      document.getElementById('ratio').textContent = ((totalBids / totalAsks) * 100).toFixed(2) + '%';
+
+      document.getElementById('bids-range').textContent = `Price Range: ${priceRangeLow.toFixed(2)} - ${priceRangeHigh.toFixed(2)} USD`;
+      document.getElementById('asks-range').textContent = `Price Range: ${priceRangeLow.toFixed(2)} - ${priceRangeHigh.toFixed(2)} USD`;
+    } else {
+      document.getElementById('bids-sum').textContent = 'Error';
+      document.getElementById('asks-sum').textContent = 'Error';
+      document.getElementById('ratio').textContent = 'Error';
+      document.getElementById('bids-range').textContent = '';
+      document.getElementById('asks-range').textContent = '';
+    }
+  }
+
+  setInterval(updateData, 1000);
+  updateData();
 </script>
 
 </body>
