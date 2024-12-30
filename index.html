@@ -62,7 +62,11 @@ let oiVolumeChart = new Chart(ctx, {
                 position: 'bottom',
                 title: {
                     display: true,
-                    text: 'Time'
+                    text: 'Time (Unix Timestamp)'
+                },
+                ticks: {
+                    autoSkip: true,
+                    maxTicksLimit: 20
                 }
             },
             y: {
