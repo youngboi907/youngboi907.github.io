@@ -158,15 +158,12 @@
             const oiChart = new Chart(ctx, {
                 type: "candlestick",
                 data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: "Open Interest",
-                            data: [],
-                            borderColor: "rgba(33, 150, 243, 1)",
-                            backgroundColor: "rgba(33, 150, 243, 0.2)",
-                        },
-                    ],
+                    datasets: [{
+                        label: "Open Interest",
+                        data: [],
+                        borderColor: "rgba(33, 150, 243, 1)",
+                        backgroundColor: "rgba(33, 150, 243, 0.2)",
+                    }],
                 },
                 options: {
                     responsive: true,
@@ -178,17 +175,26 @@
             });
 
             function updateOIChart(data) {
-                const labels = data.map(point => new Date(point.timestamp).toLocaleTimeString());
-                const values = data.map(point => point.value);
-                oiChart.data.labels = labels;
-                oiChart.data.datasets[0].data = values;
+                const formattedData = data.map(point => ({
+                    x: new Date(point.timestamp),
+                    o: point.open,
+                    h: point.high,
+                    l: point.low,
+                    c: point.close,
+                }));
+
+                oiChart.data.labels = formattedData.map(d => d.x);
+                oiChart.data.datasets[0].data = formattedData;
                 oiChart.update();
             }
 
             setInterval(() => {
                 const simulatedData = Array.from({ length: 12 }, (_, i) => ({
                     timestamp: Date.now() - i * 300000,
-                    value: Math.random() * 1000 + 5000,
+                    open: Math.random() * 1000 + 5000,
+                    high: Math.random() * 1000 + 5500,
+                    low: Math.random() * 1000 + 4500,
+                    close: Math.random() * 1000 + 5000,
                 })).reverse();
                 updateOIChart(simulatedData);
             }, 1000);
