@@ -22,6 +22,7 @@
         #tv_chart_container {
             width: 100%;
             height: 60vh;
+            margin-bottom: 20px;
         }
 
         .chart-container {
@@ -70,7 +71,7 @@
 
     <script src="https://s3.tradingview.com/tv.js"></script>
     <script>
-        // Initialize TradingView Chart
+        // TradingView Chart Full Functionality
         new TradingView.widget({
             container_id: "tv_chart_container",
             autosize: true,
@@ -82,10 +83,12 @@
             toolbar_bg: "#f1f3f6",
             enable_publishing: false,
             allow_symbol_change: true,
+            hide_side_toolbar: false,
             studies: ["EMA@tv-basicstudies"],
+            drawings_access: { type: "all", tools: ["Regression Trend", "Fibonacci Retracement"] },
         });
 
-        // Order Book Filter Logic
+        // Order Book Filter
         const symbol = "BTCUSDT";
         let minQty = 0.001;
         let orderBook = { bids: [], asks: [] };
@@ -148,11 +151,11 @@
 
         initializeOrderBookChart();
 
-        // Open Interest Chart Logic
+        // Open Interest Chart
         function initializeOIChart() {
             const ctx = document.getElementById("oiChart").getContext("2d");
             const oiChart = new Chart(ctx, {
-                type: "line",
+                type: "candlestick",
                 data: {
                     labels: [],
                     datasets: [
@@ -161,7 +164,6 @@
                             data: [],
                             borderColor: "rgba(33, 150, 243, 1)",
                             backgroundColor: "rgba(33, 150, 243, 0.2)",
-                            borderWidth: 2,
                         },
                     ],
                 },
@@ -182,14 +184,13 @@
                 oiChart.update();
             }
 
-            // Simulate fetching Open Interest data
             setInterval(() => {
-                const simulatedData = Array.from({ length: 20 }, (_, i) => ({
-                    timestamp: Date.now() - i * 60000,
+                const simulatedData = Array.from({ length: 12 }, (_, i) => ({
+                    timestamp: Date.now() - i * 300000,
                     value: Math.random() * 1000 + 5000,
                 })).reverse();
                 updateOIChart(simulatedData);
-            }, 3000);
+            }, 1000);
         }
 
         initializeOIChart();
