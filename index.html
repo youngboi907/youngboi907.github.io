@@ -3,196 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView with Binance Order Book & OI/Volume Ratio</title>
+    <title>OI/Volume Ratio Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* General Styles */
-        body, html {
+        body {
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
-            color: white;
-            overflow: hidden;
-        }
-
-        /* TradingView Chart Container */
-        #tv_chart_container {
-            position: relative;
-            width: 100%;
-            height: 70vh;
-        }
-
-        /* Order Book Container */
-        #orderBookContainer {
-            width: 100%;
-            height: 30vh;
-            background-color: #1e2128;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-
-        /* Order Book Controls */
-        #orderBookControls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            max-width: 1200px;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-        }
-
-        label {
-            margin-right: 10px;
-            font-size: 14px;
-        }
-
-        input[type="number"] {
-            width: 80px;
-            padding: 5px;
-            font-size: 14px;
-            background-color: #2a2d36;
+            background-color: #121212;
             color: white;
-            border: 1px solid #3a3f4b;
-            border-radius: 5px;
-            outline: none;
-            transition: all 0.2s ease-in-out;
         }
-
-        input[type="number"]:focus {
-            border-color: #7289da;
-            box-shadow: 0 0 5px rgba(114, 137, 218, 0.5);
-        }
-
-        /* OI/Volume Ratio Display */
-        #oiVolumeRatio {
-            margin-top: 10px;
-            font-size: 16px;
-            color: #76c7c0;
-        }
-
-        /* Order Book Chart */
-        canvas {
-            width: 100%;
-            height: calc(100% - 40px);
-        }
-
-        /* Media Queries for Responsiveness */
-        @media (max-width: 768px) {
-            #tv_chart_container {
-                height: 60vh;
-            }
-            #orderBookContainer {
-                height: 40vh;
-            }
+        #chart-container {
+            width: 90%;
+            max-width: 1000px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-
-<!-- TradingView Chart Container -->
-<div id="tv_chart_container"></div>
-
-<!-- Order Book Chart Container -->
-<div id="orderBookContainer">
-    <div id="orderBookControls">
-        <label for="minQty">Minimum Quantity (BTC):</label>
-        <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
+    <h1>Live OI/Volume Ratio Chart</h1>
+    <div id="chart-container">
+        <canvas id="oiVolumeChart"></canvas>
     </div>
-    <canvas id="orderBookChart"></canvas>
-    <div id="oiVolumeRatio">OI/Volume Ratio: Calculating...</div>
-</div>
+    <script>
+        const apiUrl = "https://fapi.binance.com/fapi/v1"; // Binance Futures API base URL
+        const symbol = "BTCUSDT"; // Pair to fetch data for
+        let historicalData = []; // Store 5-min candles
 
-<script src="https://s3.tradingview.com/tv.js"></script>
-<script>
-    // Initialize TradingView chart
-    new TradingView.widget({
-        container_id: "tv_chart_container",
-        autosize: true,
-        symbol: "BINANCE:BTCUSDT",
-        interval: "60",
-        timezone: "Etc/UTC",
-        theme: "dark",
-        locale: "en",
-        toolbar_bg: "#1e2128",
-        enable_publishing: false,
-        allow_symbol_change: true,
-        details: true,
-        hotlist: true,
-        calendar: true,
-        withdateranges: true,
-    });
-
-    // Order book data variables
-    const symbol = "BTCUSDT";
-    let minQty = 0.001; // Default minimum quantity filter
-    let orderBook = { bids: [], asks: [] };
-
-    // Connect to Binance WebSocket
-    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        updateOrderBook(data.b, data.a);
-    };
-
-    function updateOrderBook(bids, asks) {
-        // Logic for updating the order book remains the same
-    }
-
-    // Order book chart setup
-    const ctx = document.getElementById("orderBookChart").getContext("2d");
-    const orderBookChart = new Chart(ctx, {
-        type: "bar",
-        data: {
-            labels: [],
-            datasets: [
-                {
-                    label: "Bids",
+        // Chart initialization
+        const ctx = document.getElementById('oiVolumeChart').getContext('2d');
+        const oiVolumeChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'OI/Volume Ratio',
                     data: [],
-                    backgroundColor: "rgba(76, 175, 80, 0.7)", // Green
-                },
-                {
-                    label: "Asks",
-                    data: [],
-                    backgroundColor: "rgba(244, 67, 54, 0.7)", // Red
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Time' },
+                    },
+                    y: {
+                        title: { display: true, text: 'OI/Volume Ratio' },
+                        beginAtZero: true,
+                    }
                 }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: { title: { display: true, text: "Price Levels (USDT)" } },
-                y: { title: { display: true, text: "Quantity (BTC)" } }
+            }
+        });
+
+        // Fetch live Open Interest
+        async function fetchOpenInterest() {
+            const response = await fetch(`${apiUrl}/openInterest?symbol=${symbol}`);
+            const data = await response.json();
+            return parseFloat(data.openInterest);
+        }
+
+        // Fetch live Volume (1-min Kline)
+        async function fetchVolume() {
+            const response = await fetch(`${apiUrl}/klines?symbol=${symbol}&interval=1m&limit=1`);
+            const data = await response.json();
+            return parseFloat(data[0][5]); // Volume is the 6th field in Kline data
+        }
+
+        // Update the chart
+        async function updateChart() {
+            try {
+                const openInterest = await fetchOpenInterest();
+                const volume = await fetchVolume();
+                const ratio = openInterest / volume;
+
+                const now = new Date();
+                const timestamp = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+
+                // Store 5-min candle data
+                if (historicalData.length === 0 || new Date() - historicalData[historicalData.length - 1].timestamp >= 300000) {
+                    historicalData.push({ timestamp: new Date(), ratio });
+                    if (historicalData.length > 100) historicalData.shift(); // Keep only the last 100 candles
+                }
+
+                // Update chart
+                oiVolumeChart.data.labels.push(timestamp);
+                oiVolumeChart.data.datasets[0].data.push(ratio);
+                if (oiVolumeChart.data.labels.length > 300) {
+                    oiVolumeChart.data.labels.shift();
+                    oiVolumeChart.data.datasets[0].data.shift();
+                }
+                oiVolumeChart.update();
+            } catch (error) {
+                console.error("Error fetching data:", error);
             }
         }
-    });
 
-    // Fetch Open Interest and Volume data
-    async function fetchLiveOIandVolume() {
-        // Replace with actual API data fetch
-        return { openInterest: Math.random() * 100000, volume: Math.random() * 50000 + 1 };
-    }
-
-    // Update OI/Volume ratio
-    setInterval(async () => {
-        const data = await fetchLiveOIandVolume();
-        const ratio = (data.openInterest / data.volume).toFixed(4);
-        document.getElementById("oiVolumeRatio").textContent = `OI/Volume Ratio: ${ratio}`;
-    }, 3000);
-
-    document.getElementById("minQty").addEventListener("input", (event) => {
-        minQty = parseFloat(event.target.value);
-        // Update chart data based on the new minQty
-    });
-</script>
-
+        // Update every second
+        setInterval(updateChart, 1000);
+    </script>
 </body>
 </html>
