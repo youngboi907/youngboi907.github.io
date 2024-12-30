@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView and Binance Order Book</title>
+    <title>TradingView with Binance Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* General Styles */
         body, html {
             margin: 0;
             padding: 0;
@@ -16,39 +17,84 @@
             color: white;
             overflow: hidden;
         }
-        #tv_chart_container, #longShortRatioContainer {
+
+        /* TradingView Chart Container */
+        #tv_chart_container {
+            position: relative;
             width: 100%;
-            display: none;
+            height: 70vh;
         }
-        #buttonContainer {
-            display: flex;
-            justify-content: center;
-            margin: 20px;
-        }
-        button {
+
+        /* Order Book Container */
+        #orderBookContainer {
+            width: 100%;
+            height: 30vh;
             background-color: #1e2128;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        /* Order Book Controls */
+        #orderBookControls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        label {
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            font-size: 14px;
+            background-color: #2a2d36;
             color: white;
             border: 1px solid #3a3f4b;
-            padding: 10px 20px;
-            cursor: pointer;
-            transition: background-color 0.3s;
+            border-radius: 5px;
+            outline: none;
+            transition: all 0.2s ease-in-out;
         }
-        button:hover {
-            background-color: #7289da;
+
+        input[type="number"]:focus {
+            border-color: #7289da;
+            box-shadow: 0 0 5px rgba(114, 137, 218, 0.5);
+        }
+
+        /* Order Book Chart */
+        canvas {
+            width: 100%;
+            height: calc(100% - 40px);
+        }
+
+        /* Media Queries for Responsiveness */
+        @media (max-width: 768px) {
+            #tv_chart_container {
+                height: 60vh;
+            }
+            #orderBookContainer {
+                height: 40vh;
+            }
         }
     </style>
 </head>
 <body>
 
-<!-- Navigation Buttons -->
-<div id="buttonContainer">
-    <button onclick="showPage('trading')">TradingView & Order Book</button>
-    <button onclick="showPage('longShort')">Long-Short Ratio</button>
-</div>
+<!-- TradingView Chart Container -->
+<div id="tv_chart_container"></div>
 
-<!-- TradingView & Order Book Container -->
-<div id="tv_chart_container">
-    <h1>TradingView & Order Book</h1>
+<!-- Order Book Chart Container -->
+<div id="orderBookContainer">
     <div id="orderBookControls">
         <label for="minQty">Minimum Quantity (BTC):</label>
         <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
@@ -56,20 +102,14 @@
     <canvas id="orderBookChart"></canvas>
 </div>
 
-<!-- Long-Short Ratio Container -->
-<div id="longShortRatioContainer">
-    <h2>Binance Futures Long-Short Ratio</h2>
-    <canvas id="longShortChart"></canvas>
-</div>
-
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script>
-    // TradingView chart initialization
+    // Initialize TradingView chart
     new TradingView.widget({
         container_id: "tv_chart_container",
         autosize: true,
-        symbol: "BINANCE:BTCUSDT",
-        interval: "60",
+        symbol: "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
+        interval: "60",  // 1-hour timeframe
         timezone: "Etc/UTC",
         theme: "dark",
         locale: "en",
@@ -77,26 +117,27 @@
         enable_publishing: false,
         allow_symbol_change: true,
         studies: [
-            "MAExp@tv-basicstudies",
+            "MAExp@tv-basicstudies",  // EMA
             "RSI@tv-basicstudies",
             "MACD@tv-basicstudies"
         ],
         overrides: {
-            "movingAverage.length": 200
+            "movingAverage.length": 200 // EMA default length
         },
         details: true,
         hotlist: true,
         calendar: true,
         withdateranges: true,
-        hide_side_toolbar: false,
+        hide_side_toolbar: false, // Show side toolbar
     });
 
-    // Order book data
+    // Order book data variables
     const symbol = "BTCUSDT";
-    let minQty = 0.001;
+    let minQty = 0.001; // Default minimum quantity filter
     let orderBook = { bids: [], asks: [] };
     let orderBookChart;
 
+    // Connect to Binance WebSocket
     const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
 
     ws.onmessage = (event) => {
@@ -109,6 +150,7 @@
         bids.forEach(([price, quantity]) => {
             const priceNum = parseFloat(price);
             const quantityNum = parseFloat(quantity);
+
             if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) return;
 
             const existing = orderBook.bids.find(order => order.price === priceNum);
@@ -122,6 +164,7 @@
         asks.forEach(([price, quantity]) => {
             const priceNum = parseFloat(price);
             const quantityNum = parseFloat(quantity);
+
             if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) return;
 
             const existing = orderBook.asks.find(order => order.price === priceNum);
@@ -173,6 +216,7 @@
     function updateChart() {
         const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
         const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
+
         const bidQuantities = orderBook.bids.map(order => order.quantity);
         const askQuantities = orderBook.asks.map(order => order.quantity);
 
@@ -191,53 +235,6 @@
     });
 
     initializeChart();
-
-    // Function to switch between pages
-    function showPage(page) {
-        document.getElementById("tv_chart_container").style.display = "none";
-        document.getElementById("longShortRatioContainer").style.display = "none";
-
-        if (page === "trading") {
-            document.getElementById("tv_chart_container").style.display = "block";
-        } else if (page === "longShort") {
-            document.getElementById("longShortRatioContainer").style.display = "block";
-            fetchLongShortRatio();
-        }
-    }
-
-    function fetchLongShortRatio() {
-        fetch('https://api.binance.com/futures/data/globalLongShortAccountRatio')
-            .then(response => response.json())
-            .then(data => {
-                const labels = data.map(entry => entry.timestamp);
-                const longRatio = data.map(entry => entry.longAccountRatio);
-
-                const ctx = document.getElementById("longShortChart").getContext("2d");
-                new Chart(ctx, {
-                    type: "line",
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: "Long-Short Ratio",
-                            data: longRatio,
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            fill: false,
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: { title: { display: true, text: "Time" } },
-                            y: { title: { display: true, text: "Ratio" } }
-                        }
-                    }
-                });
-            })
-            .catch(error => console.error('Error fetching long-short ratio:', error));
-    }
-
-    showPage('trading'); // Show Trading page by default
 </script>
 
 </body>
