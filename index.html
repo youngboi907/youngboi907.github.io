@@ -1,70 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView with Liquidation Data</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: white;
-            overflow: hidden;
-        }
-        #tv_chart_container {
-            position: relative;
-            width: 100%;
-            height: 60vh; /* Adjust height for TradingView chart */
-        }
-        #orderBookContainer, #liquidationContainer {
-            width: 100%;
-            height: 20vh; /* Adjust height for lower sections */
-            background-color: #2a2d36; /* Matches TradingView chart background */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            padding: 10px;
-            box-sizing: border-box;
-            overflow: hidden;
-        }
-        #orderBookControls, #liquidationControls {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 10px;
-            flex-wrap: wrap; /* Ensure controls fit in smaller screens */
-        }
-        label, input {
-            margin: 5px;
-            color: white;
-        }
-        canvas {
-            width: 100%;
-            height: calc(100% - 40px); /* Adjust canvas height for controls */
-        }
-        input[type="number"] {
-            background-color: #2a2d36;
-            color: white;
-            border: 1px solid #3a3f4b;
-            padding: 5px;
-            border-radius: 5px;
-        }
-        @media (max-width: 768px) {
-            #tv_chart_container {
-                height: 50vh; /* Adjust chart height for smaller screens */
-            }
-            #orderBookContainer, #liquidationContainer {
-                height: 25vh; /* Adjust heights for smaller screens */
-            }
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradingView with Binance Order Book</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* General Styles */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: white;
+            overflow: hidden;
+        }
+
+        /* TradingView Chart Container */
+        #tv_chart_container {
+            position: relative;
+            width: 100%;
+            height: 70vh;
+        }
+
+        /* Order Book Container */
+        #orderBookContainer {
+            width: 100%;
+            height: 30vh;
+            background-color: #1e2128;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        /* Order Book Controls */
+        #orderBookControls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        label {
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            font-size: 14px;
+            background-color: #2a2d36;
+            color: white;
+            border: 1px solid #3a3f4b;
+            border-radius: 5px;
+            outline: none;
+            transition: all 0.2s ease-in-out;
+        }
+
+        input[type="number"]:focus {
+            border-color: #7289da;
+            box-shadow: 0 0 5px rgba(114, 137, 218, 0.5);
+        }
+
+        /* Order Book Chart */
+        canvas {
+            width: 100%;
+            height: calc(100% - 40px);
+        }
+
+        /* Media Queries for Responsiveness */
+        @media (max-width: 768px) {
+            #tv_chart_container {
+                height: 60vh;
+            }
+            #orderBookContainer {
+                height: 40vh;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -73,125 +95,146 @@
 
 <!-- Order Book Chart Container -->
 <div id="orderBookContainer">
-    <div id="orderBookControls">
-        <label for="minQty">Minimum Quantity (BTC):</label>
-        <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
-    </div>
-    <canvas id="orderBookChart"></canvas>
+    <div id="orderBookControls">
+        <label for="minQty">Minimum Quantity (BTC):</label>
+        <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
+    </div>
+    <canvas id="orderBookChart"></canvas>
 </div>
 
-<!-- Liquidation Data Chart Container -->
-<div id="liquidationContainer">
-    <h3>Liquidation Data</h3>
-    <canvas id="liquidationChart"></canvas>
-</div>
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+    // Initialize TradingView chart
+    new TradingView.widget({
+        container_id: "tv_chart_container",
+        autosize: true,
+        symbol: "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
+        interval: "60",  // 1-hour timeframe
+        timezone: "Etc/UTC",
+        theme: "dark",
+        locale: "en",
+        toolbar_bg: "#1e2128",
+        enable_publishing: false,
+        allow_symbol_change: true,
+        studies: [
+            "MAExp@tv-basicstudies",  // EMA
+            "RSI@tv-basicstudies",
+            "MACD@tv-basicstudies"
+        ],
+        overrides: {
+            "movingAverage.length": 200 // EMA default length
+        },
+        details: true,
+        hotlist: true,
+        calendar: true,
+        withdateranges: true,
+        hide_side_toolbar: false, // Show side toolbar
+    });
 
-<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-<script type="text/javascript">
-    // Initialize TradingView chart
-    window.onload = function () {
-        new TradingView.widget({
-            "container_id": "tv_chart_container",
-            "autosize": true,
-            "symbol": "BINANCE:BTCUSDT",
-            "interval": "60",
-            "timezone": "Etc/UTC",
-            "theme": "dark",
-            "locale": "en",
-            "toolbar_bg": "#f1f3f6",
-            "enable_publishing": false,
-            "allow_symbol_change": true,
-            "studies": [
-                "MAExp@tv-basicstudies",
-                "RSI@tv-basicstudies",
-                "MACD@tv-basicstudies"
-            ],
-            "overrides": {
-                "movingAverage.length": 200
-            },
-            "details": true,
-            "hotlist": true,
-            "calendar": true,
-            "withdateranges": true,
-            "hide_side_toolbar": false,
-        });
-    };
+    // Order book data variables
+    const symbol = "BTCUSDT";
+    let minQty = 0.001; // Default minimum quantity filter
+    let orderBook = { bids: [], asks: [] };
+    let orderBookChart;
 
-    // Order book data variables
-    const symbol = "BTCUSDT";
-    let minQty = 0.001;
-    let orderBook = { bids: [], asks: [] };
-    let orderBookChart;
+    // Connect to Binance WebSocket
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
 
-    // Binance WebSocket for order book
-    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        updateOrderBook(data.b, data.a);
-        updateOrderBookChart();
-    };
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        updateOrderBook(data.b, data.a);
+        updateChart();
+    };
 
-    function updateOrderBook(bids, asks) {
-        // Update order book logic here (similar to previous)
-    }
+    function updateOrderBook(bids, asks) {
+        bids.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
 
-    function initializeOrderBookChart() {
-        const ctx = document.getElementById("orderBookChart").getContext("2d");
-        orderBookChart = new Chart(ctx, { /* Chart configuration */ });
-    }
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) return;
 
-    function updateOrderBookChart() {
-        // Update chart logic here
-    }
+            const existing = orderBook.bids.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.bids.push({ price: priceNum, quantity: quantityNum });
+            }
+        });
 
-    initializeOrderBookChart();
+        asks.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
 
-    // Liquidation data variables
-    let liquidationChart;
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) return;
 
-    async function fetchLiquidationData() {
-        try {
-            const response = await fetch('https://api.binance.com/api/v3/some-liquidation-endpoint');
-            const data = await response.json();
-            updateLiquidationChart(data);
-        } catch (error) {
-            console.error("Error fetching liquidation data:", error);
-        }
-    }
+            const existing = orderBook.asks.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.asks.push({ price: priceNum, quantity: quantityNum });
+            }
+        });
 
-    function initializeLiquidationChart() {
-        const ctx = document.getElementById("liquidationChart").getContext("2d");
-        liquidationChart = new Chart(ctx, {
-            type: "bar",
-            data: {
-                labels: [], // Placeholder
-                datasets: [
-                    {
-                        label: "Liquidations",
-                        data: [],
-                        backgroundColor: "rgba(75, 192, 192, 0.6)",
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    x: { title: { display: true, text: "Time" } },
-                    y: { title: { display: true, text: "Amount (USDT)" } },
-                },
-            },
-        });
-    }
+        orderBook.bids.sort((a, b) => b.price - a.price);
+        orderBook.asks.sort((a, b) => a.price - b.price);
+    }
 
-    function updateLiquidationChart(data) {
-        // Parse and update the liquidation data
-        liquidationChart.data.labels = data.map(d => d.time); // Example mapping
-        liquidationChart.data.datasets[0].data = data.map(d => d.amount);
-        liquidationChart.update();
-    }
+    function initializeChart() {
+        const ctx = document.getElementById("orderBookChart").getContext("2d");
+        orderBookChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: "Bids",
+                        data: [],
+                        backgroundColor: "rgba(76, 175, 80, 0.7)", // Green
+                    },
+                    {
+                        label: "Asks",
+                        data: [],
+                        backgroundColor: "rgba(244, 67, 54, 0.7)", // Red
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: "Price Levels (USDT)" }
+                    },
+                    y: {
+                        title: { display: true, text: "Quantity (BTC)" }
+                    }
+                }
+            }
+        });
+    }
 
-    initializeLiquidationChart();
-    setInterval(fetchLiquidationData, 5000); // Refresh liquidation data every 5 seconds
+    function updateChart() {
+        const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
+        const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
+
+        const bidQuantities = orderBook.bids.map(order => order.quantity);
+        const askQuantities = orderBook.asks.map(order => order.quantity);
+
+        orderBookChart.data.labels = [...bidLabels, ...askLabels];
+        orderBookChart.data.datasets[0].data = bidQuantities;
+        orderBookChart.data.datasets[1].data = askQuantities;
+
+        orderBookChart.update();
+    }
+
+    document.getElementById("minQty").addEventListener("input", (event) => {
+        minQty = parseFloat(event.target.value);
+        orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
+        orderBook.asks = orderBook.asks.filter(order => order.quantity >= minQty);
+        updateChart();
+    });
+
+    initializeChart();
 </script>
 
 </body>
