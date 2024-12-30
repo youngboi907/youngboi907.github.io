@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading and Binance Futures</title>
+    <title>TradingView and Binance Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* General Styles */
         body, html {
             margin: 0;
             padding: 0;
@@ -17,20 +16,15 @@
             color: white;
             overflow: hidden;
         }
-
-        /* Content Containers */
         #tv_chart_container, #longShortRatioContainer {
             width: 100%;
             display: none;
         }
-
-        /* Navigation Button */
         #buttonContainer {
             display: flex;
             justify-content: center;
             margin: 20px;
         }
-
         button {
             background-color: #1e2128;
             color: white;
@@ -39,7 +33,6 @@
             cursor: pointer;
             transition: background-color 0.3s;
         }
-
         button:hover {
             background-color: #7289da;
         }
@@ -55,7 +48,12 @@
 
 <!-- TradingView & Order Book Container -->
 <div id="tv_chart_container">
-    <!-- Add your existing TradingView and Order Book code here -->
+    <h1>TradingView & Order Book</h1>
+    <div id="orderBookControls">
+        <label for="minQty">Minimum Quantity (BTC):</label>
+        <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
+    </div>
+    <canvas id="orderBookChart"></canvas>
 </div>
 
 <!-- Long-Short Ratio Container -->
@@ -64,13 +62,141 @@
     <canvas id="longShortChart"></canvas>
 </div>
 
+<script src="https://s3.tradingview.com/tv.js"></script>
 <script>
+    // TradingView chart initialization
+    new TradingView.widget({
+        container_id: "tv_chart_container",
+        autosize: true,
+        symbol: "BINANCE:BTCUSDT",
+        interval: "60",
+        timezone: "Etc/UTC",
+        theme: "dark",
+        locale: "en",
+        toolbar_bg: "#1e2128",
+        enable_publishing: false,
+        allow_symbol_change: true,
+        studies: [
+            "MAExp@tv-basicstudies",
+            "RSI@tv-basicstudies",
+            "MACD@tv-basicstudies"
+        ],
+        overrides: {
+            "movingAverage.length": 200
+        },
+        details: true,
+        hotlist: true,
+        calendar: true,
+        withdateranges: true,
+        hide_side_toolbar: false,
+    });
+
+    // Order book data
+    const symbol = "BTCUSDT";
+    let minQty = 0.001;
+    let orderBook = { bids: [], asks: [] };
+    let orderBookChart;
+
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        updateOrderBook(data.b, data.a);
+        updateChart();
+    };
+
+    function updateOrderBook(bids, asks) {
+        bids.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) return;
+
+            const existing = orderBook.bids.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.bids.push({ price: priceNum, quantity: quantityNum });
+            }
+        });
+
+        asks.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) return;
+
+            const existing = orderBook.asks.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.asks.push({ price: priceNum, quantity: quantityNum });
+            }
+        });
+
+        orderBook.bids.sort((a, b) => b.price - a.price);
+        orderBook.asks.sort((a, b) => a.price - b.price);
+    }
+
+    function initializeChart() {
+        const ctx = document.getElementById("orderBookChart").getContext("2d");
+        orderBookChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: "Bids",
+                        data: [],
+                        backgroundColor: "rgba(76, 175, 80, 0.7)", // Green
+                    },
+                    {
+                        label: "Asks",
+                        data: [],
+                        backgroundColor: "rgba(244, 67, 54, 0.7)", // Red
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: "Price Levels (USDT)" }
+                    },
+                    y: {
+                        title: { display: true, text: "Quantity (BTC)" }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateChart() {
+        const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
+        const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
+        const bidQuantities = orderBook.bids.map(order => order.quantity);
+        const askQuantities = orderBook.asks.map(order => order.quantity);
+
+        orderBookChart.data.labels = [...bidLabels, ...askLabels];
+        orderBookChart.data.datasets[0].data = bidQuantities;
+        orderBookChart.data.datasets[1].data = askQuantities;
+
+        orderBookChart.update();
+    }
+
+    document.getElementById("minQty").addEventListener("input", (event) => {
+        minQty = parseFloat(event.target.value);
+        orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
+        orderBook.asks = orderBook.asks.filter(order => order.quantity >= minQty);
+        updateChart();
+    });
+
+    initializeChart();
+
+    // Function to switch between pages
     function showPage(page) {
-        // Hide both pages initially
         document.getElementById("tv_chart_container").style.display = "none";
         document.getElementById("longShortRatioContainer").style.display = "none";
 
-        // Show the selected page
         if (page === "trading") {
             document.getElementById("tv_chart_container").style.display = "block";
         } else if (page === "longShort") {
@@ -80,7 +206,6 @@
     }
 
     function fetchLongShortRatio() {
-        // Fetch Long-Short Ratio data from Binance API (Example)
         fetch('https://api.binance.com/futures/data/globalLongShortAccountRatio')
             .then(response => response.json())
             .then(data => {
@@ -112,8 +237,7 @@
             .catch(error => console.error('Error fetching long-short ratio:', error));
     }
 
-    // Initialize with TradingView & Order Book page visible
-    showPage('trading');
+    showPage('trading'); // Show Trading page by default
 </script>
 
 </body>
