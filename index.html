@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OI/Volume Chart</title>
+    <title>OI/Volume Line Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
         body, html {
             margin: 0;
@@ -37,21 +38,25 @@
 </div>
 
 <script>
-    const symbol = "BTCUSDT";  // Example symbol, can be changed
+    const symbol = "BTCUSDT";  // Example symbol
     let chart;
+    let liveData = [];
 
-    // Function to fetch OI and volume data from Binance API
+    // Fetch OI and volume data from Binance Futures API
     async function fetchData() {
-        const response = await fetch(`https://api.binance.com/api/v1/klines?symbol=${symbol}&interval=5m&limit=288`);
-        const data = await response.json();
+        const klineResponse = await fetch(`https://api.binance.com/api/v1/klines?symbol=${symbol}&interval=5m&limit=288`);
+        const klineData = await klineResponse.json();
+
+        const oiResponse = await fetch(`https://fapi.binance.com/fapi/v2/openInterest?symbol=${symbol}`);
+        const oiData = await oiResponse.json();
 
         const timestamps = [];
         const oiToVolumeRatios = [];
 
-        data.forEach(item => {
+        klineData.forEach(item => {
             const timestamp = new Date(item[0]);
             const volume = parseFloat(item[5]);
-            const openInterest = parseFloat(item[8]);  // Assuming open interest is available from Binance API
+            const openInterest = parseFloat(oiData.openInterest);
 
             const oiToVolume = openInterest / volume;
 
@@ -110,6 +115,17 @@
                                 return `OI/Volume: ${tooltipItem.raw.toFixed(2)}`;
                             }
                         }
+                    },
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'xy',
+                        },
+                        zoom: {
+                            enabled: true,
+                            mode: 'xy',
+                            speed: 0.1
+                        }
                     }
                 },
                 maintainAspectRatio: false,
@@ -121,7 +137,7 @@
         });
     }
 
-    // Update the chart with new data
+    // Update the chart with new data (for live updates)
     async function updateChart() {
         const { timestamps, oiToVolumeRatios } = await fetchData();
         if (chart) {
