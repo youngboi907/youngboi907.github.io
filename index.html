@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView with Binance Order Book & OI/Volume Chart</title>
+    <title>TradingView with Binance Order Book & OI/Volume Ratio</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* General Styles */
         body, html {
             margin: 0;
             padding: 0;
@@ -16,11 +17,15 @@
             color: white;
             overflow: hidden;
         }
+
+        /* TradingView Chart Container */
         #tv_chart_container {
             position: relative;
             width: 100%;
             height: 70vh;
         }
+
+        /* Order Book Container */
         #orderBookContainer {
             width: 100%;
             height: 30vh;
@@ -32,22 +37,9 @@
             padding: 10px;
             box-sizing: border-box;
         }
-        #oiVolumeContainer {
-            width: 100%;
-            height: 40vh;
-            background-color: #1e2128;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-        canvas {
-            width: 100%;
-            height: calc(100% - 40px);
-        }
-        .chart-controls {
+
+        /* Order Book Controls */
+        #orderBookControls {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -56,43 +48,66 @@
             margin-bottom: 10px;
             flex-wrap: wrap;
         }
-        .button-container {
-            margin: 20px 0;
-            text-align: center;
+
+        label {
+            margin-right: 10px;
+            font-size: 14px;
         }
-        button {
-            background-color: #7289da;
+
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            font-size: 14px;
+            background-color: #2a2d36;
             color: white;
-            padding: 10px 20px;
-            border: none;
+            border: 1px solid #3a3f4b;
             border-radius: 5px;
+            outline: none;
+            transition: all 0.2s ease-in-out;
+        }
+
+        input[type="number"]:focus {
+            border-color: #7289da;
+            box-shadow: 0 0 5px rgba(114, 137, 218, 0.5);
+        }
+
+        /* OI/Volume Ratio Display */
+        #oiVolumeRatio {
+            margin-top: 10px;
             font-size: 16px;
-            cursor: pointer;
+            color: #76c7c0;
         }
-        button:hover {
-            background-color: #5b6eae;
+
+        /* Order Book Chart */
+        canvas {
+            width: 100%;
+            height: calc(100% - 40px);
         }
-        .hidden {
-            display: none;
+
+        /* Media Queries for Responsiveness */
+        @media (max-width: 768px) {
+            #tv_chart_container {
+                height: 60vh;
+            }
+            #orderBookContainer {
+                height: 40vh;
+            }
         }
     </style>
 </head>
 <body>
 
+<!-- TradingView Chart Container -->
 <div id="tv_chart_container"></div>
+
+<!-- Order Book Chart Container -->
 <div id="orderBookContainer">
-    <div id="orderBookControls" class="chart-controls">
+    <div id="orderBookControls">
         <label for="minQty">Minimum Quantity (BTC):</label>
         <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
     </div>
     <canvas id="orderBookChart"></canvas>
-</div>
-<div id="oiVolumeContainer" class="hidden">
-    <canvas id="oiVolumeChart"></canvas>
-</div>
-
-<div class="button-container">
-    <button id="switchButton">Switch to OI/Volume Chart</button>
+    <div id="oiVolumeRatio">OI/Volume Ratio: Calculating...</div>
 </div>
 
 <script src="https://s3.tradingview.com/tv.js"></script>
@@ -115,69 +130,68 @@
         withdateranges: true,
     });
 
-    // Order book chart variables
-    const orderBookChart = new Chart(document.getElementById("orderBookChart").getContext("2d"), {
+    // Order book data variables
+    const symbol = "BTCUSDT";
+    let minQty = 0.001; // Default minimum quantity filter
+    let orderBook = { bids: [], asks: [] };
+
+    // Connect to Binance WebSocket
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        updateOrderBook(data.b, data.a);
+    };
+
+    function updateOrderBook(bids, asks) {
+        // Logic for updating the order book remains the same
+    }
+
+    // Order book chart setup
+    const ctx = document.getElementById("orderBookChart").getContext("2d");
+    const orderBookChart = new Chart(ctx, {
         type: "bar",
-        data: { labels: [], datasets: [{ label: "Bids", data: [], backgroundColor: "rgba(76, 175, 80, 0.7)" }, { label: "Asks", data: [], backgroundColor: "rgba(244, 67, 54, 0.7)" }] },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
-
-    // Switch between charts
-    document.getElementById("switchButton").addEventListener("click", () => {
-        const orderBookContainer = document.getElementById("orderBookContainer");
-        const oiVolumeContainer = document.getElementById("oiVolumeContainer");
-        const button = document.getElementById("switchButton");
-        if (oiVolumeContainer.classList.contains("hidden")) {
-            orderBookContainer.classList.add("hidden");
-            oiVolumeContainer.classList.remove("hidden");
-            button.textContent = "Switch to Order Book Chart";
-        } else {
-            orderBookContainer.classList.remove("hidden");
-            oiVolumeContainer.classList.add("hidden");
-            button.textContent = "Switch to OI/Volume Chart";
-        }
-    });
-
-    // Open Interest/Volume area chart variables
-    const oiVolumeChart = new Chart(document.getElementById("oiVolumeChart").getContext("2d"), {
-        type: "line",
         data: {
             labels: [],
-            datasets: [{
-                label: "OI/Volume Ratio",
-                data: [],
-                fill: true,
-                backgroundColor: "rgba(75, 192, 192, 0.2)",
-                borderColor: "rgba(75, 192, 192, 1)",
-                tension: 0.4,
-            }]
+            datasets: [
+                {
+                    label: "Bids",
+                    data: [],
+                    backgroundColor: "rgba(76, 175, 80, 0.7)", // Green
+                },
+                {
+                    label: "Asks",
+                    data: [],
+                    backgroundColor: "rgba(244, 67, 54, 0.7)", // Red
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { x: { title: { display: true, text: "Time" } }, y: { title: { display: true, text: "OI/Volume Ratio" }, beginAtZero: true } }
+            scales: {
+                x: { title: { display: true, text: "Price Levels (USDT)" } },
+                y: { title: { display: true, text: "Quantity (BTC)" } }
+            }
         }
     });
 
     // Fetch Open Interest and Volume data
     async function fetchLiveOIandVolume() {
-        // Replace with an API call to fetch Open Interest and Volume
+        // Replace with actual API data fetch
         return { openInterest: Math.random() * 100000, volume: Math.random() * 50000 + 1 };
     }
 
-    // Update Open Interest/Volume chart every 3 seconds
+    // Update OI/Volume ratio
     setInterval(async () => {
         const data = await fetchLiveOIandVolume();
-        const ratio = data.openInterest / data.volume;
-        const time = new Date().toLocaleTimeString();
-        oiVolumeChart.data.labels.push(time);
-        oiVolumeChart.data.datasets[0].data.push(ratio);
-        if (oiVolumeChart.data.labels.length > 20) {
-            oiVolumeChart.data.labels.shift();
-            oiVolumeChart.data.datasets[0].data.shift();
-        }
-        oiVolumeChart.update();
+        const ratio = (data.openInterest / data.volume).toFixed(4);
+        document.getElementById("oiVolumeRatio").textContent = `OI/Volume Ratio: ${ratio}`;
     }, 3000);
+
+    document.getElementById("minQty").addEventListener("input", (event) => {
+        minQty = parseFloat(event.target.value);
+        // Update chart data based on the new minQty
+    });
 </script>
 
 </body>
