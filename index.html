@@ -3,204 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Dashboard</title>
+    <title>TradingView with Binance Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
     <style>
-        body {
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
             font-family: Arial, sans-serif;
             background-color: #121212;
             color: white;
-            margin: 0;
-            padding: 0;
+            overflow: hidden;
+        }
+        #tv_chart_container {
+            position: relative;
+            width: 100%;
+            height: 75vh; /* Adjust height for TradingView chart */
+        }
+        #orderBookContainer {
+            width: 100%;
+            height: 25vh; /* Height for the order book */
+            background-color: #2a2d36; /* Matches TradingView chart background */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            min-height: 100vh;
-        }
-
-        #tv_chart_container {
-            width: 100%;
-            height: 60vh;
-            margin-bottom: 20px;
-        }
-
-        .chart-container {
-            width: 95%;
-            max-width: 1200px;
-            margin: 20px auto;
-        }
-
-        #orderBookChart, #oiChart {
-            background-color: #1e1e1e;
-            border: 1px solid #333;
             padding: 10px;
-            border-radius: 8px;
+            box-sizing: border-box;
+            overflow: hidden;
         }
-
-        input[type="number"] {
-            padding: 5px;
-            border: none;
-            border-radius: 4px;
+        #orderBookControls {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             margin-bottom: 10px;
+            flex-wrap: wrap; /* Ensure controls fit in smaller screens */
         }
-
-        label {
-            display: block;
-            margin: 10px 0 5px;
+        label, input {
+            margin: 5px;
+            color: white;
+        }
+        canvas {
+            width: 100%;
+            height: calc(100% - 40px); /* Adjust canvas height for controls */
+        }
+        input[type="number"] {
+            background-color: #2a2d36;
+            color: white;
+            border: 1px solid #3a3f4b;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        @media (max-width: 768px) {
+            #tv_chart_container {
+                height: 65vh; /* Adjust chart height for smaller screens */
+            }
+            #orderBookContainer {
+                height: 35vh; /* Adjust order book height */
+            }
         }
     </style>
 </head>
 <body>
-    <!-- TradingView Chart -->
-    <div id="tv_chart_container"></div>
 
-    <!-- Order Book Filter -->
-    <div class="chart-container">
-        <h2>Order Book Filter</h2>
+<!-- TradingView Chart Container -->
+<div id="tv_chart_container"></div>
+
+<!-- Order Book Chart Container -->
+<div id="orderBookContainer">
+    <div id="orderBookControls">
         <label for="minQty">Minimum Quantity (BTC):</label>
         <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
-        <canvas id="orderBookChart"></canvas>
     </div>
+    <canvas id="orderBookChart"></canvas>
+</div>
 
-    <!-- Open Interest Chart -->
-    <div class="chart-container">
-        <h2>Open Interest</h2>
-        <canvas id="oiChart"></canvas>
-    </div>
-
-    <script src="https://s3.tradingview.com/tv.js"></script>
-    <script>
-        // TradingView Chart Full Functionality
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<script type="text/javascript">
+    // Initialize TradingView chart
+    window.onload = function () {
         new TradingView.widget({
-            container_id: "tv_chart_container",
-            autosize: true,
-            symbol: "BINANCE:BTCUSDT",
-            interval: "60",
-            timezone: "Etc/UTC",
-            theme: "dark",
-            locale: "en",
-            toolbar_bg: "#f1f3f6",
-            enable_publishing: false,
-            allow_symbol_change: true,
-            hide_side_toolbar: false,
-            studies: ["EMA@tv-basicstudies"],
-            drawings_access: { type: "all", tools: ["Regression Trend", "Fibonacci Retracement"] },
+            "container_id": "tv_chart_container",
+            "autosize": true,
+            "symbol": "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
+            "interval": "60",  // 1-hour timeframe
+            "timezone": "Etc/UTC",
+            "theme": "dark",
+            "locale": "en",
+            "toolbar_bg": "#f1f3f6",
+            "enable_publishing": false,
+            "allow_symbol_change": true,
+            "studies": [
+                "MAExp@tv-basicstudies",  // EMA (default value is 200)
+                "RSI@tv-basicstudies",
+                "MACD@tv-basicstudies"
+            ],
+            "overrides": {
+                "movingAverage.length": 200 // Set EMA default length
+            },
+            "details": true,
+            "hotlist": true,
+            "calendar": true,
+            "withdateranges": true,
+            "hide_side_toolbar": false, // Show side toolbar with basic tools
         });
+    };
 
-        // Order Book Filter
-        const symbol = "BTCUSDT";
-        let minQty = 0.001;
-        let orderBook = { bids: [], asks: [] };
-        let orderBookChart;
+    // Order book data variables
+    const symbol = "BTCUSDT";
+    let minQty = 0.001; // Default minimum quantity filter
+    let orderBook = { bids: [], asks: [] }; // Order book data
+    let orderBookChart;
 
-        const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
+    // Connect to Binance WebSocket for real-time depth updates
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
 
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            updateOrderBook(data.b, data.a);
-            updateOrderBookChart();
-        };
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
 
-        function updateOrderBook(bids, asks) {
-            orderBook.bids = bids
-                .map(([price, qty]) => ({ price: parseFloat(price), qty: parseFloat(qty) }))
-                .filter(order => order.qty >= minQty);
-            orderBook.asks = asks
-                .map(([price, qty]) => ({ price: parseFloat(price), qty: parseFloat(qty) }))
-                .filter(order => order.qty >= minQty);
-        }
+        // Update the order book with the new data
+        updateOrderBook(data.b, data.a);
 
-        function initializeOrderBookChart() {
-            const ctx = document.getElementById("orderBookChart").getContext("2d");
-            orderBookChart = new Chart(ctx, {
-                type: "bar",
-                data: {
-                    labels: [],
-                    datasets: [
-                        { label: "Bids", data: [], backgroundColor: "rgba(76, 175, 80, 0.7)" },
-                        { label: "Asks", data: [], backgroundColor: "rgba(244, 67, 54, 0.7)" },
-                    ],
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Price Levels (USDT)" } },
-                        y: { title: { display: true, text: "Quantity (BTC)" } },
-                    },
-                },
-            });
-        }
+        // Update the chart
+        updateChart();
+    };
 
-        function updateOrderBookChart() {
-            const bids = orderBook.bids.slice(0, 10);
-            const asks = orderBook.asks.slice(0, 10);
-            const labels = [...bids.map(bid => `$${bid.price}`), ...asks.map(ask => `$${ask.price}`)];
-            const bidData = bids.map(bid => bid.qty);
-            const askData = asks.map(ask => ask.qty);
+    // Function to update the order book
+    function updateOrderBook(bids, asks) {
+        // Process bids
+        bids.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
 
-            orderBookChart.data.labels = labels;
-            orderBookChart.data.datasets[0].data = bidData;
-            orderBookChart.data.datasets[1].data = askData;
-            orderBookChart.update();
-        }
-
-        document.getElementById("minQty").addEventListener("input", (e) => {
-            minQty = parseFloat(e.target.value) || 0.001;
-        });
-
-        initializeOrderBookChart();
-
-        // Open Interest Chart
-        function initializeOIChart() {
-            const ctx = document.getElementById("oiChart").getContext("2d");
-            const oiChart = new Chart(ctx, {
-                type: "candlestick",
-                data: {
-                    datasets: [{
-                        label: "Open Interest",
-                        data: [],
-                        borderColor: "rgba(33, 150, 243, 1)",
-                        backgroundColor: "rgba(33, 150, 243, 0.2)",
-                    }],
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Timestamp" } },
-                        y: { title: { display: true, text: "Open Interest" } },
-                    },
-                },
-            });
-
-            function updateOIChart(data) {
-                const formattedData = data.map(point => ({
-                    x: new Date(point.timestamp),
-                    o: point.open,
-                    h: point.high,
-                    l: point.low,
-                    c: point.close,
-                }));
-
-                oiChart.data.labels = formattedData.map(d => d.x);
-                oiChart.data.datasets[0].data = formattedData;
-                oiChart.update();
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) {
+                return; // Ignore invalid bids
             }
 
-            setInterval(() => {
-                const simulatedData = Array.from({ length: 12 }, (_, i) => ({
-                    timestamp: Date.now() - i * 300000,
-                    open: Math.random() * 1000 + 5000,
-                    high: Math.random() * 1000 + 5500,
-                    low: Math.random() * 1000 + 4500,
-                    close: Math.random() * 1000 + 5000,
-                })).reverse();
-                updateOIChart(simulatedData);
-            }, 1000);
-        }
+            const existing = orderBook.bids.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.bids.push({ price: priceNum, quantity: quantityNum });
+            }
+        });
 
-        initializeOIChart();
-    </script>
+        // Process asks
+        asks.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
+
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) {
+                return; // Ignore invalid asks
+            }
+
+            const existing = orderBook.asks.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.asks.push({ price: priceNum, quantity: quantityNum });
+            }
+        });
+
+        // Sort bids (descending) and asks (ascending)
+        orderBook.bids.sort((a, b) => b.price - a.price);
+        orderBook.asks.sort((a, b) => a.price - b.price);
+    }
+
+    // Initialize the order book chart
+    function initializeChart() {
+        const ctx = document.getElementById("orderBookChart").getContext("2d");
+
+        orderBookChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: [], // Will be updated dynamically
+                datasets: [
+                    {
+                        label: "Bids",
+                        data: [],
+                        backgroundColor: "rgba(76, 175, 80, 0.7)", // Green for bids
+                    },
+                    {
+                        label: "Asks",
+                        data: [],
+                        backgroundColor: "rgba(244, 67, 54, 0.7)", // Red for asks
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: "Price Levels (USDT)" }
+                    },
+                    y: {
+                        title: { display: true, text: "Quantity (BTC)" }
+                    }
+                }
+            }
+        });
+    }
+
+    // Update the chart
+    function updateChart() {
+        const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
+        const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
+
+        const bidQuantities = orderBook.bids.map(order => order.quantity);
+        const askQuantities = orderBook.asks.map(order => order.quantity);
+
+        orderBookChart.data.labels = [...bidLabels, ...askLabels];
+        orderBookChart.data.datasets[0].data = bidQuantities;
+        orderBookChart.data.datasets[1].data = askQuantities;
+
+        orderBookChart.update();
+    }
+
+    // Event listener for the minimum quantity input
+    document.getElementById("minQty").addEventListener("input", (event) => {
+        minQty = parseFloat(event.target.value);
+
+        // Re-filter and update the order book with the new minimum quantity
+        orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
+        orderBook.asks = orderBook.asks.filter(order => order.quantity >= minQty);
+
+        // Update the chart
+        updateChart();
+    });
+
+    // Initialize the order book chart
+    initializeChart();
+</script>
+
 </body>
 </html>
