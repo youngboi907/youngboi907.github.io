@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView with Binance Order Book</title>
+    <title>TradingView with Order Book and Open Interest</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* General Styles */
@@ -22,13 +22,13 @@
         #tv_chart_container {
             position: relative;
             width: 100%;
-            height: 70vh;
+            height: 50vh;
         }
 
         /* Order Book Container */
-        #orderBookContainer {
+        #orderBookContainer, #oiVolumeContainer {
             width: 100%;
-            height: 30vh;
+            height: 25vh;
             background-color: #1e2128;
             display: flex;
             flex-direction: column;
@@ -71,7 +71,7 @@
             box-shadow: 0 0 5px rgba(114, 137, 218, 0.5);
         }
 
-        /* Order Book Chart */
+        /* Charts */
         canvas {
             width: 100%;
             height: calc(100% - 40px);
@@ -80,10 +80,10 @@
         /* Media Queries for Responsiveness */
         @media (max-width: 768px) {
             #tv_chart_container {
-                height: 60vh;
-            }
-            #orderBookContainer {
                 height: 40vh;
+            }
+            #orderBookContainer, #oiVolumeContainer {
+                height: 30vh;
             }
         }
     </style>
@@ -100,6 +100,12 @@
         <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
     </div>
     <canvas id="orderBookChart"></canvas>
+</div>
+
+<!-- Open Interest/Volume Chart Container -->
+<div id="oiVolumeContainer">
+    <h3 style="margin: 0; padding: 0;">Open Interest / Volume</h3>
+    <canvas id="oiVolumeChart"></canvas>
 </div>
 
 <script src="https://s3.tradingview.com/tv.js"></script>
@@ -131,13 +137,31 @@
         hide_side_toolbar: false, // Show side toolbar
     });
 
-    // Order book data variables
+    // Order Book Data Variables
     const symbol = "BTCUSDT";
     let minQty = 0.001; // Default minimum quantity filter
     let orderBook = { bids: [], asks: [] };
     let orderBookChart;
 
-    // Connect to Binance WebSocket
+    // Open Interest/Volume Data Variables
+    const oiVolumeData = {
+        labels: [],
+        datasets: [
+            {
+                label: "Open Interest",
+                data: [],
+                backgroundColor: "rgba(54, 162, 235, 0.7)", // Blue
+            },
+            {
+                label: "Volume",
+                data: [],
+                backgroundColor: "rgba(255, 206, 86, 0.7)", // Yellow
+            }
+        ]
+    };
+    let oiVolumeChart;
+
+    // Binance WebSocket for Order Book
     const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
 
     ws.onmessage = (event) => {
@@ -179,7 +203,7 @@
         orderBook.asks.sort((a, b) => a.price - b.price);
     }
 
-    function initializeChart() {
+    function initializeOrderBookChart() {
         const ctx = document.getElementById("orderBookChart").getContext("2d");
         orderBookChart = new Chart(ctx, {
             type: "bar",
@@ -227,6 +251,41 @@
         orderBookChart.update();
     }
 
+    // Simulating Open Interest/Volume Data
+    function initializeOIVolumeChart() {
+        const ctx = document.getElementById("oiVolumeChart").getContext("2d");
+        oiVolumeChart = new Chart(ctx, {
+            type: "bar",
+            data: oiVolumeData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: "Time" }
+                    },
+                    y: {
+                        title: { display: true, text: "Values" }
+                    }
+                }
+            }
+        });
+
+        // Simulate dynamic updates
+        setInterval(() => {
+            const now = new Date().toLocaleTimeString();
+            oiVolumeData.labels.push(now);
+            oiVolumeData.datasets[0].data.push(Math.random() * 100); // Random Open Interest
+            oiVolumeData.datasets[1].data.push(Math.random() * 200); // Random Volume
+            if (oiVolumeData.labels.length > 20) {
+                oiVolumeData.labels.shift();
+                oiVolumeData.datasets[0].data.shift();
+                oiVolumeData.datasets[1].data.shift();
+            }
+            oiVolumeChart.update();
+        }, 3000);
+    }
+
     document.getElementById("minQty").addEventListener("input", (event) => {
         minQty = parseFloat(event.target.value);
         orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
@@ -234,7 +293,8 @@
         updateChart();
     });
 
-    initializeChart();
+    initializeOrderBookChart();
+    initializeOIVolumeChart();
 </script>
 
 </body>
