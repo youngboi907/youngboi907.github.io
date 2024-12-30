@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView with Binance Order Book</title>
+    <title>TradingView with Binance Order Book and Heatmap</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-gradient"></script>
     <style>
         /* General Styles */
         body, html {
@@ -22,13 +23,13 @@
         #tv_chart_container {
             position: relative;
             width: 100%;
-            height: 70vh;
+            height: 60vh;
         }
 
         /* Order Book Container */
         #orderBookContainer {
             width: 100%;
-            height: 30vh;
+            height: 20vh;
             background-color: #1e2128;
             display: flex;
             flex-direction: column;
@@ -38,62 +39,37 @@
             box-sizing: border-box;
         }
 
-        /* Order Book Controls */
-        #orderBookControls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        /* Heatmap Container */
+        #heatmapContainer {
             width: 100%;
-            max-width: 1200px;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
+            height: 20vh;
+            background-color: #1e2128;
+            padding: 10px;
+            box-sizing: border-box;
         }
 
-        label {
-            margin-right: 10px;
-            font-size: 14px;
-        }
-
-        input[type="number"] {
-            width: 80px;
-            padding: 5px;
-            font-size: 14px;
-            background-color: #2a2d36;
-            color: white;
-            border: 1px solid #3a3f4b;
-            border-radius: 5px;
-            outline: none;
-            transition: all 0.2s ease-in-out;
-        }
-
-        input[type="number"]:focus {
-            border-color: #7289da;
-            box-shadow: 0 0 5px rgba(114, 137, 218, 0.5);
-        }
-
-        /* Order Book Chart */
         canvas {
             width: 100%;
-            height: calc(100% - 40px);
+            height: 100%;
         }
 
-        /* Media Queries for Responsiveness */
+        /* Responsive Design */
         @media (max-width: 768px) {
             #tv_chart_container {
-                height: 60vh;
+                height: 50vh;
             }
-            #orderBookContainer {
-                height: 40vh;
+            #orderBookContainer, #heatmapContainer {
+                height: 25vh;
             }
         }
     </style>
 </head>
 <body>
 
-<!-- TradingView Chart Container -->
+<!-- TradingView Chart -->
 <div id="tv_chart_container"></div>
 
-<!-- Order Book Chart Container -->
+<!-- Order Book -->
 <div id="orderBookContainer">
     <div id="orderBookControls">
         <label for="minQty">Minimum Quantity (BTC):</label>
@@ -102,139 +78,122 @@
     <canvas id="orderBookChart"></canvas>
 </div>
 
+<!-- Heatmap -->
+<div id="heatmapContainer">
+    <canvas id="heatmapChart"></canvas>
+</div>
+
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script>
-    // Initialize TradingView chart
+    // TradingView Initialization
     new TradingView.widget({
         container_id: "tv_chart_container",
         autosize: true,
-        symbol: "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
-        interval: "60",  // 1-hour timeframe
+        symbol: "BINANCE:BTCUSDT",
+        interval: "60",
         timezone: "Etc/UTC",
         theme: "dark",
         locale: "en",
         toolbar_bg: "#1e2128",
         enable_publishing: false,
         allow_symbol_change: true,
-        studies: [
-            "MAExp@tv-basicstudies",  // EMA
-            "RSI@tv-basicstudies",
-            "MACD@tv-basicstudies"
-        ],
-        overrides: {
-            "movingAverage.length": 200 // EMA default length
-        },
-        details: true,
-        hotlist: true,
-        calendar: true,
-        withdateranges: true,
-        hide_side_toolbar: false, // Show side toolbar
+        studies: ["MAExp@tv-basicstudies", "RSI@tv-basicstudies", "MACD@tv-basicstudies"],
     });
 
-    // Order book data variables
+    // Order Book and Heatmap Data
     const symbol = "BTCUSDT";
-    let minQty = 0.001; // Default minimum quantity filter
+    let minQty = 0.001;
     let orderBook = { bids: [], asks: [] };
-    let orderBookChart;
+    let heatmapData = [];
+    let orderBookChart, heatmapChart;
 
-    // Connect to Binance WebSocket
+    // WebSocket for Order Book
     const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         updateOrderBook(data.b, data.a);
-        updateChart();
+        updateHeatmap(data.b, data.a);
+        updateOrderBookChart();
+        updateHeatmapChart();
     };
 
     function updateOrderBook(bids, asks) {
+        // Process and filter bids/asks
         bids.forEach(([price, quantity]) => {
             const priceNum = parseFloat(price);
             const quantityNum = parseFloat(quantity);
-
-            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) return;
-
+            if (quantityNum < minQty) return;
             const existing = orderBook.bids.find(order => order.price === priceNum);
-            if (existing) {
-                existing.quantity = quantityNum;
-            } else {
-                orderBook.bids.push({ price: priceNum, quantity: quantityNum });
-            }
+            if (existing) existing.quantity = quantityNum;
+            else orderBook.bids.push({ price: priceNum, quantity: quantityNum });
         });
-
         asks.forEach(([price, quantity]) => {
             const priceNum = parseFloat(price);
             const quantityNum = parseFloat(quantity);
-
-            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) return;
-
+            if (quantityNum < minQty) return;
             const existing = orderBook.asks.find(order => order.price === priceNum);
-            if (existing) {
-                existing.quantity = quantityNum;
-            } else {
-                orderBook.asks.push({ price: priceNum, quantity: quantityNum });
-            }
+            if (existing) existing.quantity = quantityNum;
+            else orderBook.asks.push({ price: priceNum, quantity: quantityNum });
         });
-
         orderBook.bids.sort((a, b) => b.price - a.price);
         orderBook.asks.sort((a, b) => a.price - b.price);
     }
 
-    function initializeChart() {
-        const ctx = document.getElementById("orderBookChart").getContext("2d");
-        orderBookChart = new Chart(ctx, {
+    function updateHeatmap(bids, asks) {
+        heatmapData = [
+            ...bids.map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) })),
+            ...asks.map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }))
+        ];
+    }
+
+    function initializeCharts() {
+        // Order Book Chart
+        const ctx1 = document.getElementById("orderBookChart").getContext("2d");
+        orderBookChart = new Chart(ctx1, {
             type: "bar",
-            data: {
-                labels: [],
-                datasets: [
-                    {
-                        label: "Bids",
-                        data: [],
-                        backgroundColor: "rgba(76, 175, 80, 0.7)", // Green
-                    },
-                    {
-                        label: "Asks",
-                        data: [],
-                        backgroundColor: "rgba(244, 67, 54, 0.7)", // Red
-                    }
-                ]
-            },
+            data: { labels: [], datasets: [] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Heatmap Chart
+        const ctx2 = document.getElementById("heatmapChart").getContext("2d");
+        heatmapChart = new Chart(ctx2, {
+            type: "matrix",
+            data: { datasets: [{ data: [] }] },
             options: {
+                plugins: { gradient: { enabled: true } },
                 responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        title: { display: true, text: "Price Levels (USDT)" }
-                    },
-                    y: {
-                        title: { display: true, text: "Quantity (BTC)" }
-                    }
-                }
+                maintainAspectRatio: false
             }
         });
     }
 
-    function updateChart() {
-        const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
-        const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
-
-        const bidQuantities = orderBook.bids.map(order => order.quantity);
-        const askQuantities = orderBook.asks.map(order => order.quantity);
-
-        orderBookChart.data.labels = [...bidLabels, ...askLabels];
-        orderBookChart.data.datasets[0].data = bidQuantities;
-        orderBookChart.data.datasets[1].data = askQuantities;
-
+    function updateOrderBookChart() {
+        const bids = orderBook.bids.map(order => ({ x: order.price, y: order.quantity }));
+        const asks = orderBook.asks.map(order => ({ x: order.price, y: order.quantity }));
+        orderBookChart.data.datasets = [
+            { label: "Bids", data: bids, backgroundColor: "green" },
+            { label: "Asks", data: asks, backgroundColor: "red" }
+        ];
         orderBookChart.update();
+    }
+
+    function updateHeatmapChart() {
+        heatmapChart.data.datasets[0].data = heatmapData.map(d => ({
+            x: d.price,
+            y: d.quantity,
+            v: d.quantity
+        }));
+        heatmapChart.update();
     }
 
     document.getElementById("minQty").addEventListener("input", (event) => {
         minQty = parseFloat(event.target.value);
-        orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
-        orderBook.asks = orderBook.asks.filter(order => order.quantity >= minQty);
-        updateChart();
+        updateOrderBookChart();
     });
 
-    initializeChart();
+    initializeCharts();
 </script>
 
 </body>
