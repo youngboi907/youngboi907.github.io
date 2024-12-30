@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OI/Volume Chart with Day Switcher</title>
+    <title>OI/Volume Ratio Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* General Styles */
         body, html {
             margin: 0;
             padding: 0;
@@ -17,130 +16,106 @@
             color: white;
         }
 
-        /* Chart Container */
-        #chartContainer {
-            position: relative;
+        .container {
             width: 100%;
-            height: 60vh;
-        }
-
-        /* Date Picker */
-        #datePickerContainer {
+            height: 100%;
             display: flex;
-            justify-content: center;
-            margin-top: 20px;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
         }
 
-        input[type="date"] {
-            padding: 10px;
-            font-size: 16px;
-            background-color: #2a2d36;
-            color: white;
-            border: 1px solid #3a3f4b;
-            border-radius: 5px;
+        .date-selector {
+            margin: 20px;
+        }
+
+        canvas {
+            width: 80%;
+            height: 50vh;
         }
     </style>
 </head>
 <body>
 
-<!-- Date Picker for Day Switcher -->
-<div id="datePickerContainer">
-    <label for="datePicker" style="color:white; margin-right: 10px;">Select Date:</label>
-    <input type="date" id="datePicker">
-</div>
-
-<!-- OI/Volume Chart -->
-<div id="chartContainer">
+<div class="container">
+    <!-- Date Selector for Historical Data -->
+    <div class="date-selector">
+        <label for="datePicker">Select Date:</label>
+        <input type="date" id="datePicker" value="2024-12-29">
+    </div>
+    
+    <!-- OI/Volume Ratio Chart -->
     <canvas id="oiVolumeChart"></canvas>
 </div>
 
 <script>
-// Initialize Chart.js chart
-let oiVolumeChart;
-const ctx = document.getElementById("oiVolumeChart").getContext("2d");
+    // Function to fetch historical data for a selected day
+    function fetchDataForDate(date) {
+        const sampleData = {
+            "2024-12-29": [
+                { timestamp: "2024-12-29T00:00", oi: 1000, volume: 500 },
+                { timestamp: "2024-12-29T01:00", oi: 1500, volume: 600 },
+                { timestamp: "2024-12-29T02:00", oi: 1300, volume: 550 },
+                // Continue this pattern for every hour (or minute) of the day
+                { timestamp: "2024-12-29T23:00", oi: 1800, volume: 700 }
+            ],
+            "2024-12-30": [
+                { timestamp: "2024-12-30T00:00", oi: 1200, volume: 700 },
+                { timestamp: "2024-12-30T01:00", oi: 1600, volume: 800 },
+                { timestamp: "2024-12-30T02:00", oi: 1650, volume: 750 },
+                { timestamp: "2024-12-30T23:00", oi: 1400, volume: 600 }
+            ]
+        };
+        return sampleData[date] || [];
+    }
 
-const data = {
-    labels: [],
-    datasets: [
-        {
-            label: 'OI/Volume Ratio',
-            data: [],
-            borderColor: "rgba(75, 192, 192, 1)",
-            borderWidth: 1,
-            fill: false
-        }
-    ]
-};
-
-// Options for the chart
-const chartOptions = {
-    responsive: true,
-    scales: {
-        x: {
-            title: {
-                display: true,
-                text: "Timestamp"
-            }
+    // Initialize chart
+    const ctx = document.getElementById("oiVolumeChart").getContext("2d");
+    const oiVolumeChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'OI/Volume Ratio',
+                data: [],
+                borderColor: 'rgba(75, 192, 192, 1)',
+                fill: false,
+            }]
         },
-        y: {
-            title: {
-                display: true,
-                text: "OI/Volume Ratio"
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { display: true, text: "Time" }
+                },
+                y: {
+                    title: { display: true, text: "OI/Volume Ratio" }
+                }
             }
         }
+    });
+
+    // Update chart with data for the selected day
+    function updateChart(date) {
+        const data = fetchDataForDate(date);
+
+        const timestamps = data.map(item => item.timestamp);
+        const oiVolumeRatios = data.map(item => item.oi / item.volume);
+
+        oiVolumeChart.data.labels = timestamps;
+        oiVolumeChart.data.datasets[0].data = oiVolumeRatios;
+        oiVolumeChart.update();
     }
-};
 
-// Initialize the chart with empty data
-oiVolumeChart = new Chart(ctx, {
-    type: 'line',
-    data: data,
-    options: chartOptions
-});
+    // Event listener for date change
+    document.getElementById("datePicker").addEventListener("input", (event) => {
+        const selectedDate = event.target.value;
+        updateChart(selectedDate);
+    });
 
-// Function to fetch data for the selected day (example placeholder)
-function fetchDataForDate(date) {
-    // Replace with actual API call or data fetch logic for a specific day
-    const sampleData = {
-        "2024-12-29": [
-            { timestamp: "2024-12-29T00:00", oi: 1000, volume: 500 },
-            { timestamp: "2024-12-29T01:00", oi: 1500, volume: 600 },
-            // Add more hourly data points
-        ],
-        "2024-12-30": [
-            { timestamp: "2024-12-30T00:00", oi: 1200, volume: 700 },
-            { timestamp: "2024-12-30T01:00", oi: 1600, volume: 800 },
-            // Add more hourly data points
-        ]
-    };
-
-    // Return the data for the selected date (you can fetch this from a server or API)
-    return sampleData[date] || [];
-}
-
-// Function to update the chart with data for the selected day
-function updateChartForDate(date) {
-    const selectedData = fetchDataForDate(date);
-    const timestamps = selectedData.map(item => item.timestamp);
-    const oiVolumeRatios = selectedData.map(item => item.oi / item.volume);
-
-    oiVolumeChart.data.labels = timestamps;
-    oiVolumeChart.data.datasets[0].data = oiVolumeRatios;
-
-    oiVolumeChart.update();
-}
-
-// Event listener for the date picker
-document.getElementById("datePicker").addEventListener("change", (event) => {
-    const selectedDate = event.target.value;
-    if (selectedDate) {
-        updateChartForDate(selectedDate);
-    }
-});
-
-// Initialize with today's data
-updateChartForDate("2024-12-30");  // Start with today's date
-
+    // Initially load data for the default date (e.g., 2024-12-29)
+    updateChart("2024-12-29");
 </script>
 
 </body>
