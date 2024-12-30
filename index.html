@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OI/Volume and BTC Price Comparison</title>
+    <title>OI/Volume Ratio for the Day</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body, html {
@@ -20,20 +20,11 @@
         #chartContainer {
             width: 100%;
             height: 100vh;
-            display: flex;
-            flex-direction: column;
         }
 
         canvas {
             width: 100%;
-        }
-
-        #oiVolumeChart {
-            height: 50%;
-        }
-
-        #btcPriceChart {
-            height: 50%;
+            height: 100%;
         }
     </style>
 </head>
@@ -42,9 +33,6 @@
 <div id="chartContainer">
     <!-- OI/Volume Ratio Chart -->
     <canvas id="oiVolumeChart"></canvas>
-
-    <!-- BTC Price Chart -->
-    <canvas id="btcPriceChart"></canvas>
 </div>
 
 <script>
@@ -89,58 +77,11 @@
         }
     };
 
-    const btcPriceData = {
-        labels: [],
-        datasets: [{
-            label: 'BTC/USDT Price',
-            data: [],
-            borderColor: 'rgba(255, 99, 132, 1)',
-            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-            fill: true,
-            tension: 0.1
-        }]
-    };
-
-    const btcPriceOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            x: {
-                type: 'linear',
-                position: 'bottom',
-                title: {
-                    display: true,
-                    text: 'Time (Unix Timestamp)'
-                }
-            },
-            y: {
-                title: {
-                    display: true,
-                    text: 'BTC Price (USDT)'
-                },
-                beginAtZero: false
-            }
-        },
-        plugins: {
-            legend: {
-                display: true
-            }
-        }
-    };
-
     const oiVolumeCtx = document.getElementById('oiVolumeChart').getContext('2d');
-    const btcPriceCtx = document.getElementById('btcPriceChart').getContext('2d');
-
     const oiVolumeChart = new Chart(oiVolumeCtx, {
         type: 'line',
         data: chartData,
         options: chartOptions
-    });
-
-    const btcPriceChart = new Chart(btcPriceCtx, {
-        type: 'line',
-        data: btcPriceData,
-        options: btcPriceOptions
     });
 
     async function fetchBinanceData() {
@@ -150,27 +91,21 @@
 
         const newLabels = [];
         const newOIData = [];
-        const newBTCData = [];
 
         data.forEach(candle => {
             const timestamp = candle[0];
             const volume = parseFloat(candle[5]);
             const oi = parseFloat(candle[7]); // Assuming this is the open interest, which may not always be available directly
             const ratio = oi / volume;
-            const btcPrice = parseFloat(candle[4]);
 
             newLabels.push(timestamp);
             newOIData.push(ratio);
-            newBTCData.push(btcPrice);
         });
 
         chartData.labels = newLabels;
         chartData.datasets[0].data = newOIData;
-        btcPriceData.labels = newLabels;
-        btcPriceData.datasets[0].data = newBTCData;
 
         oiVolumeChart.update();
-        btcPriceChart.update();
     }
 
     fetchBinanceData();
