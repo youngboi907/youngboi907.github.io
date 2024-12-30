@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OI/Volume Ratio for the Day</title>
+    <title>OI/Volume Chart with Day Switcher</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* General Styles */
         body, html {
             margin: 0;
             padding: 0;
@@ -14,102 +15,132 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #121212;
             color: white;
-            overflow: hidden;
         }
 
+        /* Chart Container */
         #chartContainer {
+            position: relative;
             width: 100%;
-            height: 100vh;
+            height: 60vh;
         }
 
-        canvas {
-            width: 100%;
-            height: 100%;
+        /* Date Picker */
+        #datePickerContainer {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        input[type="date"] {
+            padding: 10px;
+            font-size: 16px;
+            background-color: #2a2d36;
+            color: white;
+            border: 1px solid #3a3f4b;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
 
+<!-- Date Picker for Day Switcher -->
+<div id="datePickerContainer">
+    <label for="datePicker" style="color:white; margin-right: 10px;">Select Date:</label>
+    <input type="date" id="datePicker">
+</div>
+
+<!-- OI/Volume Chart -->
 <div id="chartContainer">
-    <!-- OI/Volume Ratio Chart -->
     <canvas id="oiVolumeChart"></canvas>
 </div>
 
 <script>
-    const symbol = 'BTCUSDT';
-    const interval = '5m';
-    const chartData = {
-        labels: [],
-        datasets: [{
+// Initialize Chart.js chart
+let oiVolumeChart;
+const ctx = document.getElementById("oiVolumeChart").getContext("2d");
+
+const data = {
+    labels: [],
+    datasets: [
+        {
             label: 'OI/Volume Ratio',
             data: [],
-            borderColor: 'rgba(75, 192, 192, 1)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            fill: true,
-            tension: 0.1
-        }]
-    };
+            borderColor: "rgba(75, 192, 192, 1)",
+            borderWidth: 1,
+            fill: false
+        }
+    ]
+};
 
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            x: {
-                type: 'linear',
-                position: 'bottom',
-                title: {
-                    display: true,
-                    text: 'Time (Unix Timestamp)'
-                }
-            },
-            y: {
-                title: {
-                    display: true,
-                    text: 'OI/Volume Ratio'
-                },
-                beginAtZero: true
+// Options for the chart
+const chartOptions = {
+    responsive: true,
+    scales: {
+        x: {
+            title: {
+                display: true,
+                text: "Timestamp"
             }
         },
-        plugins: {
-            legend: {
-                display: true
+        y: {
+            title: {
+                display: true,
+                text: "OI/Volume Ratio"
             }
         }
+    }
+};
+
+// Initialize the chart with empty data
+oiVolumeChart = new Chart(ctx, {
+    type: 'line',
+    data: data,
+    options: chartOptions
+});
+
+// Function to fetch data for the selected day (example placeholder)
+function fetchDataForDate(date) {
+    // Replace with actual API call or data fetch logic for a specific day
+    const sampleData = {
+        "2024-12-29": [
+            { timestamp: "2024-12-29T00:00", oi: 1000, volume: 500 },
+            { timestamp: "2024-12-29T01:00", oi: 1500, volume: 600 },
+            // Add more hourly data points
+        ],
+        "2024-12-30": [
+            { timestamp: "2024-12-30T00:00", oi: 1200, volume: 700 },
+            { timestamp: "2024-12-30T01:00", oi: 1600, volume: 800 },
+            // Add more hourly data points
+        ]
     };
 
-    const oiVolumeCtx = document.getElementById('oiVolumeChart').getContext('2d');
-    const oiVolumeChart = new Chart(oiVolumeCtx, {
-        type: 'line',
-        data: chartData,
-        options: chartOptions
-    });
+    // Return the data for the selected date (you can fetch this from a server or API)
+    return sampleData[date] || [];
+}
 
-    async function fetchBinanceData() {
-        const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=288`;
-        const response = await fetch(url);
-        const data = await response.json();
+// Function to update the chart with data for the selected day
+function updateChartForDate(date) {
+    const selectedData = fetchDataForDate(date);
+    const timestamps = selectedData.map(item => item.timestamp);
+    const oiVolumeRatios = selectedData.map(item => item.oi / item.volume);
 
-        const newLabels = [];
-        const newOIData = [];
+    oiVolumeChart.data.labels = timestamps;
+    oiVolumeChart.data.datasets[0].data = oiVolumeRatios;
 
-        data.forEach(candle => {
-            const timestamp = candle[0];
-            const volume = parseFloat(candle[5]);
-            const oi = parseFloat(candle[7]); // Assuming this is the open interest, which may not always be available directly
-            const ratio = oi / volume;
+    oiVolumeChart.update();
+}
 
-            newLabels.push(timestamp);
-            newOIData.push(ratio);
-        });
-
-        chartData.labels = newLabels;
-        chartData.datasets[0].data = newOIData;
-
-        oiVolumeChart.update();
+// Event listener for the date picker
+document.getElementById("datePicker").addEventListener("change", (event) => {
+    const selectedDate = event.target.value;
+    if (selectedDate) {
+        updateChartForDate(selectedDate);
     }
+});
 
-    fetchBinanceData();
-    setInterval(fetchBinanceData, 5000); // Refresh every 5 seconds for live updates
+// Initialize with today's data
+updateChartForDate("2024-12-30");  // Start with today's date
+
 </script>
 
 </body>
