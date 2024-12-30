@@ -3,155 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OI/Volume Line Chart</title>
+    <title>OI/Volume Ratio Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, sans-serif;
             background-color: #121212;
             color: white;
-            overflow: hidden;
         }
-
-        #chartContainer {
-            width: 100%;
-            height: 100%;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
         canvas {
-            width: 100% !important;
-            height: 100% !important;
+            width: 100%;
+            height: 70vh;
         }
     </style>
 </head>
 <body>
 
-<div id="chartContainer">
-    <canvas id="oiVolumeChart"></canvas>
-</div>
+<canvas id="oiVolumeChart"></canvas>
 
 <script>
-    const symbol = "BTCUSDT";  // Example symbol
-    let chart;
-    let liveData = [];
+    // Create chart context
+    const ctx = document.getElementById('oiVolumeChart').getContext('2d');
 
-    // Fetch OI and volume data from Binance Futures API
-    async function fetchData() {
-        const klineResponse = await fetch(`https://api.binance.com/api/v1/klines?symbol=${symbol}&interval=5m&limit=288`);
-        const klineData = await klineResponse.json();
-
-        const oiResponse = await fetch(`https://fapi.binance.com/fapi/v2/openInterest?symbol=${symbol}`);
-        const oiData = await oiResponse.json();
-
-        const timestamps = [];
-        const oiToVolumeRatios = [];
-
-        klineData.forEach(item => {
-            const timestamp = new Date(item[0]);
-            const volume = parseFloat(item[5]);
-            const openInterest = parseFloat(oiData.openInterest);
-
-            const oiToVolume = openInterest / volume;
-
-            timestamps.push(timestamp);
-            oiToVolumeRatios.push(oiToVolume);
-        });
-
-        return { timestamps, oiToVolumeRatios };
-    }
-
-    // Initialize the chart
-    function initializeChart(timestamps, oiToVolumeRatios) {
-        const ctx = document.getElementById('oiVolumeChart').getContext('2d');
-        chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: timestamps,
-                datasets: [{
-                    label: 'OI/Volume Ratio',
-                    data: oiToVolumeRatios,
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            unit: 'minute',
-                            tooltipFormat: 'll HH:mm',
-                        },
-                        title: {
-                            display: true,
-                            text: 'Time'
-                        }
+    // Chart.js chart setup
+    const oiVolumeChart = new Chart(ctx, {
+        type: 'line',  // Line chart for OI/Volume ratio
+        data: {
+            labels: [],  // Time or timestamps
+            datasets: [{
+                label: 'OI/Volume Ratio',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: false,
+                data: [],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'minute',
+                        tooltipFormat: 'll HH:mm',
                     },
-                    y: {
-                        beginAtZero: false,
-                        title: {
-                            display: true,
-                            text: 'OI/Volume Ratio'
-                        }
+                    title: {
+                        display: true,
+                        text: 'Time'
                     }
                 },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            title: function(tooltipItem) {
-                                return tooltipItem[0].label;
-                            },
-                            label: function(tooltipItem) {
-                                return `OI/Volume: ${tooltipItem.raw.toFixed(2)}`;
-                            }
-                        }
-                    },
-                    zoom: {
-                        pan: {
-                            enabled: true,
-                            mode: 'xy',
-                        },
-                        zoom: {
-                            enabled: true,
-                            mode: 'xy',
-                            speed: 0.1
-                        }
+                y: {
+                    title: {
+                        display: true,
+                        text: 'OI/Volume Ratio'
                     }
-                },
-                maintainAspectRatio: false,
-                hover: {
-                    mode: 'nearest',
-                    intersect: true
                 }
+            },
+            plugins: {
+                tooltip: {
+                    mode: 'nearest',
+                    intersect: false
+                }
+            },
+            animation: {
+                duration: 0
             }
-        });
-    }
-
-    // Update the chart with new data (for live updates)
-    async function updateChart() {
-        const { timestamps, oiToVolumeRatios } = await fetchData();
-        if (chart) {
-            chart.data.labels = timestamps;
-            chart.data.datasets[0].data = oiToVolumeRatios;
-            chart.update();
         }
+    });
+
+    // Fetching live data from Binance API
+    async function fetchOIAndVolume() {
+        const symbol = 'BTCUSDT';  // Symbol for which we're fetching data
+        const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=1000`; // Fetching 1-minute candlestick data for 1000 entries
+        const response = await fetch(url);
+        const data = await response.json();
+
+        // Calculate OI/Volume ratio from the data
+        const newData = data.map(entry => {
+            const volume = parseFloat(entry[5]);
+            const oi = parseFloat(entry[7]);  // Assuming index 7 corresponds to OI (could vary based on Binance API)
+
+            return {
+                time: new Date(entry[0]),
+                ratio: oi / volume
+            };
+        });
+
+        // Update chart with the new data
+        newData.forEach(item => {
+            oiVolumeChart.data.labels.push(item.time);
+            oiVolumeChart.data.datasets[0].data.push(item.ratio);
+        });
+
+        oiVolumeChart.update();
     }
 
-    // Fetch data and initialize the chart
-    fetchData().then(({ timestamps, oiToVolumeRatios }) => {
-        initializeChart(timestamps, oiToVolumeRatios);
-        setInterval(updateChart, 60000); // Update chart every minute
-    });
+    // Initial data fetch and chart update every second
+    setInterval(fetchOIAndVolume, 1000);
 </script>
 
 </body>
