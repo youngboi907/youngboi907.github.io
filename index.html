@@ -6,63 +6,28 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
     <style>
         body {
-            background-color: #181818; /* Darker background for better contrast */
+            background-color: #121212;
             color: #fff;
             font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
-
-        #container {
-            display: flex;
-            justify-content: space-between;
-            width: 80%;
-            max-width: 1200px;
-            margin-bottom: 20px;
         }
 
         #order-book-chart {
-            width: 60%;
+            width: 95%;
+            float: left;
+            margin-right: 10px;
         }
 
-        #oi-volume-ratio-chart {
-            width: 40%;
-        }
-
-        h1 {
-            color: #00bcd4; /* Cyan for headings */
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .chart-container {
-            background-color: #212121; /* Slightly lighter gray for charts */
-            padding: 20px;
-            border-radius: 5px;
-        }
-
-        .ratio-container {
-            background-color: #212121;
-            padding: 20px;
-            border-radius: 5px;
-            text-align: center;
+        #oi-volume-ratio {
+            width: 15%;
+            float: left;
         }
     </style>
 </head>
 <body>
+    <h1>BTCUSDT Order Book (0% to 10% around Mid-Price)</h1>
+    <div id="order-book-chart"></div>
 
-    <div id="container">
-        <div id="order-book-chart" class="chart-container">
-            <h1>BTCUSDT Order Book (0% to 10% around Mid-Price)</h1>
-        </div>
-        <div id="oi-volume-ratio-chart" class="chart-container">
-            <h1>BTCUSDT OI/Volume Ratio</h1>
-        </div>
-    </div>
-
+    <h1>BTCUSDT OI/Volume Ratio</h1>
     <div id="oi-volume-ratio">
         <p>OI/Volume Ratio: <span id="oiVolumeRatio"></span></p>
     </div>
@@ -128,76 +93,29 @@
                 xaxis: { title: 'Price' },
                 yaxis: { title: 'Order Quantity' },
                 barmode: 'group', 
-                plot_bgcolor: '#212121', 
-                paper_bgcolor: '#212121', 
+                plot_bgcolor: '#121212', 
+                paper_bgcolor: '#121212', 
                 font: { color: '#fff' } 
             };
 
             Plotly.newPlot('order-book-chart', data, layout);
         }
 
-        // --- OI/Volume Ratio Section ---
+        async function updateOrderBook() {
+            const orderBookData = await fetchOrderBook();
 
-        const oiVolumeRatioData = {
-            labels: [],
-            datasets: [{
-                label: 'OI/Volume Ratio',
-                data: [],
-                fill: true,
-                backgroundColor: 'rgba(75, 192, 192, 0.2)', 
-                borderColor: 'rgba(75, 192, 192, 1)', 
-                borderWidth: 1
-            }]
-        };
-
-        const oiVolumeRatioConfig = {
-            type: 'line',
-            data: oiVolumeRatioData,
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            color: 'white'
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: 'BTCUSDT OI/Volume Ratio',
-                        color: 'white'
-                    }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Time',
-                            color: 'white'
-                        },
-                        ticks: {
-                            color: 'white'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'OI/Volume Ratio',
-                            color: 'white'
-                        },
-                        ticks: {
-                            color: 'white'
-                        }
-                    }
-                },
-                plot_bgcolor: '#212121', 
-                paper_bgcolor: '#212121', 
-                font: { color: '#fff' } 
+            if (orderBookData.bids.length === 0 || orderBookData.asks.length === 0) {
+                console.error("No order book data received.");
+                return; 
             }
-        };
 
-        const oiVolumeRatioCtx = document.getElementById('oi-volume-ratio-chart').getContext('2d');
-        const oiVolumeRatioChart = new Chart(oiVolumeRatioCtx, oiVolumeRatioConfig);
+            const mid_price = (orderBookData.bids[0][0] + orderBookData.asks[0][0]) / 2;
+            const { filtered_bids, filtered_asks } = filterOrderBook(orderBookData.bids, orderBookData.asks, mid_price);
+
+            createOrderBookChart(filtered_bids, filtered_asks);
+        }
+
+        // --- OI/Volume Ratio Section ---
 
         async function fetchMarketData() {
             try {
@@ -223,22 +141,29 @@
             return openInterest / volume;
         }
 
+        function displayOIVolumeRatio(ratio) {
+            document.getElementById('oiVolumeRatio').textContent = ratio.toFixed(2);
+        }
+
         async function updateMarketData() {
             const { volume, openInterest } = await fetchMarketData();
             const ratio = calculateOIVolumeRatio(volume, openInterest);
-
-            oiVolumeRatioData.labels.push(new Date().toLocaleTimeString());
-            oiVolumeRatioData.datasets[0].data.push(ratio);
-
-            // Limit data points to the last 20
-            if (oiVolumeRatioData.labels.length > 20) {
-                oiVolumeRatioData.labels.shift();
-                oiVolumeRatioData.datasets[0].data.shift();
-            }
-
-            oiVolumeRatioChart.update();
+            displayOIVolumeRatio(ratio);
         }
 
         // --- Update Intervals ---
 
         // Update order book every 5 seconds
+        setInterval(updateOrderBook, 5000);
+
+        // Update OI/Volume Ratio every 2 seconds (adjust as needed)
+        setInterval(updateMarketData, 2000);
+
+        // Initial fetches
+        updateOrderBook();
+        updateMarketData();
+
+    </script>
+
+</body>
+</html>
