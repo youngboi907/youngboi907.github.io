@@ -85,6 +85,11 @@
         async function updateOrderBookData() {
             const orderBookData = await fetchOrderBook();
 
+            if (orderBookData.bids.length === 0 || orderBookData.asks.length === 0) {
+                console.error("No order book data received.");
+                return; 
+            }
+
             const mid_price = (orderBookData.bids[0][0] + orderBookData.asks[0][0]) / 2;
             const { filtered_bids, filtered_asks } = filterOrderBook(orderBookData.bids, orderBookData.asks, mid_price);
 
