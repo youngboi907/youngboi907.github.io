@@ -82,6 +82,7 @@ let oiVolumeChart;
 function updateChart() {
     const ctx = document.getElementById('oiVolumeChart').getContext('2d');
 
+    // Initialize chart only once
     if (!oiVolumeChart) {
         oiVolumeChart = new Chart(ctx, {
             type: 'line', // Using line chart for OI/Volume ratio
@@ -129,6 +130,7 @@ function updateChart() {
             }
         });
     } else {
+        // Update existing chart with new data
         oiVolumeChart.data.labels = Array.from({ length: ratioData.length }, (_, index) => index + 1);
         oiVolumeChart.data.datasets[0].data = ratioData;
         oiVolumeChart.data.datasets[1].data = oiData;
