@@ -13,10 +13,12 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
+            overflow: hidden; /* Prevent scrollbars */
         }
 
         #chart-container {
-            flex: 1; /* Allow TradingView to dynamically adjust height */ 
+            flex: 1; /* Allow TradingView to dynamically adjust height */
+            overflow-y: auto; /* Enable vertical scrolling for TradingView */
         }
 
         #order-book-container {
