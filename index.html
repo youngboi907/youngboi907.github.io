@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>BTCUSDT Order Book Depth Sums (0% to 10% around Mid-Price)</title>
+    <title>BTCUSDT Order Book (0% to 10% around Mid-Price)</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
     <style>
@@ -12,7 +12,7 @@
     </style>
 </head>
 <body>
-    <h1>BTCUSDT Order Book Depth Sums (0% to 10% around Mid-Price)</h1>
+    <h1>BTCUSDT Order Book (0% to 10% around Mid-Price)</h1>
     <div id="chart"></div>
 
     <script>
@@ -31,58 +31,48 @@
                 return { bids, asks };
             } catch (error) {
                 console.error("Error fetching order book data:", error);
-                return { bids:, asks: }; // Return empty arrays on error
+                return { bids: [], asks: [] }; 
             }
         }
 
-        function calculateDepthSums(bids, asks, mid_price) {
-            const ranges = [
-                { lower: mid_price * 0.90, upper: mid_price * 1.10, label: '0-10%' },
-            ];
+        function filterOrderBook(bids, asks, mid_price) {
+            const lower_bound = mid_price * 0.90;
+            const upper_bound = mid_price * 1.10;
 
-            const results = {};
+            const filtered_bids = bids.filter(([price, _]) => price >= lower_bound && price <= upper_bound);
+            const filtered_asks = asks.filter(([price, _]) => price >= lower_bound && price <= upper_bound);
 
-            for (const range of ranges) {
-                const { lower, upper, label } = range;
-                const filtered_bids = bids.filter(([price, _]) => price >= lower && price <= upper);
-                const filtered_asks = asks.filter(([price, _]) => price >= lower && price <= upper);
-
-                const bid_sum = filtered_bids.reduce((acc, curr) => acc + curr[1], 0);
-                const ask_sum = filtered_asks.reduce((acc, curr) => acc + curr[1], 0);
-                const delta = ask_sum - bid_sum;
-
-                results[label] = { bid_sum, ask_sum, delta };
-            }
-
-            return results;
+            return { filtered_bids, filtered_asks };
         }
 
-        function createChart(results) {
-            const labels = Object.keys(results);
-            const bid_sums = Object.values(results).map(obj => obj.bid_sum);
-            const ask_sums = Object.values(results).map(obj => obj.ask_sum);
+        function createChart(filtered_bids, filtered_asks) {
+            const bid_prices = filtered_bids.map(([price, _]) => price);
+            const bid_quantities = filtered_bids.map(([_, qty]) => qty);
+            const ask_prices = filtered_asks.map(([price, _]) => price);
+            const ask_quantities = filtered_asks.map(([_, qty]) => qty);
 
-            const data = [
-                {
-                    x: labels,
-                    y: bid_sums,
-                    name: 'Bids',
-                    type: 'bar',
-                    marker: { color: 'green' }
-                },
-                {
-                    x: labels,
-                    y: ask_sums,
-                    name: 'Asks',
-                    type: 'bar',
-                    marker: { color: 'red' }
-                }
-            ];
+            const trace1 = {
+                x: bid_prices,
+                y: bid_quantities,
+                type: 'bar',
+                name: 'Bids',
+                marker: { color: 'green' }
+            };
+
+            const trace2 = {
+                x: ask_prices,
+                y: ask_quantities,
+                type: 'bar',
+                name: 'Asks',
+                marker: { color: 'red' }
+            };
+
+            const data = [trace1, trace2];
 
             const layout = {
-                title: 'BTCUSDT Order Book Depth Sums (0% to 10% around Mid-Price)',
-                xaxis: { title: 'Price Range' },
-                yaxis: { title: 'Order Quantity Sum' },
+                title: 'BTCUSDT Order Book (0% to 10% around Mid-Price)',
+                xaxis: { title: 'Price' },
+                yaxis: { title: 'Order Quantity' },
                 barmode: 'group', 
                 plot_bgcolor: '#121212', 
                 paper_bgcolor: '#121212', 
@@ -96,20 +86,9 @@
             const orderBookData = await fetchOrderBook();
 
             const mid_price = (orderBookData.bids[0][0] + orderBookData.asks[0][0]) / 2;
-            const results = calculateDepthSums(orderBookData.bids, orderBookData.asks, mid_price);
+            const { filtered_bids, filtered_asks } = filterOrderBook(orderBookData.bids, orderBookData.asks, mid_price);
 
-            createChart(results); 
-
-            // Display results (you can customize this part)
-            for (const range in results) {
-                const bidSumId = `bidSum${range}`;
-                const askSumId = `askSum${range}`;
-                const deltaId = `delta${range}`;
-
-                document.getElementById(bidSumId).textContent = results[range].bid_sum;
-                document.getElementById(askSumId).textContent = results[range].ask_sum;
-                document.getElementById(deltaId).textContent = results[range].delta;
-            }
+            createChart(filtered_bids, filtered_asks);
         }
 
         // Update the order book data every 5 seconds
