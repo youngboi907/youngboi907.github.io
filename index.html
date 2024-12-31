@@ -13,20 +13,20 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
-            overflow: hidden; /* Prevent scrollbars */
+            overflow: hidden;
         }
 
         #order-book-container {
-            flex: 1; 
+            flex: 1;
         }
 
         #chart-container {
-            flex: 1; /* Allow TradingView to dynamically adjust height */
-            overflow-y: auto; /* Enable vertical scrolling for TradingView */
+            flex: 1;
+            overflow-y: auto; 
         }
 
         #tv_chart_container {
-            width: 100%; 
+            width: 100%;
             height: 100%; 
         }
 
@@ -103,11 +103,13 @@
         }
 
         function filterOrderBook(bids, asks, mid_price) {
-            const lower_bound = mid_price * 0.90; 
-            const upper_bound = mid_price * 1.10; 
+            const lower_bound_bids = mid_price * 0.95; 
+            const upper_bound_bids = mid_price * 1.00; 
+            const lower_bound_asks = mid_price * 1.00; 
+            const upper_bound_asks = mid_price * 1.05; 
 
-            const filtered_bids = bids.filter(([price, _]) => price >= lower_bound && price <= upper_bound);
-            const filtered_asks = asks.filter(([price, _]) => price >= lower_bound && price <= upper_bound);
+            const filtered_bids = bids.filter(([price, _]) => price >= lower_bound_bids && price <= upper_bound_bids);
+            const filtered_asks = asks.filter(([price, _]) => price >= lower_bound_asks && price <= upper_bound_asks);
 
             return { filtered_bids, filtered_asks };
         }
