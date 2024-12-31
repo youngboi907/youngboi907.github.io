@@ -95,7 +95,7 @@
                 return { bids, asks };
             } catch (error) {
                 console.error("Error fetching order book data:", error);
-                return { bids:, asks: }; 
+                return { bids: [], asks: [] }; 
             }
         }
 
@@ -145,3 +145,70 @@
 
             Plotly.newPlot('order-book-chart', data, layout);
         }
+
+        async function updateOrderBook() {
+            const orderBookData = await fetchOrderBook();
+
+            if (orderBookData.bids.length === 0 || orderBookData.asks.length === 0) {
+                console.error("No order book data received.");
+                return; 
+            }
+
+            const mid_price = (orderBookData.bids[0][0] + orderBookData.asks[0][0]) / 2; 
+            const { filtered_bids, filtered_asks } = filterOrderBook(orderBookData.bids, orderBookData.asks, mid_price);
+
+            createOrderBookChart(filtered_bids, filtered_asks);
+        }
+
+        // --- OI/Volume Ratio Section ---
+
+        async function fetchMarketData() {
+            try {
+                const [tickerResponse, openInterestResponse] = await Promise.all([
+                    axios.get('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=BTCUSDT'),
+                    axios.get('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT')
+                ]);
+
+                const volume = parseFloat(tickerResponse.data.volume);
+                const openInterest = parseFloat(openInterestResponse.data.openInterest);
+
+                return { volume, openInterest };
+            } catch (error) {
+                console.error("Error fetching market data:", error);
+                return { volume: 0, openInterest: 0 };
+            }
+        }
+
+        function calculateOIVolumeRatio(volume, openInterest) {
+            if (volume === 0 || openInterest === 0) {
+                return 0;
+            }
+            return openInterest / volume;
+        }
+
+        function displayOIVolumeRatio(ratio) {
+            document.getElementById('oiVolumeRatio').textContent = ratio.toFixed(2);
+        }
+
+        async function updateMarketData() {
+            const { volume, openInterest } = await fetchMarketData();
+            const ratio = calculateOIVolumeRatio(volume, openInterest);
+            displayOIVolumeRatio(ratio);
+        }
+
+        // --- Update Intervals ---
+
+        // Update order book every 5 seconds
+        setInterval(updateOrderBook, 5000);
+
+        // Update OI/Volume Ratio every 2 seconds (adjust as needed)
+        setInterval(updateMarketData, 2000);
+
+        // Initial fetches
+        updateOrderBook();
+        updateMarketData();
+
+    </script>
+
+</body>
+</html>
