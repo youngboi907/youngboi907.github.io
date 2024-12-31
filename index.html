@@ -16,7 +16,8 @@
         }
 
         #chart-container {
-            flex: 4; 
+            flex: 0; /* Allow TradingView to dynamically adjust height */
+            min-height: 40vh; /* Set a minimum height for the chart */ 
         }
 
         #order-book-container {
