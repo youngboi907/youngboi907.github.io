@@ -6,23 +6,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script> 
 </head>
 <body>
-    <h1>BTCUSDT Order Book Depth Sums</h1>
+    <h1>BTCUSDT Order Book Depth Sums (1% to 2.5% around Mid-Price)</h1>
     <div id="chart"></div>
     <div id="result">
-        <h3>1% to 2.5%</h3>
-        <p>Bid Sum: <span id="bidSum1_2_5"></span></p>
-        <p>Ask Sum: <span id="askSum1_2_5"></span></p>
-        <p>Delta: <span id="delta1_2_5"></span></p> 
-
-        <h3>2.5% to 5%</h3>
-        <p>Bid Sum: <span id="bidSum2_5_5"></span></p>
-        <p>Ask Sum: <span id="askSum2_5_5"></span></p>
-        <p>Delta: <span id="delta2_5_5"></span></p>
-
-        <h3>5% to 10%</h3>
-        <p>Bid Sum: <span id="bidSum5_10"></span></p>
-        <p>Ask Sum: <span id="askSum5_10"></span></p>
-        <p>Delta: <span id="delta5_10"></span></p>
+        <p>Bid Sum: <span id="bidSum"></span></p>
+        <p>Ask Sum: <span id="askSum"></span></p>
+        <p>Delta: <span id="delta"></span></p> 
     </div>
 
     <script>
@@ -32,10 +21,7 @@
             [100.05, 5], 
             [100, 8], 
             [99.95, 12], 
-            [99.9, 7],
-            [99.8, 3],
-            [99.7, 2],
-            [99.6, 1]
+            [99.9, 7] 
         ];
 
         const asks = [
@@ -43,68 +29,39 @@
             [100.25, 8], 
             [100.3, 10], 
             [100.35, 12], 
-            [100.4, 5],
-            [100.5, 3],
-            [100.6, 2],
-            [100.7, 1] 
+            [100.4, 5] 
         ];
 
         // Calculate mid-price
         const mid_price = (bids[0][0] + asks[0][0]) / 2;
 
         function calculateDepthSums(bids, asks, mid_price) {
-            const range1_lower = mid_price * 0.99;
-            const range1_upper = mid_price * 1.01;
-            const range2_5_lower = mid_price * 0.975;
-            const range2_5_upper = mid_price * 1.025;
-            const range5_lower = mid_price * 0.95;
-            const range5_upper = mid_price * 1.05;
-            const range10_lower = mid_price * 0.90;
-            const range10_upper = mid_price * 1.10;
+            const lower_bound_1 = mid_price * 0.99;
+            const upper_bound_1 = mid_price * 1.01;
+            const lower_bound_2_5 = mid_price * 0.975;
+            const upper_bound_2_5 = mid_price * 1.025;
 
-            const filterRange = (orders, lower, upper) => 
-                orders.filter(([price, _]) => price >= lower && price <= upper);
+            const filtered_bids = bids.filter(([price, _]) => price >= lower_bound_1 && price <= upper_bound_2_5);
+            const filtered_asks = asks.filter(([price, _]) => price >= lower_bound_1 && price <= upper_bound_2_5);
 
-            const filtered_bids_1_2_5 = filterRange(bids, range1_lower, range2_5_upper);
-            const filtered_asks_1_2_5 = filterRange(asks, range1_lower, range2_5_upper);
+            const bid_sum = filtered_bids.reduce((acc, curr) => acc + curr[1], 0);
+            const ask_sum = filtered_asks.reduce((acc, curr) => acc + curr[1], 0);
 
-            const filtered_bids_2_5_5 = filterRange(bids, range2_5_lower, range5_upper);
-            const filtered_asks_2_5_5 = filterRange(asks, range2_5_lower, range5_upper);
-
-            const filtered_bids_5_10 = filterRange(bids, range5_lower, range10_upper);
-            const filtered_asks_5_10 = filterRange(asks, range5_lower, range10_upper);
-
-            const bid_sum_1_2_5 = filtered_bids_1_2_5.reduce((acc, curr) => acc + curr[1], 0);
-            const ask_sum_1_2_5 = filtered_asks_1_2_5.reduce((acc, curr) => acc + curr[1], 0);
-            const delta_1_2_5 = ask_sum_1_2_5 - bid_sum_1_2_5;
-
-            const bid_sum_2_5_5 = filtered_bids_2_5_5.reduce((acc, curr) => acc + curr[1], 0);
-            const ask_sum_2_5_5 = filtered_asks_2_5_5.reduce((acc, curr) => acc + curr[1], 0);
-            const delta_2_5_5 = ask_sum_2_5_5 - bid_sum_2_5_5;
-
-            const bid_sum_5_10 = filtered_bids_5_10.reduce((acc, curr) => acc + curr[1], 0);
-            const ask_sum_5_10 = filtered_asks_5_10.reduce((acc, curr) => acc + curr[1], 0);
-            const delta_5_10 = ask_sum_5_10 - bid_sum_5_10;
-
-            return { 
-                bid_sum_1_2_5, ask_sum_1_2_5, delta_1_2_5, 
-                bid_sum_2_5_5, ask_sum_2_5_5, delta_2_5_5, 
-                bid_sum_5_10, ask_sum_5_10, delta_5_10 
-            };
+            return { bid_sum, ask_sum, delta: ask_sum - bid_sum };
         }
 
-        function createChart(bid_sum_1_2_5, ask_sum_1_2_5, bid_sum_2_5_5, ask_sum_2_5_5, bid_sum_5_10, ask_sum_5_10) {
+        function createChart(bid_sum, ask_sum) {
             const data = [
                 {
-                    x: ['Bids (1-2.5%)', 'Asks (1-2.5%)', 'Bids (2.5-5%)', 'Asks (2.5-5%)', 'Bids (5-10%)', 'Asks (5-10%)'],
-                    y: [bid_sum_1_2_5, ask_sum_1_2_5, bid_sum_2_5_5, ask_sum_2_5_5, bid_sum_5_10, ask_sum_5_10],
+                    x: ['Bids', 'Asks'],
+                    y: [bid_sum, ask_sum],
                     type: 'bar',
-                    marker: { color: ['green', 'red', 'lightgreen', 'pink', 'darkgreen', 'magenta'] }
+                    marker: { color: ['green', 'red'] }
                 }
             ];
 
             const layout = {
-                title: 'BTCUSDT Order Book Depth Sums (1-2.5%, 2.5-5%, 5-10% around Mid-Price)',
+                title: 'BTCUSDT Order Book Depth Sums (1% to 2.5% around Mid-Price)',
                 xaxis: { title: 'Order Book Side' },
                 yaxis: { title: 'Order Quantity Sum' }
             };
@@ -112,16 +69,14 @@
             Plotly.newPlot('chart', data, layout);
         }
 
-        // Calculate and display depth sums and deltas
-        const { 
-            bid_sum_1_2_5, ask_sum_1_2_5, delta_1_2_5, 
-            bid_sum_2_5_5, ask_sum_2_5_5, delta_2_5_5, 
-            bid_sum_5_10, ask_sum_5_10, delta_5_10 
-        } = calculateDepthSums(bids, asks, mid_price);
+        // Calculate and display initial depth sums and delta
+        const { bid_sum, ask_sum, delta } = calculateDepthSums(bids, asks, mid_price);
+        document.getElementById('bidSum').textContent = bid_sum;
+        document.getElementById('askSum').textContent = ask_sum;
+        document.getElementById('delta').textContent = delta; 
+        createChart(bid_sum, ask_sum);
 
-        document.getElementById('bidSum1_2_5').textContent = bid_sum_1_2_5;
-        document.getElementById('askSum1_2_5').textContent = ask_sum_1_2_5;
-        document.getElementById('delta1_2_5').textContent = delta_1_2_5;
-        document.getElementById('bidSum2_5_5').textContent = bid_sum_2_5_5;
-        document.getElementById('askSum2_5_5').textContent = ask_sum_2_5_5;
-        document.getElementById('delta2_5_5').textContent = delta_2_5_5
+    </script>
+
+</body>
+</html>
