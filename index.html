@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCUSDT OI/Volume Ratio</title>
+    <title>BTCUSDT OI/Volume Ratio & Historical Lookup</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -30,6 +30,16 @@
         }
 
         #ratio {
+            font-size: 1.5rem;
+            color: #64ffda;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            box-shadow: 0px 0px 15px rgba(0, 188, 212, 0.3);
+        }
+
+        #historicalRatio {
             font-size: 1.5rem;
             color: #64ffda;
             margin-bottom: 20px;
@@ -73,6 +83,41 @@
             background-color: #007c91;
         }
 
+        /* Input Field Styling */
+        .input-container {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-label {
+            color: white;
+            margin-right: 10px;
+        }
+
+        .input-field {
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background-color: #222222;
+            color: white;
+        }
+
+        .find-btn {
+            background-color: #00bcd4;
+            border: none;
+            color: white;
+            font-size: 1rem;
+            padding: 10px 20px;
+            margin-left: 10px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .find-btn:hover {
+            background-color: #007c91;
+        }
     </style>
 </head>
 <body>
@@ -83,6 +128,15 @@
 
 <div class="chart-container">
     <canvas id="ratioChart"></canvas>
+</div>
+
+<div class="input-container">
+    <label for="historicalTime" class="input-label">Find Ratio at:</label>
+    <input type="datetime-local" id="historicalTime" class="input-field">
+    <button class="find-btn" onclick="findHistoricalRatio()">Find</button>
+</div>
+
+<div id="historicalRatio"> 
 </div>
 
 <button class="refresh-btn" onclick="getRatio()">Refresh Now</button>
@@ -187,12 +241,11 @@ async function getOpenInterest() {
   }
 }
 
-// Update ratio and chart every 5 seconds
-setInterval(getRatio, 5000);
+// **Historical Ratio Functionality**
 
-// Initial fetch
-getRatio();
-</script>
+async function findHistoricalRatio() {
+  const historicalTime = document.getElementById('historicalTime').value; 
 
-</body>
-</html>
+  // **This part needs implementation using Binance API or a third-party historical data provider**
+  // 1. **Fetch Historical Data:** 
+  //    - Construct the API endpoint for historical data retrieval
