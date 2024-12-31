@@ -39,16 +39,6 @@
             box-shadow: 0px 0px 15px rgba(0, 188, 212, 0.3);
         }
 
-        #historicalRatio {
-            font-size: 1.5rem;
-            color: #64ffda;
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: #1e1e1e;
-            border-radius: 8px;
-            box-shadow: 0px 0px 15px rgba(0, 188, 212, 0.3);
-        }
-
         canvas {
             max-width: 90%;
             max-height: 70vh;
@@ -64,31 +54,6 @@
             background-color: #222222;
             border-radius: 15px;
             box-shadow: 0px 0px 15px rgba(0, 188, 212, 0.3);
-            position: relative; /* For absolute positioning of loading spinner */
-        }
-
-        .loading-spinner {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .loading-spinner div {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            margin: 0 2px;
-            animation: spin 1.2s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
 
         /* Button Styling */
@@ -108,41 +73,6 @@
             background-color: #007c91;
         }
 
-        /* Input Field Styling */
-        .input-container {
-            margin-top: 20px;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-label {
-            color: white;
-            margin-right: 10px;
-        }
-
-        .input-field {
-            padding: 10px;
-            border: 1px solid #444;
-            border-radius: 5px;
-            background-color: #222222;
-            color: white;
-        }
-
-        .find-btn {
-            background-color: #00bcd4;
-            border: none;
-            color: white;
-            font-size: 1rem;
-            padding: 10px 20px;
-            margin-left: 10px;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: background-color 0.3s;
-        }
-
-        .find-btn:hover {
-            background-color: #007c91;
-        }
     </style>
 </head>
 <body>
@@ -153,21 +83,6 @@
 
 <div class="chart-container">
     <canvas id="ratioChart"></canvas>
-    <div class="loading-spinner" id="loadingSpinner">
-        <div></div>
-        <div></div>
-        <div></div>
-        <div></div>
-    </div>
-</div>
-
-<div class="input-container">
-    <label for="historicalTime" class="input-label">Find Ratio at:</label>
-    <input type="datetime-local" id="historicalTime" class="input-field">
-    <button class="find-btn" onclick="findHistoricalRatio()">Find</button>
-</div>
-
-<div id="historicalRatio"> 
 </div>
 
 <button class="refresh-btn" onclick="getRatio()">Refresh Now</button>
@@ -231,22 +146,53 @@ const config = {
 const ctx = document.getElementById('ratioChart').getContext('2d');
 const myChart = new Chart(ctx, config);
 
-// Hide loading spinner initially
-document.getElementById('loadingSpinner').style.display = 'none';
-
 async function getRatio() {
   try {
-    document.getElementById('loadingSpinner').style.display = 'flex'; // Show loading spinner
-
     const response = await axios.get('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=BTCUSDT');
     const volume = parseFloat(response.data.volume);
     const openInterest = await getOpenInterest();
 
     if (volume === 0 || openInterest === 0) {
       document.getElementById('ratio').textContent = 'Error: Invalid data received';
-      document.getElementById('loadingSpinner').style.display = 'none'; // Hide loading spinner
       return;
     }
 
     const ratio = openInterest / volume;
-    document.getElementById('ratio').textContent = `OI
+    document.getElementById('ratio').textContent = `OI/Volume Ratio: ${ratio.toFixed(2)}`;
+
+    // Update chart data
+    chartData.labels.push(new Date().toLocaleTimeString());
+    chartData.datasets[0].data.push(ratio);
+
+    // Limit data points to the last 20
+    if (chartData.labels.length > 20) {
+      chartData.labels.shift();
+      chartData.datasets[0].data.shift();
+    }
+
+    myChart.update();
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    document.getElementById('ratio').textContent = 'Error fetching data.';
+  }
+}
+
+async function getOpenInterest() {
+  try {
+    const response = await axios.get('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT');
+    return parseFloat(response.data.openInterest);
+  } catch (error) {
+    console.error('Error fetching open interest:', error);
+    return 0;
+  }
+}
+
+// Update ratio and chart every 5 seconds
+setInterval(getRatio, 5000);
+
+// Initial fetch
+getRatio();
+</script>
+
+</body>
+</html>
