@@ -1,251 +1,100 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCUSDT OI/Volume Ratio & Historical Lookup</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        /* General Styling */
-        body, html {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
-            color: white;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-
-        h1 {
-            color: #00bcd4;
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 2rem;
-            text-shadow: 2px 2px 8px rgba(0, 188, 212, 0.5);
-        }
-
-        #ratio {
-            font-size: 1.5rem;
-            color: #64ffda;
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: #1e1e1e;
-            border-radius: 8px;
-            box-shadow: 0px 0px 15px rgba(0, 188, 212, 0.3);
-        }
-
-        #historicalRatio {
-            font-size: 1.5rem;
-            color: #64ffda;
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: #1e1e1e;
-            border-radius: 8px;
-            box-shadow: 0px 0px 15px rgba(0, 188, 212, 0.3);
-        }
-
-        canvas {
-            max-width: 90%;
-            max-height: 70vh;
-            width: 100%;
-            margin: 20px 0;
-        }
-
-        /* Chart Styling */
-        .chart-container {
-            width: 100%;
-            max-width: 1200px;
-            padding: 20px;
-            background-color: #222222;
-            border-radius: 15px;
-            box-shadow: 0px 0px 15px rgba(0, 188, 212, 0.3);
-        }
-
-        /* Button Styling */
-        .refresh-btn {
-            background-color: #00bcd4;
-            border: none;
-            color: white;
-            font-size: 1rem;
-            padding: 10px 20px;
-            margin-top: 20px;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: background-color 0.3s;
-        }
-
-        .refresh-btn:hover {
-            background-color: #007c91;
-        }
-
-        /* Input Field Styling */
-        .input-container {
-            margin-top: 20px;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-label {
-            color: white;
-            margin-right: 10px;
-        }
-
-        .input-field {
-            padding: 10px;
-            border: 1px solid #444;
-            border-radius: 5px;
-            background-color: #222222;
-            color: white;
-        }
-
-        .find-btn {
-            background-color: #00bcd4;
-            border: none;
-            color: white;
-            font-size: 1rem;
-            padding: 10px 20px;
-            margin-left: 10px;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: background-color 0.3s;
-        }
-
-        .find-btn:hover {
-            background-color: #007c91;
-        }
-    </style>
+    <title>BTCUSDT Order Book Depth Chart</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
+    <h1>BTCUSDT Order Book Depth Chart (1% & 2.5% around Mid-Price)</h1>
+    <div id="chart"></div>
 
-<h1>BTCUSDT OI/Volume Ratio</h1>
+    <script>
+        // Sample data (replace with actual order book data)
+        const bids = [
+            [100.1, 10], 
+            [100.05, 5], 
+            [100, 8], 
+            [99.95, 12], 
+            [99.9, 7] 
+        ];
 
-<div id="ratio">Loading...</div>
+        const asks = [
+            [100.2, 15], 
+            [100.25, 8], 
+            [100.3, 10], 
+            [100.35, 12], 
+            [100.4, 5] 
+        ];
 
-<div class="chart-container">
-    <canvas id="ratioChart"></canvas>
-</div>
+        // Calculate mid-price
+        const mid_price = (bids[0][0] + asks[0][0]) / 2;
 
-<div class="input-container">
-    <label for="historicalTime" class="input-label">Find Ratio at:</label>
-    <input type="datetime-local" id="historicalTime" class="input-field">
-    <button class="find-btn" onclick="findHistoricalRatio()">Find</button>
-</div>
+        // Python function (adapted for JavaScript)
+        function createOrderBookDepthChart(bids, asks, price_mid) {
+            const price_range_1 = [price_mid - 0.01 * price_mid, price_mid + 0.01 * price_mid];
+            const price_range_2_5 = [price_mid - 0.025 * price_mid, price_mid + 0.025 * price_mid];
 
-<div id="historicalRatio"> 
-</div>
+            const filtered_bids_1 = bids.filter(([price, _]) => price >= price_range_1[0] && price <= price_range_1[1]);
+            const filtered_asks_1 = asks.filter(([price, _]) => price >= price_range_1[0] && price <= price_range_1[1]);
+            const filtered_bids_2_5 = bids.filter(([price, _]) => price >= price_range_2_5[0] && price <= price_range_2_5[1]);
+            const filtered_asks_2_5 = asks.filter(([price, _]) => price >= price_range_2_5[0] && price <= price_range_2_5[1]);
 
-<button class="refresh-btn" onclick="getRatio()">Refresh Now</button>
+            const bid_prices_1 = filtered_bids_1.map(([price, _]) => price);
+            const bid_quantities_1 = filtered_bids_1.map(([_, quantity]) => quantity);
+            const ask_prices_1 = filtered_asks_1.map(([price, _]) => price);
+            const ask_quantities_1 = filtered_asks_1.map(([_, quantity]) => quantity);
 
-<script>
-const chartData = {
-  labels: [],
-  datasets: [{
-    label: 'OI/Volume Ratio',
-    data: [],
-    fill: true,
-    backgroundColor: 'rgba(75, 192, 192, 0.2)',  // Light teal
-    borderColor: 'rgba(75, 192, 192, 1)',  // Teal
-    borderWidth: 1
-  }]
-};
+            const bid_prices_2_5 = filtered_bids_2_5.map(([price, _]) => price);
+            const bid_quantities_2_5 = filtered_bids_2_5.map(([_, quantity]) => quantity);
+            const ask_prices_2_5 = filtered_asks_2_5.map(([price, _]) => price);
+            const ask_quantities_2_5 = filtered_asks_2_5.map(([_, quantity]) => quantity);
 
-const config = {
-  type: 'line',
-  data: chartData,
-  options: {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top',
-        labels: {
-          color: 'white'
+            const trace1 = {
+                x: bid_prices_1,
+                y: bid_quantities_1,
+                type: 'bar',
+                name: 'Bids (1%)',
+                marker: { color: 'green' }
+            };
+
+            const trace2 = {
+                x: ask_prices_1,
+                y: ask_quantities_1,
+                type: 'bar',
+                name: 'Asks (1%)',
+                marker: { color: 'red' }
+            };
+
+            const trace3 = {
+                x: bid_prices_2_5,
+                y: bid_quantities_2_5,
+                type: 'bar',
+                name: 'Bids (2.5%)',
+                marker: { color: 'lightgreen' }
+            };
+
+            const trace4 = {
+                x: ask_prices_2_5,
+                y: ask_quantities_2_5,
+                type: 'bar',
+                name: 'Asks (2.5%)',
+                marker: { color: 'pink' }
+            };
+
+            const data = [trace1, trace2, trace3, trace4];
+
+            const layout = {
+                title: 'BTCUSDT Order Book Depth Chart',
+                xaxis: { title: 'Price' },
+                yaxis: { title: 'Order Quantity' },
+                barmode: 'group' 
+            };
+
+            Plotly.newPlot('chart', data, layout);
         }
-      },
-      title: {
-        display: true,
-        text: 'BTCUSDT OI/Volume Ratio',
-        color: 'white'
-      }
-    },
-    scales: {
-      x: {
-        title: {
-          display: true,
-          text: 'Time',
-          color: 'white'
-        },
-        ticks: {
-          color: 'white'
-        }
-      },
-      y: {
-        title: {
-          display: true,
-          text: 'OI/Volume Ratio',
-          color: 'white'
-        },
-        ticks: {
-          color: 'white'
-        }
-      }
-    }
-  }
-};
 
-const ctx = document.getElementById('ratioChart').getContext('2d');
-const myChart = new Chart(ctx, config);
+        createOrderBookDepthChart(bids, asks, mid_price); 
+    </script>
 
-async function getRatio() {
-  try {
-    const response = await axios.get('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=BTCUSDT');
-    const volume = parseFloat(response.data.volume);
-    const openInterest = await getOpenInterest();
-
-    if (volume === 0 || openInterest === 0) {
-      document.getElementById('ratio').textContent = 'Error: Invalid data received';
-      return;
-    }
-
-    const ratio = openInterest / volume;
-    document.getElementById('ratio').textContent = `OI/Volume Ratio: ${ratio.toFixed(2)}`;
-
-    // Update chart data
-    chartData.labels.push(new Date().toLocaleTimeString());
-    chartData.datasets[0].data.push(ratio);
-
-    // Limit data points to the last 20
-    if (chartData.labels.length > 20) {
-      chartData.labels.shift();
-      chartData.datasets[0].data.shift();
-    }
-
-    myChart.update();
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    document.getElementById('ratio').textContent = 'Error fetching data.';
-  }
-}
-
-async function getOpenInterest() {
-  try {
-    const response = await axios.get('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT');
-    return parseFloat(response.data.openInterest);
-  } catch (error) {
-    console.error('Error fetching open interest:', error);
-    return 0;
-  }
-}
-
-// **Historical Ratio Functionality**
-
-async function findHistoricalRatio() {
-  const historicalTime = document.getElementById('historicalTime').value; 
-
-  // **This part needs implementation using Binance API or a third-party historical data provider**
-  // 1. **Fetch Historical Data:** 
-  //    - Construct the API endpoint for historical data retrieval
+</body>
+</html>
