@@ -11,6 +11,7 @@
     <div id="result">
         <p>Bid Sum: <span id="bidSum"></span></p>
         <p>Ask Sum: <span id="askSum"></span></p>
+        <p>Delta: <span id="delta"></span></p> 
     </div>
 
     <script>
@@ -46,7 +47,7 @@
             const bid_sum = filtered_bids.reduce((acc, curr) => acc + curr[1], 0);
             const ask_sum = filtered_asks.reduce((acc, curr) => acc + curr[1], 0);
 
-            return { bid_sum, ask_sum };
+            return { bid_sum, ask_sum, delta: ask_sum - bid_sum };
         }
 
         function createChart(bid_sum, ask_sum) {
@@ -68,10 +69,11 @@
             Plotly.newPlot('chart', data, layout);
         }
 
-        // Calculate and display initial depth sums
-        const { bid_sum, ask_sum } = calculateDepthSums(bids, asks, mid_price);
+        // Calculate and display initial depth sums and delta
+        const { bid_sum, ask_sum, delta } = calculateDepthSums(bids, asks, mid_price);
         document.getElementById('bidSum').textContent = bid_sum;
         document.getElementById('askSum').textContent = ask_sum;
+        document.getElementById('delta').textContent = delta; 
         createChart(bid_sum, ask_sum);
 
     </script>
