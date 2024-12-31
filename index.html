@@ -37,7 +37,7 @@
 </div>
 
 <script>
-// Binance API URLs
+// Binance API URLs for OI and Volume data
 const oiUrl = 'https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT';
 const volumeUrl = 'https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=BTCUSDT';
 
@@ -45,7 +45,7 @@ let oiData = [];
 let volumeData = [];
 let ratioData = [];
 
-// Fetch Open Interest and Volume
+// Fetch Open Interest and Volume data
 async function fetchData() {
     try {
         const oiResponse = await fetch(oiUrl);
