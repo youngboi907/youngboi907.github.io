@@ -16,13 +16,13 @@
             overflow: hidden; /* Prevent scrollbars */
         }
 
+        #order-book-container {
+            flex: 1; 
+        }
+
         #chart-container {
             flex: 1; /* Allow TradingView to dynamically adjust height */
             overflow-y: auto; /* Enable vertical scrolling for TradingView */
-        }
-
-        #order-book-container {
-            flex: 0.5; 
         }
 
         #tv_chart_container {
@@ -37,13 +37,14 @@
     </style>
 </head>
 <body>
-    <div id="chart-container">
-        <div id="tv_chart_container"></div>
-    </div>
 
     <div id="order-book-container">
         <h1>BTCUSDT Order Book (0% to 10% around Mid-Price)</h1>
         <div id="order-book-chart"></div>
+    </div>
+
+    <div id="chart-container">
+        <div id="tv_chart_container"></div>
     </div>
 
     <h1>BTCUSDT OI/Volume Ratio</h1>
