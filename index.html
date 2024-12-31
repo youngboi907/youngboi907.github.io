@@ -1,122 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BTCUSDT Order Book & OI/Volume Ratio</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
     <style>
         body {
-            background-color: #1f1f1f;
-            color: #ffffff;
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-        }
-
-        h1 {
-            color: #f0f0f0;
-            font-size: 2.5em;
-            text-align: center;
-            margin-top: 30px;
-            font-weight: bold;
-        }
-
-        #order-book-section, #oi-volume-ratio-section {
-            width: 90%;
-            margin: 20px 0;
-            padding: 20px;
-            border-radius: 10px;
-            background-color: #2a2a2a;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            background-color: #121212;
+            color: #fff;
+            font-family: sans-serif;
         }
 
         #order-book-chart {
-            width: 100%;
-            height: 600px; /* Increased the height for a bigger chart */
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            width: 95%;
+            float: left;
+            margin-right: 10px;
         }
 
         #oi-volume-ratio {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: #fff;
-            font-size: 1.2em;
-        }
-
-        .info-card {
-            background-color: #333;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            width: 45%;
-            margin-top: 15px;
-        }
-
-        .info-card p {
-            margin: 10px 0;
-        }
-
-        .highlight-text {
-            font-weight: bold;
-            color: #00d4b7;
-        }
-
-        .error {
-            color: #ff4e42;
-            font-weight: bold;
-        }
-
-        .footer {
-            margin-top: 50px;
-            color: #bbb;
-            text-align: center;
-        }
-
-        .footer a {
-            color: #00d4b7;
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            text-decoration: underline;
-        }
-
-        .loading {
-            font-size: 1.5em;
-            color: #ff9900;
+            width: 15%;
+            float: left;
         }
     </style>
 </head>
 <body>
+    <h1>BTCUSDT Order Book (0% to 10% around Mid-Price)</h1>
+    <div id="order-book-chart"></div>
 
-    <h1>BTCUSDT Order Book & OI/Volume Ratio</h1>
-
-    <div id="order-book-section">
-        <h2>BTCUSDT Order Book (0% to 10% around Mid-Price)</h2>
-        <div id="order-book-chart"></div>
-    </div>
-
-    <div id="oi-volume-ratio-section">
-        <h2>OI/Volume Ratio</h2>
-        <div class="info-card">
-            <p>OI/Volume Ratio: <span id="oiVolumeRatio" class="highlight-text">Loading...</span></p>
-        </div>
-    </div>
-
-    <div class="footer">
-        <p>Data provided by <a href="https://www.binance.com" target="_blank">Binance</a></p>
+    <h1>BTCUSDT OI/Volume Ratio</h1>
+    <div id="oi-volume-ratio">
+        <p>OI/Volume Ratio: <span id="oiVolumeRatio"></span></p>
     </div>
 
     <script>
         // --- Order Book Section ---
+
         async function fetchOrderBook() {
             try {
                 const response = await axios.get('https://api.binance.com/api/v3/depth', {
@@ -157,7 +75,7 @@
                 y: bid_quantities,
                 type: 'bar',
                 name: 'Bids',
-                marker: { color: '#00d4b7' }
+                marker: { color: 'green' }
             };
 
             const trace2 = {
@@ -165,7 +83,7 @@
                 y: ask_quantities,
                 type: 'bar',
                 name: 'Asks',
-                marker: { color: '#ff4e42' }
+                marker: { color: 'red' }
             };
 
             const data = [trace1, trace2];
@@ -174,10 +92,10 @@
                 title: 'BTCUSDT Order Book (0% to 10% around Mid-Price)',
                 xaxis: { title: 'Price' },
                 yaxis: { title: 'Order Quantity' },
-                barmode: 'group',
-                plot_bgcolor: '#1f1f1f',
-                paper_bgcolor: '#1f1f1f',
-                font: { color: '#fff' }
+                barmode: 'group', 
+                plot_bgcolor: '#121212', 
+                paper_bgcolor: '#121212', 
+                font: { color: '#fff' } 
             };
 
             Plotly.newPlot('order-book-chart', data, layout);
@@ -198,6 +116,7 @@
         }
 
         // --- OI/Volume Ratio Section ---
+
         async function fetchMarketData() {
             try {
                 const [tickerResponse, openInterestResponse] = await Promise.all([
@@ -233,12 +152,17 @@
         }
 
         // --- Update Intervals ---
-        setInterval(updateOrderBook, 5000); // Update order book every 5 seconds
-        setInterval(updateMarketData, 2000); // Update OI/Volume Ratio every 2 seconds
+
+        // Update order book every 5 seconds
+        setInterval(updateOrderBook, 5000);
+
+        // Update OI/Volume Ratio every 2 seconds (adjust as needed)
+        setInterval(updateMarketData, 2000);
 
         // Initial fetches
         updateOrderBook();
         updateMarketData();
+
     </script>
 
 </body>
