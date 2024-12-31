@@ -39,16 +39,6 @@
             box-shadow: 0px 0px 15px rgba(0, 188, 212, 0.3);
         }
 
-        #historicalRatio {
-            font-size: 1.5rem;
-            color: #64ffda;
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: #1e1e1e;
-            border-radius: 8px;
-            box-shadow: 0px 0px 15px rgba(0, 188, 212, 0.3);
-        }
-
         canvas {
             max-width: 90%;
             max-height: 70vh;
@@ -83,41 +73,6 @@
             background-color: #007c91;
         }
 
-        /* Input Field Styling */
-        .input-container {
-            margin-top: 20px;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-label {
-            color: white;
-            margin-right: 10px;
-        }
-
-        .input-field {
-            padding: 10px;
-            border: 1px solid #444;
-            border-radius: 5px;
-            background-color: #222222;
-            color: white;
-        }
-
-        .find-btn {
-            background-color: #00bcd4;
-            border: none;
-            color: white;
-            font-size: 1rem;
-            padding: 10px 20px;
-            margin-left: 10px;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: background-color 0.3s;
-        }
-
-        .find-btn:hover {
-            background-color: #007c91;
-        }
     </style>
 </head>
 <body>
@@ -128,15 +83,6 @@
 
 <div class="chart-container">
     <canvas id="ratioChart"></canvas>
-</div>
-
-<div class="input-container">
-    <label for="historicalTime" class="input-label">Find Ratio at:</label>
-    <input type="datetime-local" id="historicalTime" class="input-field">
-    <button class="find-btn" onclick="findHistoricalRatio()">Find</button>
-</div>
-
-<div id="historicalRatio"> 
 </div>
 
 <button class="refresh-btn" onclick="getRatio()">Refresh Now</button>
@@ -241,10 +187,12 @@ async function getOpenInterest() {
   }
 }
 
-async function findHistoricalRatio() {
-  // **Important:** This function requires access to historical data from Binance 
-  // API or a third-party provider. This example demonstrates the basic logic. 
+// Update ratio and chart every 5 seconds
+setInterval(getRatio, 5000);
 
-  const historicalTime = document.getElementById('historicalTime').value; 
-  // ... (Logic to fetch historical volume and open interest at the specified time)
-  //
+// Initial fetch
+getRatio();
+</script>
+
+</body>
+</html>
