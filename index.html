@@ -4,28 +4,40 @@
     <title>BTCUSDT Order Book & OI/Volume Ratio</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
+    <script src="https://s3.tradingview.com/tv.js"></script>
     <style>
         body {
             background-color: #121212;
             color: #fff;
             font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
         }
 
-        #order-book-chart {
-            width: 98%;
-            float: left;
-            margin-right: 10px;
+        #chart-container {
+            flex: 1; /* Make TradingView chart flexible height */
+        }
+
+        #order-book-container {
+            flex: 0.5; /* Adjust height for order book */
         }
 
         #oi-volume-ratio {
             width: 35%;
-            float: center;
+            margin: 0 auto; /* Center */
         }
     </style>
 </head>
 <body>
-    <h1>BTCUSDT Order Book (0% to 10% around Mid-Price)</h1>
-    <div id="order-book-chart"></div>
+    <div id="chart-container">
+        <div id="tv_chart_container"></div>
+    </div>
+
+    <div id="order-book-container">
+        <h1>BTCUSDT Order Book (0% to 10% around Mid-Price)</h1>
+        <div id="order-book-chart"></div>
+    </div>
 
     <h1>BTCUSDT OI/Volume Ratio</h1>
     <div id="oi-volume-ratio">
@@ -33,6 +45,34 @@
     </div>
 
     <script>
+        // --- TradingView Chart ---
+
+        new TradingView.widget({
+            container_id: "tv_chart_container",
+            autosize: true,
+            symbol: "BINANCE:BTCUSDT",
+            interval: "60",
+            timezone: "Etc/UTC",
+            theme: "dark",
+            locale: "en",
+            toolbar_bg: "#1e2128",
+            enable_publishing: false,
+            allow_symbol_change: true,
+            studies: [
+                "MAExp@tv-basicstudies",
+                "RSI@tv-basicstudies",
+                "MACD@tv-basicstudies"
+            ],
+            overrides: {
+                "movingAverage.length": 200
+            },
+            details: true,
+            hotlist: true,
+            calendar: true,
+            withdateranges: true,
+            hide_side_toolbar: false,
+        });
+
         // --- Order Book Section ---
 
         async function fetchOrderBook() {
@@ -40,7 +80,7 @@
                 const response = await axios.get('https://api.binance.com/api/v3/depth', {
                     params: {
                         symbol: 'BTCUSDT',
-                        limit: 1000 // Increase limit for better 0-10% coverage
+                        limit: 1000
                     }
                 });
 
