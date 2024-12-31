@@ -16,21 +16,21 @@
         }
 
         #chart-container {
-            flex: 4; /* 4 parts height */
+            flex: 4; 
         }
 
         #order-book-container {
-            flex: 1; /* 1 part height */
+            flex: 1; 
         }
 
         #tv_chart_container {
-            width: 100%; /* Ensure TradingView chart fills container width */
-            height: 100%; /* Ensure TradingView chart fills container height */
+            width: 100%; 
+            height: 100%; 
         }
 
         #oi-volume-ratio {
             width: 35%;
-            margin: 0 auto; /* Center */
+            margin: 0 auto; 
         }
     </style>
 </head>
@@ -54,7 +54,7 @@
 
         new TradingView.widget({
             container_id: "tv_chart_container",
-            autosize: true, // Let TradingView handle resizing within its container
+            autosize: true, 
             symbol: "BINANCE:BTCUSDT",
             interval: "60",
             timezone: "Etc/UTC",
@@ -80,10 +80,68 @@
 
         // --- Order Book Section ---
 
-        // ... (Rest of the order book and OI/Volume Ratio code remains the same)
-        // ...
+        async function fetchOrderBook() {
+            try {
+                const response = await axios.get('https://api.binance.com/api/v3/depth', {
+                    params: {
+                        symbol: 'BTCUSDT',
+                        limit: 1000 
+                    }
+                });
 
-    </script>
+                const bids = response.data.bids.map(([price, qty]) => [parseFloat(price), parseFloat(qty)]);
+                const asks = response.data.asks.map(([price, qty]) => [parseFloat(price), parseFloat(qty)]);
+                
+                return { bids, asks };
+            } catch (error) {
+                console.error("Error fetching order book data:", error);
+                return { bids:, asks: }; 
+            }
+        }
 
-</body>
-</html>
+        function filterOrderBook(bids, asks, mid_price) {
+            const lower_bound = mid_price * 0.90; 
+            const upper_bound = mid_price * 1.10; 
+
+            const filtered_bids = bids.filter(([price, _]) => price >= lower_bound && price <= upper_bound);
+            const filtered_asks = asks.filter(([price, _]) => price >= lower_bound && price <= upper_bound);
+
+            return { filtered_bids, filtered_asks };
+        }
+
+        function createOrderBookChart(filtered_bids, filtered_asks) {
+            const bid_prices = filtered_bids.map(([price, _]) => price);
+            const bid_quantities = filtered_bids.map(([_, qty]) => qty);
+            const ask_prices = filtered_asks.map(([price, _]) => price);
+            const ask_quantities = filtered_asks.map(([_, qty]) => qty);
+
+            const trace1 = {
+                x: bid_prices,
+                y: bid_quantities,
+                type: 'bar',
+                name: 'Bids',
+                marker: { color: 'green' }
+            };
+
+            const trace2 = {
+                x: ask_prices,
+                y: ask_quantities,
+                type: 'bar',
+                name: 'Asks',
+                marker: { color: 'red' }
+            };
+
+            const data = [trace1, trace2];
+
+            const layout = {
+                title: 'BTCUSDT Order Book (0% to 10% around Mid-Price)',
+                xaxis: { title: 'Price' },
+                yaxis: { title: 'Order Quantity' },
+                barmode: 'group', 
+                plot_bgcolor: '#121212', 
+                paper_bgcolor: '#121212', 
+                font: { color: '#fff' } 
+            };
+
+            Plotly.newPlot('order-book-chart', data, layout);
+        }
