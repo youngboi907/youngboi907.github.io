@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OI/Volume Ratio Area Chart</title>
+    <title>OI/Volume Ratio Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body, html {
@@ -37,7 +37,7 @@
 </div>
 
 <script>
-// Binance API URLs for OI and Volume data
+// API URLs to fetch Open Interest (OI) and Volume data
 const oiUrl = 'https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT';
 const volumeUrl = 'https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=BTCUSDT';
 
@@ -48,22 +48,24 @@ let ratioData = [];
 // Fetch Open Interest and Volume data
 async function fetchData() {
     try {
+        // Fetch Open Interest (OI)
         const oiResponse = await fetch(oiUrl);
         const oiJson = await oiResponse.json();
         const openInterest = parseFloat(oiJson.openInterest); // Open Interest in BTC
 
+        // Fetch 24h Volume data
         const volumeResponse = await fetch(volumeUrl);
         const volumeJson = await volumeResponse.json();
-        const volume = parseFloat(volumeJson.volume); // Volume in BTC (24h volume)
+        const volume = parseFloat(volumeJson.volume); // Volume in BTC
 
         const ratio = openInterest / volume; // OI/Volume Ratio
 
-        // Push data to arrays
+        // Push data to arrays for chart
         oiData.push(openInterest);
         volumeData.push(volume);
         ratioData.push(ratio);
 
-        // Limit the number of points shown on the chart (e.g., last 100 data points)
+        // Limit data array size to last 100 data points for better performance
         if (oiData.length > 100) {
             oiData.shift();
             volumeData.shift();
@@ -77,7 +79,7 @@ async function fetchData() {
     }
 }
 
-// Update the chart with new data
+// Initialize the chart
 let oiVolumeChart;
 function updateChart() {
     const ctx = document.getElementById('oiVolumeChart').getContext('2d');
@@ -85,7 +87,7 @@ function updateChart() {
     // Initialize chart only once
     if (!oiVolumeChart) {
         oiVolumeChart = new Chart(ctx, {
-            type: 'line', // Using line chart for OI/Volume ratio
+            type: 'line',
             data: {
                 labels: Array.from({ length: ratioData.length }, (_, index) => index + 1),
                 datasets: [
@@ -130,7 +132,7 @@ function updateChart() {
             }
         });
     } else {
-        // Update existing chart with new data
+        // Update the existing chart with new data
         oiVolumeChart.data.labels = Array.from({ length: ratioData.length }, (_, index) => index + 1);
         oiVolumeChart.data.datasets[0].data = ratioData;
         oiVolumeChart.data.datasets[1].data = oiData;
@@ -143,5 +145,6 @@ function updateChart() {
 setInterval(fetchData, 1000);
 
 </script>
+
 </body>
 </html>
