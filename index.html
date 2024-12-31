@@ -4,6 +4,7 @@
     <title>BTCUSDT Order Book & OI/Volume Ratio</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
+    <script src="https://s3.tradingview.com/tv.js"></script>
     <style>
         body {
             background-color: #121212;
@@ -23,12 +24,12 @@
 
         #chart-container {
             flex: 1;
-            overflow-y: auto;
+            overflow-y: auto; 
         }
 
-        #order-book-chart {
+        #tv_chart_container {
             width: 100%;
-            margin-bottom: 20px;
+            height: 100%; 
         }
 
         #oi-volume-ratio-container {
@@ -68,6 +69,15 @@
             border-color: #7289da;
             box-shadow: 0 0 5px rgba(114, 137, 218, 0.5);
         }
+
+        @media (max-width: 768px) { 
+            #chart-container {
+                flex: 2; 
+            }
+            #order-book-container {
+                flex: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -79,7 +89,8 @@
         <input type="number" id="minQtyUSD" value="1000" step="100" min="1">
     </div>
 
-    <div id="chart-container"> 
+    <div id="chart-container">
+        <div id="tv_chart_container"></div>
     </div>
 
     <div id="oi-volume-ratio-container" class="container">
@@ -88,6 +99,34 @@
     </div>
 
     <script>
+        // --- TradingView Chart ---
+
+        new TradingView.widget({
+            container_id: "tv_chart_container",
+            autosize: true, 
+            symbol: "BINANCE:BTCUSDT",
+            interval: "60",
+            timezone: "Etc/UTC",
+            theme: "dark",
+            locale: "en",
+            toolbar_bg: "#1e2128",
+            enable_publishing: false,
+            allow_symbol_change: true,
+            studies: [
+                "MAExp@tv-basicstudies",
+                "RSI@tv-basicstudies",
+                "MACD@tv-basicstudies"
+            ],
+            overrides: {
+                "movingAverage.length": 200
+            },
+            details: true,
+            hotlist: true,
+            calendar: true,
+            withdateranges: true,
+            hide_side_toolbar: false,
+        });
+
         // --- Order Book Section ---
 
         async function fetchOrderBook() {
@@ -191,28 +230,4 @@
         }
 
         async function updateMarketData() {
-            const { volume, openInterest } = await fetchMarketData();
-            const ratio = calculateOIVolumeRatio(volume, openInterest);
-            displayOIVolumeRatio(ratio);
-        }
-
-        // --- Update Intervals ---
-
-        // Update order book every 5 seconds
-        setInterval(updateOrderBook, 5000);
-
-        // Update OI/Volume Ratio every second
-        setInterval(updateMarketData, 1000); 
-
-        // Initial fetches
-        updateOrderBook();
-        updateMarketData();
-
-        document.getElementById("minQtyUSD").addEventListener("input", () => {
-            updateOrderBook();
-        });
-
-    </script>
-
-</body>
-</html>
+            const { volume, openInterest } = await
