@@ -3,147 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OI/Volume Ratio Chart</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Live Open Interest Data</title>
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
+        body {
             font-family: Arial, sans-serif;
             background-color: #121212;
             color: white;
-            overflow: hidden;
-            height: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
+            height: 100vh;
+            margin: 0;
         }
 
-        #chartContainer {
-            width: 90%;
-            height: 80%;
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: #1e2128;
+            border-radius: 10px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.5);
         }
 
-        canvas {
-            width: 100%;
-            height: 100%;
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .oi-box {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00e676;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #333;
+            border-radius: 8px;
+            width: 300px;
+            margin: 20px auto;
+        }
+
+        .loading {
+            color: #ff9800;
+            font-size: 18px;
         }
     </style>
 </head>
 <body>
 
-<div id="chartContainer">
-    <canvas id="oiVolumeChart"></canvas>
+<div class="container">
+    <h1>Live Open Interest (OI) for BTC/USDT</h1>
+    <div id="loadingMessage" class="loading">Loading...</div>
+    <div id="oiBox" class="oi-box">0.00</div>
 </div>
 
 <script>
-// API URLs to fetch Open Interest (OI) and Volume data
+// Binance Futures Open Interest API URL for BTC/USDT
 const oiUrl = 'https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT';
-const volumeUrl = 'https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=BTCUSDT';
 
-let oiData = [];
-let volumeData = [];
-let ratioData = [];
-
-// Fetch Open Interest and Volume data
-async function fetchData() {
+// Function to fetch Open Interest data from Binance
+async function fetchOpenInterest() {
     try {
-        // Fetch Open Interest (OI)
-        const oiResponse = await fetch(oiUrl);
-        const oiJson = await oiResponse.json();
-        const openInterest = parseFloat(oiJson.openInterest); // Open Interest in BTC
+        const response = await fetch(oiUrl);
+        const data = await response.json();
+        const openInterest = parseFloat(data.openInterest).toFixed(2); // Get Open Interest as a float, 2 decimal places
 
-        // Fetch 24h Volume data
-        const volumeResponse = await fetch(volumeUrl);
-        const volumeJson = await volumeResponse.json();
-        const volume = parseFloat(volumeJson.volume); // Volume in BTC
+        // Update the Open Interest value in the box
+        document.getElementById('oiBox').textContent = openInterest;
 
-        const ratio = openInterest / volume; // OI/Volume Ratio
-
-        // Push data to arrays for chart
-        oiData.push(openInterest);
-        volumeData.push(volume);
-        ratioData.push(ratio);
-
-        // Limit data array size to last 100 data points for better performance
-        if (oiData.length > 100) {
-            oiData.shift();
-            volumeData.shift();
-            ratioData.shift();
-        }
-
-        updateChart();
-
+        // Hide the loading message after data is fetched
+        document.getElementById('loadingMessage').style.display = 'none';
     } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching Open Interest:', error);
+        document.getElementById('oiBox').textContent = 'Error';
     }
 }
 
-// Initialize the chart
-let oiVolumeChart;
-function updateChart() {
-    const ctx = document.getElementById('oiVolumeChart').getContext('2d');
+// Fetch data every second (1000ms)
+setInterval(fetchOpenInterest, 1000);
 
-    // Initialize chart only once
-    if (!oiVolumeChart) {
-        oiVolumeChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: Array.from({ length: ratioData.length }, (_, index) => index + 1),
-                datasets: [
-                    {
-                        label: 'OI/Volume Ratio',
-                        data: ratioData,
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)', // Transparent fill under the line (Area effect)
-                        fill: true, // Make it an area chart
-                        tension: 0.1,
-                    },
-                    {
-                        label: 'Open Interest (BTC)',
-                        data: oiData,
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        fill: false,
-                        tension: 0.1,
-                    },
-                    {
-                        label: 'Volume (BTC)',
-                        data: volumeData,
-                        borderColor: 'rgba(153, 102, 255, 1)',
-                        fill: false,
-                        tension: 0.1,
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        title: { display: true, text: 'Time (seconds)' },
-                    },
-                    y: {
-                        title: { display: true, text: 'Values' },
-                    }
-                },
-                animation: {
-                    duration: 1000 // refresh every second
-                }
-            }
-        });
-    } else {
-        // Update the existing chart with new data
-        oiVolumeChart.data.labels = Array.from({ length: ratioData.length }, (_, index) => index + 1);
-        oiVolumeChart.data.datasets[0].data = ratioData;
-        oiVolumeChart.data.datasets[1].data = oiData;
-        oiVolumeChart.data.datasets[2].data = volumeData;
-        oiVolumeChart.update();
-    }
-}
-
-// Refresh data every 1 second
-setInterval(fetchData, 1000);
-
+// Initial data fetch when the page loads
+fetchOpenInterest();
 </script>
 
 </body>
