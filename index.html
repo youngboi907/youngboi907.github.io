@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCUSDT Order Book Depth Sums</title>
+    <title>BTCUSDT Order Book Depth Sums (1% to 2.5%)</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
     <style>
@@ -14,8 +14,13 @@
     </style>
 </head>
 <body>
-    <h1>BTCUSDT Order Book Depth Sums</h1>
+    <h1>BTCUSDT Order Book Depth Sums (1% to 2.5%)</h1>
     <div id="chart"></div>
+    <div id="result">
+        <p>Bid Sum: <span id="bidSum1_2_5"></span></p>
+        <p>Ask Sum: <span id="askSum1_2_5"></span></p>
+        <p>Delta: <span id="delta1_2_5"></span></p> 
+    </div>
 
     <script>
         // Sample order book data (replace with actual data)
@@ -45,57 +50,31 @@
         const mid_price = (bids[0][0] + asks[0][0]) / 2;
 
         function calculateDepthSums(bids, asks, mid_price) {
-            const ranges = [
-                { lower: mid_price * 0.99, upper: mid_price * 1.01 },
-                { lower: mid_price * 0.975, upper: mid_price * 1.025 },
-                { lower: mid_price * 0.95, upper: mid_price * 1.05 },
-                { lower: mid_price * 0.90, upper: mid_price * 1.10 }
-            ];
+            const lower_bound = mid_price * 0.99;
+            const upper_bound = mid_price * 1.01;
 
-            const results = {};
+            const filtered_bids = bids.filter(([price, _]) => price >= lower_bound && price <= upper_bound);
+            const filtered_asks = asks.filter(([price, _]) => price >= lower_bound && price <= upper_bound);
 
-            for (let i = 0; i < ranges.length; i++) {
-                const { lower, upper } = ranges[i];
-                const filtered_bids = bids.filter(([price, _]) => price >= lower && price <= upper);
-                const filtered_asks = asks.filter(([price, _]) => price >= lower && price <= upper);
+            const bid_sum = filtered_bids.reduce((acc, curr) => acc + curr[1], 0);
+            const ask_sum = filtered_asks.reduce((acc, curr) => acc + curr[1], 0);
+            const delta = ask_sum - bid_sum;
 
-                const bid_sum = filtered_bids.reduce((acc, curr) => acc + curr[1], 0);
-                const ask_sum = filtered_asks.reduce((acc, curr) => acc + curr[1], 0);
-                const delta = ask_sum - bid_sum;
-
-                results[`bidSum${i + 1}_${i + 2}`] = bid_sum;
-                results[`askSum${i + 1}_${i + 2}`] = ask_sum;
-                results[`delta${i + 1}_${i + 2}`] = delta;
-            }
-
-            return results;
+            return { bid_sum, ask_sum, delta };
         }
 
-        function createChart(results) {
-            const labels = [
-                'Bids (1-2.5%)', 'Asks (1-2.5%)', 
-                'Bids (2.5-5%)', 'Asks (2.5-5%)', 
-                'Bids (5-10%)', 'Asks (5-10%)'
-            ];
-
+        function createChart(bid_sum, ask_sum) {
             const data = [
                 {
-                    x: labels,
-                    y: [
-                        results.bidSum1_2_5, 
-                        results.askSum1_2_5, 
-                        results.bidSum2_5_5, 
-                        results.askSum2_5_5, 
-                        results.bidSum5_10, 
-                        results.askSum5_10
-                    ],
+                    x: ['Bids (1-2.5%)', 'Asks (1-2.5%)'], 
+                    y: [bid_sum, ask_sum],
                     type: 'bar',
-                    marker: { color: ['green', 'red', 'lightgreen', 'pink', 'darkgreen', 'magenta'] }
+                    marker: { color: ['green', 'red'] }
                 }
             ];
 
             const layout = {
-                title: 'BTCUSDT Order Book Depth Sums',
+                title: 'BTCUSDT Order Book Depth Sums (1% to 2.5% around Mid-Price)',
                 xaxis: { title: 'Order Book Side' },
                 yaxis: { title: 'Order Quantity Sum' },
                 plot_bgcolor: '#121212', 
@@ -106,19 +85,12 @@
             Plotly.newPlot('chart', data, layout);
         }
 
-        // Calculate and display depth sums and deltas
-        const results = calculateDepthSums(bids, asks, mid_price);
-
-        // Display results in the HTML (you can customize this part)
-        for (const key in results) {
-            const elementId = key.toLowerCase();
-            const valueElement = document.getElementById(elementId);
-            if (valueElement) {
-                valueElement.textContent = results[key];
-            }
-        }
-
-        createChart(results); 
+        // Calculate and display depth sums and delta
+        const { bid_sum, ask_sum, delta } = calculateDepthSums(bids, asks, mid_price);
+        document.getElementById('bidSum').textContent = bid_sum;
+        document.getElementById('askSum').textContent = ask_sum;
+        document.getElementById('delta').textContent = delta; 
+        createChart(bid_sum, ask_sum); 
 
     </script>
 
