@@ -14,11 +14,13 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: #f0f0f0;
+  background-color: #181818; /* Dark background */
+  color: #fff; /* White text */
 }
 
 h1 {
   margin-bottom: 20px;
+  color: #b0b0b0; /* Slightly lighter gray for headings */
 }
 
 #ratio-container {
@@ -46,7 +48,7 @@ h1 {
       label: 'OI/Volume Ratio',
       data: [],
       fill: true,
-      backgroundColor: 'rgba(75, 192, 192, 0.2)',
+      backgroundColor: 'rgba(75, 192, 192, 0.2)', // Adjust for dark mode
       borderColor: 'rgba(75, 192, 192, 1)',
       borderWidth: 1
     }]
@@ -57,14 +59,30 @@ h1 {
     data: chartData,
     options: {
       responsive: true,
-      maintainAspectRatio: false, // Allow chart to fill container
+      maintainAspectRatio: false,
       plugins: {
         legend: {
           position: 'top',
+          labels: {
+            color: '#fff' // White legend labels
+          }
         },
         title: {
           display: true,
-          text: 'BTCUSDT OI/Volume Ratio'
+          text: 'BTCUSDT OI/Volume Ratio',
+          color: '#b0b0b0' // Lighter gray title color
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: '#444' // Darker gray grid lines
+          }
+        },
+        y: {
+          grid: {
+            color: '#444' // Darker gray grid lines
+          }
         }
       }
     }
