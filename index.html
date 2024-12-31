@@ -3,17 +3,16 @@
 <head>
     <title>BTCUSDT Order Book Depth Sums</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
-    <style>
-        body {
-            background-color: #121212;
-            color: #fff;
-        }
-    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script> 
 </head>
 <body>
-    <h1>BTCUSDT Order Book Depth Sums</h1>
+    <h1>BTCUSDT Order Book Depth Sums (1% to 2.5% around Mid-Price)</h1>
     <div id="chart"></div>
+    <div id="result">
+        <p>Bid Sum: <span id="bidSum"></span></p>
+        <p>Ask Sum: <span id="askSum"></span></p>
+        <p>Delta: <span id="delta"></span></p> 
+    </div>
 
     <script>
         // Sample order book data (replace with actual data)
@@ -22,10 +21,7 @@
             [100.05, 5], 
             [100, 8], 
             [99.95, 12], 
-            [99.9, 7],
-            [99.8, 3],
-            [99.7, 2],
-            [99.6, 1]
+            [99.9, 7] 
         ];
 
         const asks = [
@@ -33,85 +29,52 @@
             [100.25, 8], 
             [100.3, 10], 
             [100.35, 12], 
-            [100.4, 5],
-            [100.5, 3],
-            [100.6, 2],
-            [100.7, 1] 
+            [100.4, 5] 
         ];
 
         // Calculate mid-price
         const mid_price = (bids[0][0] + asks[0][0]) / 2;
 
         function calculateDepthSums(bids, asks, mid_price) {
-            const ranges = [
-                { lower: mid_price * 0.99, upper: mid_price * 1.01, label: '1-2.5%' },
-                { lower: mid_price * 0.975, upper: mid_price * 1.025, label: '2.5-5%' },
-                { lower: mid_price * 0.95, upper: mid_price * 1.05, label: '5-10%' }
-            ];
+            const lower_bound_1 = mid_price * 0.99;
+            const upper_bound_1 = mid_price * 1.01;
+            const lower_bound_2_5 = mid_price * 0.975;
+            const upper_bound_2_5 = mid_price * 1.025;
 
-            const results = {};
+            const filtered_bids = bids.filter(([price, _]) => price >= lower_bound_1 && price <= upper_bound_2_5);
+            const filtered_asks = asks.filter(([price, _]) => price >= lower_bound_1 && price <= upper_bound_2_5);
 
-            for (const range of ranges) {
-                const { lower, upper, label } = range;
-                const filtered_bids = bids.filter(([price, _]) => price >= lower && price <= upper);
-                const filtered_asks = asks.filter(([price, _]) => price >= lower && price <= upper);
+            const bid_sum = filtered_bids.reduce((acc, curr) => acc + curr[1], 0);
+            const ask_sum = filtered_asks.reduce((acc, curr) => acc + curr[1], 0);
 
-                const bid_sum = filtered_bids.reduce((acc, curr) => acc + curr[1], 0);
-                const ask_sum = filtered_asks.reduce((acc, curr) => acc + curr[1], 0);
-                const delta = ask_sum - bid_sum;
-
-                results[label] = { bid_sum, ask_sum, delta }; 
-            }
-
-            return results;
+            return { bid_sum, ask_sum, delta: ask_sum - bid_sum };
         }
 
-        function createChart(results) {
-            const trace1 = {
-                x: Object.keys(results),
-                y: Object.values(results).map(obj => obj.bid_sum),
-                name: 'Bids',
-                type: 'line',
-                marker: { color: 'green' }
-            };
-
-            const trace2 = {
-                x: Object.keys(results),
-                y: Object.values(results).map(obj => obj.ask_sum),
-                name: 'Asks',
-                type: 'line',
-                marker: { color: 'red' }
-            };
-
-            const data = [trace1, trace2];
+        function createChart(bid_sum, ask_sum) {
+            const data = [
+                {
+                    x: ['Bids', 'Asks'],
+                    y: [bid_sum, ask_sum],
+                    type: 'bar',
+                    marker: { color: ['green', 'red'] }
+                }
+            ];
 
             const layout = {
-                title: 'BTCUSDT Order Book Depth Sums',
-                xaxis: { title: 'Price Range' },
-                yaxis: { title: 'Order Quantity Sum' },
-                plot_bgcolor: '#121212', 
-                paper_bgcolor: '#121212', 
-                font: { color: '#fff' } 
+                title: 'BTCUSDT Order Book Depth Sums (1% to 2.5% around Mid-Price)',
+                xaxis: { title: 'Order Book Side' },
+                yaxis: { title: 'Order Quantity Sum' }
             };
 
             Plotly.newPlot('chart', data, layout);
         }
 
-        // Calculate and display depth sums and deltas
-        const results = calculateDepthSums(bids, asks, mid_price);
-
-        // Display results (you can customize this part)
-        for (const range in results) {
-            const bidSumId = `bidSum${range}`;
-            const askSumId = `askSum${range}`;
-            const deltaId = `delta${range}`;
-
-            document.getElementById(bidSumId).textContent = results[range].bid_sum;
-            document.getElementById(askSumId).textContent = results[range].ask_sum;
-            document.getElementById(deltaId).textContent = results[range].delta;
-        }
-
-        createChart(results); 
+        // Calculate and display initial depth sums and delta
+        const { bid_sum, ask_sum, delta } = calculateDepthSums(bids, asks, mid_price);
+        document.getElementById('bidSum').textContent = bid_sum;
+        document.getElementById('askSum').textContent = ask_sum;
+        document.getElementById('delta').textContent = delta; 
+        createChart(bid_sum, ask_sum);
 
     </script>
 
