@@ -69,10 +69,10 @@
 
     <!-- Order Book Section -->
     <div id="order-book-container" class="container">
-        <h1>BTCUSDT Order Book (0 to 1 Million USD)</h1>
+        <h1>BTCUSDT Order Book </h1>
         <div id="order-book-chart"></div>
         <label for="minQtyUSD">Minimum Order Size (USD):</label>
-        <input type="number" id="minQtyUSD" value="1000" step="100" min="1">
+        <input type="number" id="minQtyUSD" value="50000" step="100" min="1">
     </div>
 
     <!-- OI/Volume Ratio Section -->
@@ -84,7 +84,7 @@
     <!-- Leverage Calculator Section -->
     <div class="leverage-container">
         <h1>BTC Futures Leverage Calculator</h1>
-        <p>This tool fetches live data from Binance to calculate the leverage used in BTC futures trading, updated every 5 seconds.</p>
+        
         <div id="result" class="result">
             <p><strong>Funding Rate:</strong> <span id="fundingRate">Loading...</span></p>
             <p><strong>Long-Short Ratio:</strong> <span id="longShortRatio">Loading...</span></p>
