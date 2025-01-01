@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>BTCUSDT Order Book & OI/Volume Ratio</title>
+    <title>BTCUSDT Order Book, OI/Volume Ratio & Estimated Liquidation Delta</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
     <style>
@@ -13,28 +13,6 @@
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
-        }
-
-        #order-book-container {
-            flex: 1;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        #chart-container {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        #order-book-chart {
-            width: 100%;
-            margin-bottom: 20px;
-        }
-
-        #oi-volume-ratio-container {
-            padding: 20px;
-            box-sizing: border-box;
-            text-align: center;
         }
 
         .container {
@@ -73,18 +51,20 @@
 <body>
 
     <div id="order-book-container" class="container">
-        <h1>BTCUSDT Order Book (0 to 1 Million USD)</h1>
+        <h1>BTCUSDT Order Book</h1>
         <div id="order-book-chart"></div>
         <label for="minQtyUSD">Minimum Order Size (USD):</label>
         <input type="number" id="minQtyUSD" value="1000" step="100" min="1">
     </div>
 
-    <div id="chart-container"> 
-    </div>
-
     <div id="oi-volume-ratio-container" class="container">
         <h1>BTCUSDT OI/Volume Ratio</h1>
         <p>OI/Volume Ratio: <span id="oiVolumeRatio"></span></p>
+    </div>
+
+    <div id="liquidation-delta-container" class="container"> 
+        <h1>Estimated Liquidation Level Delta</h1>
+        <p>Delta: <span id="liquidationDelta"></span></p>
     </div>
 
     <script>
@@ -141,7 +121,7 @@
             const data = [trace1, trace2];
 
             const layout = {
-                title: 'BTCUSDT Order Book (0 to 1 Million USD)',
+                title: 'BTCUSDT Order Book',
                 xaxis: { title: 'Price (USDT)' },
                 yaxis: { title: 'Order Size (USD)' },
                 barmode: 'group', 
@@ -190,10 +170,30 @@
             document.getElementById('oiVolumeRatio').textContent = ratio.toFixed(2);
         }
 
-        async function updateMarketData() {
-            const { volume, openInterest } = await fetchMarketData();
-            const ratio = calculateOIVolumeRatio(volume, openInterest);
-            displayOIVolumeRatio(ratio);
+        // --- Liquidation Delta Section ---
+
+        async function fetchLongShortRatio() {
+            try {
+                const response = await axios.get('https://fapi.binance.com/fapi/v1/leverageBracket'); 
+                const longRatio = response.data[0].longPositionRatio; 
+                const shortRatio = response.data[0].shortPositionRatio; 
+                return { longRatio, shortRatio };
+            } catch (error) {
+                console.error("Error fetching long/short account ratio:", error);
+                return { longRatio: 0, shortRatio: 0 }; 
+            }
+        }
+
+        function estimateLiquidationDelta(longRatio, shortRatio) {
+            // **(Simplified Example - Replace with your own, more sophisticated logic)**
+            // This is a simplified example and may not accurately reflect real-world market dynamics. 
+            // Consider factors like volatility, funding rates, and historical data for more accurate estimations.
+            // For this example, we'll use a simple difference 
+            return longRatio - shortRatio; 
+        }
+
+        function displayLiquidationDelta(delta) {
+            document.getElementById('liquidationDelta').textContent = delta.toFixed(2);
         }
 
         // --- Update Intervals ---
@@ -201,7 +201,7 @@
         // Update order book every 5 seconds
         setInterval(updateOrderBook, 5000);
 
-        // Update OI/Volume Ratio every second
+        // Update OI/Volume Ratio and Liquidation Delta every 1 second
         setInterval(updateMarketData, 1000); 
 
         // Initial fetches
