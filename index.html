@@ -1,244 +1,218 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>BTCUSDT Order Book & OI/Volume Ratio</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
             background-color: #121212;
-            color: white;
-            margin: 0;
-            padding: 0;
+            color: #fff;
+            font-family: sans-serif;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
         }
-        h1, label, select {
-            margin: 10px 0;
+
+        #order-book-container {
+            flex: 1;
+            padding: 20px;
+            box-sizing: border-box;
         }
-        canvas {
-            max-width: 95%;
-            margin: 20px 0;
+
+        #chart-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        #order-book-chart {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        #oi-volume-ratio-container {
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .container {
+            background-color: #181818;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        label {
+            margin-right: 10px;
+        }
+
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            font-size: 14px;
+            background-color: #2a2d36;
+            color: white;
+            border: 1px solid #3a3f4b;
+            border-radius: 5px;
+            outline: none;
+            transition: all 0.2s ease-in-out;
+        }
+
+        input[type="number"]:focus {
+            border-color: #7289da;
+            box-shadow: 0 0 5px rgba(114, 137, 218, 0.5);
         }
     </style>
 </head>
 <body>
-    <h1>BTC/USDT Dashboard</h1>
 
-    <!-- Timeframe Selector -->
-    <label for="timeframe">Select Timeframe:</label>
-    <select id="timeframe">
-        <option value="1m">1 Minute</option>
-        <option value="5m">5 Minutes</option>
-        <option value="15m">15 Minutes</option>
-        <option value="1h">1 Hour</option>
-        <option value="4h">4 Hours</option>
-        <option value="1d">1 Day</option>
-    </select>
+    <div id="order-book-container" class="container">
+        <h1>BTCUSDT Order Book (0 to 1 Million USD)</h1>
+        <div id="order-book-chart"></div>
+        <label for="minQtyUSD">Minimum Order Size (USD):</label>
+        <input type="number" id="minQtyUSD" value="1000" step="100" min="1">
+    </div>
 
-    <!-- Combined BTC/USDT and Open Interest Chart -->
-    <h2>BTC/USDT and Open Interest</h2>
-    <canvas id="combinedChart"></canvas>
+    <div id="chart-container"> 
+    </div>
 
-    <!-- Order Book Filter -->
-    <h2>Filtered Order Book</h2>
-    <label for="minQty">Minimum Quantity (BTC):</label>
-    <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
-
-    <canvas id="orderBookChart"></canvas>
+    <div id="oi-volume-ratio-container" class="container">
+        <h1>BTCUSDT OI/Volume Ratio</h1>
+        <p>OI/Volume Ratio: <span id="oiVolumeRatio"></span></p>
+    </div>
 
     <script>
-        const symbol = "BTCUSDT";
-        let minQty = 0.001; // Default minimum quantity filter
-        let orderBook = { bids: [], asks: [] }; // Order book data
-        let combinedChart, orderBookChart;
+        // --- Order Book Section ---
 
-        // WebSocket for Order Book
-        const wsOrderBook = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
-
-        wsOrderBook.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            updateOrderBook(data.b, data.a);
-            updateOrderBookChart();
-        };
-
-        // Function to update the Order Book data
-        function updateOrderBook(bids, asks) {
-            // Process Bids
-            bids.forEach(([price, quantity]) => {
-                const priceNum = parseFloat(price);
-                const quantityNum = parseFloat(quantity);
-                if (quantityNum >= minQty) { // Only include bids that meet the minQty
-                    const existing = orderBook.bids.find(order => order.price === priceNum);
-                    if (existing) {
-                        existing.quantity = quantityNum;
-                    } else {
-                        orderBook.bids.push({ price: priceNum, quantity: quantityNum });
-                    }
-                }
-            });
-
-            // Process Asks
-            asks.forEach(([price, quantity]) => {
-                const priceNum = parseFloat(price);
-                const quantityNum = parseFloat(quantity);
-                if (quantityNum >= minQty) { // Only include asks that meet the minQty
-                    const existing = orderBook.asks.find(order => order.price === priceNum);
-                    if (existing) {
-                        existing.quantity = quantityNum;
-                    } else {
-                        orderBook.asks.push({ price: priceNum, quantity: quantityNum });
-                    }
-                }
-            });
-
-            // Sort bids (descending) and asks (ascending)
-            orderBook.bids.sort((a, b) => b.price - a.price);
-            orderBook.asks.sort((a, b) => a.price - b.price);
-        }
-
-        // Initialize the Order Book Chart
-        function initializeOrderBookChart() {
-            const ctx = document.getElementById("orderBookChart").getContext("2d");
-            orderBookChart = new Chart(ctx, {
-                type: "bar",
-                data: {
-                    labels: [], // Will be populated dynamically
-                    datasets: [
-                        {
-                            label: "Bids",
-                            data: [],
-                            backgroundColor: "rgba(76, 175, 80, 0.7)", // Green
-                        },
-                        {
-                            label: "Asks",
-                            data: [],
-                            backgroundColor: "rgba(244, 67, 54, 0.7)", // Red
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Price Levels (USDT)" } },
-                        y: { title: { display: true, text: "Quantity (BTC)" } }
-                    }
-                }
-            });
-        }
-
-        // Update the Order Book Chart
-        function updateOrderBookChart() {
-            const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
-            const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
-            const bidQuantities = orderBook.bids.map(order => order.quantity);
-            const askQuantities = orderBook.asks.map(order => order.quantity);
-
-            orderBookChart.data.labels = [...bidLabels, ...askLabels];
-            orderBookChart.data.datasets[0].data = bidQuantities;
-            orderBookChart.data.datasets[1].data = askQuantities;
-
-            orderBookChart.update();
-        }
-
-        // --- Combined BTC/USDT and Open Interest Chart ---
-        async function fetchCombinedChartData(timeframe) {
+        async function fetchOrderBook() {
             try {
-                const priceDataResponse = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=50`);
-                const priceData = await priceDataResponse.json();
-
-                const openInterestDataResponse = await fetch(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=${timeframe}&limit=50`);
-                const openInterestData = await openInterestDataResponse.json();
-
-                return priceData.map((entry, index) => ({
-                    time: new Date(entry[0]).toLocaleTimeString(),
-                    price: parseFloat(entry[4]),
-                    openInterest: openInterestData[index] ? parseFloat(openInterestData[index].sumOpenInterest) : 0
-                }));
-            } catch (error) {
-                console.error("Error fetching combined chart data:", error);
-                return [];
-            }
-        }
-
-        async function renderCombinedChart(timeframe) {
-            const data = await fetchCombinedChartData(timeframe);
-
-            if (!data.length) {
-                alert("No data available!");
-                return;
-            }
-
-            const labels = data.map(entry => entry.time);
-            const prices = data.map(entry => entry.price);
-            const openInterest = data.map(entry => entry.openInterest);
-
-            const ctx = document.getElementById("combinedChart").getContext("2d");
-            if (combinedChart) combinedChart.destroy();
-
-            combinedChart = new Chart(ctx, {
-                type: "line",
-                data: {
-                    labels,
-                    datasets: [
-                        {
-                            label: "BTC/USDT Price",
-                            data: prices,
-                            borderColor: "rgba(255, 206, 86, 1)",
-                            backgroundColor: "rgba(255, 206, 86, 0.2)",
-                            borderWidth: 2,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: "Open Interest",
-                            data: openInterest,
-                            borderColor: "rgba(75, 192, 192, 1)",
-                            backgroundColor: "rgba(75, 192, 192, 0.2)",
-                            borderWidth: 2,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: "Time" } },
-                        y: {
-                            title: { display: true, text: "Price (USDT)" },
-                            position: 'left',
-                            grid: { color: 'rgba(255, 206, 86, 0.2)' }
-                        },
-                        y1: {
-                            title: { display: true, text: "Open Interest" },
-                            position: 'right',
-                            grid: { drawOnChartArea: false }
-                        }
+                const response = await axios.get('https://api.binance.com/api/v3/depth', {
+                    params: {
+                        symbol: 'BTCUSDT',
+                        limit: 1000 
                     }
-                }
-            });
+                });
+
+                const bids = response.data.bids.map(([price, qty]) => [parseFloat(price), parseFloat(qty)]);
+                const asks = response.data.asks.map(([price, qty]) => [parseFloat(price), parseFloat(qty)]);
+                
+                return { bids, asks };
+            } catch (error) {
+                console.error("Error fetching order book data:", error);
+                return { bids: [], asks: [] }; 
+            }
         }
 
-        // --- Event Listeners ---
-        document.getElementById("timeframe").addEventListener("change", (event) => {
-            const timeframe = event.target.value;
-            renderCombinedChart(timeframe);
+        function filterOrderBook(bids, asks, minQtyUSD) {
+            const filtered_bids = bids.filter(([price, qty]) => price * qty >= minQtyUSD);
+            const filtered_asks = asks.filter(([price, qty]) => price * qty >= minQtyUSD);
+
+            return { filtered_bids, filtered_asks };
+        }
+
+        function createOrderBookChart(filtered_bids, filtered_asks) {
+            const bid_prices = filtered_bids.map(([price, _]) => price);
+            const bid_quantities_usd = filtered_bids.map(([price, qty]) => price * qty); 
+            const ask_prices = filtered_asks.map(([price, _]) => price);
+            const ask_quantities_usd = filtered_asks.map(([price, qty]) => price * qty);
+
+            const trace1 = {
+                x: bid_prices,
+                y: bid_quantities_usd,
+                type: 'bar',
+                name: 'Bids',
+                marker: { color: 'green' }
+            };
+
+            const trace2 = {
+                x: ask_prices,
+                y: ask_quantities_usd,
+                type: 'bar',
+                name: 'Asks',
+                marker: { color: 'red' }
+            };
+
+            const data = [trace1, trace2];
+
+            const layout = {
+                title: 'BTCUSDT Order Book (0 to 1 Million USD)',
+                xaxis: { title: 'Price (USDT)' },
+                yaxis: { title: 'Order Size (USD)' },
+                barmode: 'group', 
+                plot_bgcolor: '#121212', 
+                paper_bgcolor: '#121212', 
+                font: { color: '#fff' } 
+            };
+
+            Plotly.newPlot('order-book-chart', data, layout);
+        }
+
+        async function updateOrderBook() {
+            const orderBookData = await fetchOrderBook();
+            const minQtyUSD = parseFloat(document.getElementById("minQtyUSD").value);
+            const { filtered_bids, filtered_asks } = filterOrderBook(orderBookData.bids, orderBookData.asks, minQtyUSD);
+            createOrderBookChart(filtered_bids, filtered_asks);
+        }
+
+        // --- OI/Volume Ratio Section ---
+
+        async function fetchMarketData() {
+            try {
+                const [tickerResponse, openInterestResponse] = await Promise.all([
+                    axios.get('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=BTCUSDT'),
+                    axios.get('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT')
+                ]);
+
+                const volume = parseFloat(tickerResponse.data.volume);
+                const openInterest = parseFloat(openInterestResponse.data.openInterest);
+
+                return { volume, openInterest };
+            } catch (error) {
+                console.error("Error fetching market data:", error);
+                return { volume: 0, openInterest: 0 };
+            }
+        }
+
+        function calculateOIVolumeRatio(volume, openInterest) {
+            if (volume === 0 || openInterest === 0) {
+                return 0;
+            }
+            return openInterest / volume;
+        }
+
+        function displayOIVolumeRatio(ratio) {
+            document.getElementById('oiVolumeRatio').textContent = ratio.toFixed(2);
+        }
+
+        async function updateMarketData() {
+            const { volume, openInterest } = await fetchMarketData();
+            const ratio = calculateOIVolumeRatio(volume, openInterest);
+            displayOIVolumeRatio(ratio);
+        }
+
+        // --- Update Intervals ---
+
+        // Update order book every 5 seconds
+        setInterval(updateOrderBook, 5000);
+
+        // Update OI/Volume Ratio every second
+        setInterval(updateMarketData, 1000); 
+
+        // Initial fetches
+        updateOrderBook();
+        updateMarketData();
+
+        document.getElementById("minQtyUSD").addEventListener("input", () => {
+            updateOrderBook();
         });
 
-        document.getElementById("minQty").addEventListener("input", (event) => {
-            minQty = parseFloat(event.target.value);
-            orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
-            orderBook.asks = orderBook.asks.filter(order => order.quantity >= minQty);
-            updateOrderBookChart(); // Refresh the order book chart with the new filter
-        });
-
-        // Initialize charts
-        initializeOrderBookChart();
-        renderCombinedChart("1m");
     </script>
+
 </body>
 </html>
