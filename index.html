@@ -1,82 +1,241 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>BTCUSDT Order Book Depth Sums</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script> 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradingView with Binance Order Book</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* General Styles */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: white;
+            overflow: hidden;
+        }
+
+        /* TradingView Chart Container */
+        #tv_chart_container {
+            position: relative;
+            width: 100%;
+            height: 70vh;
+        }
+
+        /* Order Book Container */
+        #orderBookContainer {
+            width: 100%;
+            height: 30vh;
+            background-color: #1e2128;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        /* Order Book Controls */
+        #orderBookControls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        label {
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            font-size: 14px;
+            background-color: #2a2d36;
+            color: white;
+            border: 1px solid #3a3f4b;
+            border-radius: 5px;
+            outline: none;
+            transition: all 0.2s ease-in-out;
+        }
+
+        input[type="number"]:focus {
+            border-color: #7289da;
+            box-shadow: 0 0 5px rgba(114, 137, 218, 0.5);
+        }
+
+        /* Order Book Chart */
+        canvas {
+            width: 100%;
+            height: calc(100% - 40px);
+        }
+
+        /* Media Queries for Responsiveness */
+        @media (max-width: 768px) {
+            #tv_chart_container {
+                height: 60vh;
+            }
+            #orderBookContainer {
+                height: 40vh;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>BTCUSDT Order Book Depth Sums (1% to 2.5% around Mid-Price)</h1>
-    <div id="chart"></div>
-    <div id="result">
-        <p>Bid Sum: <span id="bidSum"></span></p>
-        <p>Ask Sum: <span id="askSum"></span></p>
-        <p>Delta: <span id="delta"></span></p> 
+
+<!-- TradingView Chart Container -->
+<div id="tv_chart_container"></div>
+
+<!-- Order Book Chart Container -->
+<div id="orderBookContainer">
+    <div id="orderBookControls">
+        <label for="minQty">Minimum Quantity (BTC):</label>
+        <input type="number" id="minQty" value="0.001" step="0.001" min="0.000001">
     </div>
+    <canvas id="orderBookChart"></canvas>
+</div>
 
-    <script>
-        // Sample order book data (replace with actual data)
-        const bids = [
-            [100.1, 10], 
-            [100.05, 5], 
-            [100, 8], 
-            [99.95, 12], 
-            [99.9, 7] 
-        ];
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+    // Initialize TradingView chart
+    new TradingView.widget({
+        container_id: "tv_chart_container",
+        autosize: true,
+        symbol: "BINANCE:BTCUSDT",  // Default symbol BTC/USDT on Binance
+        interval: "60",  // 1-hour timeframe
+        timezone: "Etc/UTC",
+        theme: "dark",
+        locale: "en",
+        toolbar_bg: "#1e2128",
+        enable_publishing: false,
+        allow_symbol_change: true,
+        studies: [
+            "MAExp@tv-basicstudies",  // EMA
+            "RSI@tv-basicstudies",
+            "MACD@tv-basicstudies"
+        ],
+        overrides: {
+            "movingAverage.length": 200 // EMA default length
+        },
+        details: true,
+        hotlist: true,
+        calendar: true,
+        withdateranges: true,
+        hide_side_toolbar: false, // Show side toolbar
+    });
 
-        const asks = [
-            [100.2, 15], 
-            [100.25, 8], 
-            [100.3, 10], 
-            [100.35, 12], 
-            [100.4, 5] 
-        ];
+    // Order book data variables
+    const symbol = "BTCUSDT";
+    let minQty = 0.001; // Default minimum quantity filter
+    let orderBook = { bids: [], asks: [] };
+    let orderBookChart;
 
-        // Calculate mid-price
-        const mid_price = (bids[0][0] + asks[0][0]) / 2;
+    // Connect to Binance WebSocket
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`);
 
-        function calculateDepthSums(bids, asks, mid_price) {
-            const lower_bound_1 = mid_price * 0.99;
-            const upper_bound_1 = mid_price * 1.01;
-            const lower_bound_2_5 = mid_price * 0.975;
-            const upper_bound_2_5 = mid_price * 1.025;
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        updateOrderBook(data.b, data.a);
+        updateChart();
+    };
 
-            const filtered_bids = bids.filter(([price, _]) => price >= lower_bound_1 && price <= upper_bound_2_5);
-            const filtered_asks = asks.filter(([price, _]) => price >= lower_bound_1 && price <= upper_bound_2_5);
+    function updateOrderBook(bids, asks) {
+        bids.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
 
-            const bid_sum = filtered_bids.reduce((acc, curr) => acc + curr[1], 0);
-            const ask_sum = filtered_asks.reduce((acc, curr) => acc + curr[1], 0);
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) return;
 
-            return { bid_sum, ask_sum, delta: ask_sum - bid_sum };
-        }
+            const existing = orderBook.bids.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.bids.push({ price: priceNum, quantity: quantityNum });
+            }
+        });
 
-        function createChart(bid_sum, ask_sum) {
-            const data = [
-                {
-                    x: ['Bids', 'Asks'],
-                    y: [bid_sum, ask_sum],
-                    type: 'bar',
-                    marker: { color: ['green', 'red'] }
+        asks.forEach(([price, quantity]) => {
+            const priceNum = parseFloat(price);
+            const quantityNum = parseFloat(quantity);
+
+            if (quantityNum === 0 || priceNum < 1 || priceNum > 1000000 || quantityNum < minQty) return;
+
+            const existing = orderBook.asks.find(order => order.price === priceNum);
+            if (existing) {
+                existing.quantity = quantityNum;
+            } else {
+                orderBook.asks.push({ price: priceNum, quantity: quantityNum });
+            }
+        });
+
+        orderBook.bids.sort((a, b) => b.price - a.price);
+        orderBook.asks.sort((a, b) => a.price - b.price);
+    }
+
+    function initializeChart() {
+        const ctx = document.getElementById("orderBookChart").getContext("2d");
+        orderBookChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: "Bids",
+                        data: [],
+                        backgroundColor: "rgba(76, 175, 80, 0.7)", // Green
+                    },
+                    {
+                        label: "Asks",
+                        data: [],
+                        backgroundColor: "rgba(244, 67, 54, 0.7)", // Red
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: "Price Levels (USDT)" }
+                    },
+                    y: {
+                        title: { display: true, text: "Quantity (BTC)" }
+                    }
                 }
-            ];
+            }
+        });
+    }
 
-            const layout = {
-                title: 'BTCUSDT Order Book Depth Sums (1% to 2.5% around Mid-Price)',
-                xaxis: { title: 'Order Book Side' },
-                yaxis: { title: 'Order Quantity Sum' }
-            };
+    function updateChart() {
+        const bidLabels = orderBook.bids.map(order => `$${order.price.toFixed(2)}`);
+        const askLabels = orderBook.asks.map(order => `$${order.price.toFixed(2)}`);
 
-            Plotly.newPlot('chart', data, layout);
-        }
+        const bidQuantities = orderBook.bids.map(order => order.quantity);
+        const askQuantities = orderBook.asks.map(order => order.quantity);
 
-        // Calculate and display initial depth sums and delta
-        const { bid_sum, ask_sum, delta } = calculateDepthSums(bids, asks, mid_price);
-        document.getElementById('bidSum').textContent = bid_sum;
-        document.getElementById('askSum').textContent = ask_sum;
-        document.getElementById('delta').textContent = delta; 
-        createChart(bid_sum, ask_sum);
+        orderBookChart.data.labels = [...bidLabels, ...askLabels];
+        orderBookChart.data.datasets[0].data = bidQuantities;
+        orderBookChart.data.datasets[1].data = askQuantities;
 
-    </script>
+        orderBookChart.update();
+    }
+
+    document.getElementById("minQty").addEventListener("input", (event) => {
+        minQty = parseFloat(event.target.value);
+        orderBook.bids = orderBook.bids.filter(order => order.quantity >= minQty);
+        orderBook.asks = orderBook.asks.filter(order => order.quantity >= minQty);
+        updateChart();
+    });
+
+    initializeChart();
+</script>
 
 </body>
 </html>
