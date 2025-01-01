@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>BTCUSDT Order Book, OI/Volume Ratio & Estimated Liquidation Delta</title>
+    <title>BTCUSDT Order Book & OI/Volume Ratio</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
     <style>
@@ -60,11 +60,6 @@
     <div id="oi-volume-ratio-container" class="container">
         <h1>BTCUSDT OI/Volume Ratio</h1>
         <p>OI/Volume Ratio: <span id="oiVolumeRatio"></span></p>
-    </div>
-
-    <div id="liquidation-delta-container" class="container"> 
-        <h1>Estimated Liquidation Level Delta</h1>
-        <p>Delta: <span id="liquidationDelta"></span></p>
     </div>
 
     <script>
@@ -170,38 +165,12 @@
             document.getElementById('oiVolumeRatio').textContent = ratio.toFixed(2);
         }
 
-        // --- Liquidation Delta Section ---
-
-        async function fetchLongShortRatio() {
-            try {
-                const response = await axios.get('https://fapi.binance.com/fapi/v1/leverageBracket'); 
-                const longRatio = response.data[0].longPositionRatio; 
-                const shortRatio = response.data[0].shortPositionRatio; 
-                return { longRatio, shortRatio };
-            } catch (error) {
-                console.error("Error fetching long/short account ratio:", error);
-                return { longRatio: 0, shortRatio: 0 }; 
-            }
-        }
-
-        // **Simplified Example - Replace with your own, more sophisticated logic**
-        // This is a highly simplified example and may not accurately reflect real-world market dynamics. 
-        // Consider factors like volatility, funding rates, and historical data for more accurate estimations.
-        function estimateLiquidationDelta(longRatio, shortRatio) {
-            // **Basic Calculation: Calculate the difference between long and short ratios**
-            return longRatio - shortRatio; 
-        }
-
-        function displayLiquidationDelta(delta) {
-            document.getElementById('liquidationDelta').textContent = delta.toFixed(2);
-        }
-
         // --- Update Intervals ---
 
         // Update order book every 5 seconds
         setInterval(updateOrderBook, 5000);
 
-        // Update OI/Volume Ratio and Liquidation Delta every 1 second
+        // Update OI/Volume Ratio every 1 second
         setInterval(updateMarketData, 1000); 
 
         // Initial fetches
