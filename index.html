@@ -15,28 +15,6 @@
             overflow: hidden;
         }
 
-        #order-book-container {
-            flex: 1;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        #chart-container {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        #order-book-chart {
-            width: 100%;
-            margin-bottom: 20px;
-        }
-
-        #oi-volume-ratio-container {
-            padding: 20px;
-            box-sizing: border-box;
-            text-align: center;
-        }
-
         .container {
             background-color: #181818;
             border-radius: 5px;
@@ -46,6 +24,7 @@
 
         h1 {
             margin-bottom: 10px;
+            text-align: center; 
         }
 
         label {
@@ -73,13 +52,10 @@
 <body>
 
     <div id="order-book-container" class="container">
-        <h1>BTCUSDT Order Book (0 to 1 Million USD)</h1>
+        <h1>BTCUSDT Order Book</h1>
         <div id="order-book-chart"></div>
         <label for="minQtyUSD">Minimum Order Size (USD):</label>
         <input type="number" id="minQtyUSD" value="1000" step="100" min="1">
-    </div>
-
-    <div id="chart-container"> 
     </div>
 
     <div id="oi-volume-ratio-container" class="container">
@@ -141,7 +117,7 @@
             const data = [trace1, trace2];
 
             const layout = {
-                title: 'BTCUSDT Order Book (0 to 1 Million USD)',
+                title: 'BTCUSDT Order Book',
                 xaxis: { title: 'Price (USDT)' },
                 yaxis: { title: 'Order Size (USD)' },
                 barmode: 'group', 
@@ -181,7 +157,7 @@
 
         function calculateOIVolumeRatio(volume, openInterest) {
             if (volume === 0 || openInterest === 0) {
-                return 0;
+                return 0; // Avoid division by zero
             }
             return openInterest / volume;
         }
@@ -190,18 +166,12 @@
             document.getElementById('oiVolumeRatio').textContent = ratio.toFixed(2);
         }
 
-        async function updateMarketData() {
-            const { volume, openInterest } = await fetchMarketData();
-            const ratio = calculateOIVolumeRatio(volume, openInterest);
-            displayOIVolumeRatio(ratio);
-        }
-
         // --- Update Intervals ---
 
         // Update order book every 5 seconds
         setInterval(updateOrderBook, 5000);
 
-        // Update OI/Volume Ratio every second
+        // Update OI/Volume Ratio every 1 second
         setInterval(updateMarketData, 1000); 
 
         // Initial fetches
