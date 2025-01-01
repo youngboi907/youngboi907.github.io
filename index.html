@@ -161,7 +161,7 @@
 
         function calculateOIVolumeRatio(volume, openInterest) {
             if (volume === 0 || openInterest === 0) {
-                return 0;
+                return 0; // Avoid division by zero
             }
             return openInterest / volume;
         }
@@ -184,11 +184,11 @@
             }
         }
 
+        // **Simplified Example - Replace with your own, more sophisticated logic**
+        // This is a highly simplified example and may not accurately reflect real-world market dynamics. 
+        // Consider factors like volatility, funding rates, and historical data for more accurate estimations.
         function estimateLiquidationDelta(longRatio, shortRatio) {
-            // **(Simplified Example - Replace with your own, more sophisticated logic)**
-            // This is a simplified example and may not accurately reflect real-world market dynamics. 
-            // Consider factors like volatility, funding rates, and historical data for more accurate estimations.
-            // For this example, we'll use a simple difference 
+            // **Basic Calculation: Calculate the difference between long and short ratios**
             return longRatio - shortRatio; 
         }
 
