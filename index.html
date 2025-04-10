@@ -1,3 +1,4 @@
+<!-- Paste the full updated HTML below this comment -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,13 +37,13 @@
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Taker Delta & Volume (5-Min)</h2>
+  <h2>BTCUSDT Taker Delta & Wick Candles (5-Min)</h2>
   <div class="container">
     <div class="chart-box">
-      <canvas id="mainChart"></canvas>
+      <canvas id="volumeChart"></canvas>
     </div>
     <div class="chart-box">
-      <canvas id="rangeChart"></canvas>
+      <canvas id="deltaWickChart"></canvas>
     </div>
   </div>
 
@@ -55,8 +56,7 @@
     const maxDeltas = [];
     const maxBars = 288;
 
-    // Chart 1: Delta + Volume
-    const mainChart = new Chart(document.getElementById("mainChart").getContext("2d"), {
+    const volumeChart = new Chart(document.getElementById("volumeChart").getContext("2d"), {
       type: 'bar',
       data: {
         labels,
@@ -65,8 +65,7 @@
             label: 'Volume',
             data: volumes,
             backgroundColor: volumeColors,
-            borderRadius: 3,
-            order: 1
+            borderRadius: 3
           },
           {
             label: 'Delta',
@@ -77,8 +76,7 @@
               const alpha = 0.3 + Math.min(Math.abs(value) / maxAbs, 1) * 0.7;
               return value >= 0 ? `rgba(0,255,0,${alpha})` : `rgba(255,0,0,${alpha})`;
             },
-            borderRadius: 3,
-            order: 2
+            borderRadius: 3
           }
         ]
       },
@@ -95,29 +93,31 @@
       }
     });
 
-    // Chart 2: Min/Max Delta
-    const rangeChart = new Chart(document.getElementById("rangeChart").getContext("2d"), {
+    const deltaWickChart = new Chart(document.getElementById("deltaWickChart").getContext("2d"), {
       type: 'bar',
       data: {
         labels,
         datasets: [
           {
-            label: 'Max Delta',
-            data: maxDeltas,
-            backgroundColor: 'rgba(0,255,0,0.6)',
-            borderRadius: 3
-          },
-          {
-            label: 'Min Delta',
-            data: minDeltas,
-            backgroundColor: 'rgba(255,0,0,0.6)',
-            borderRadius: 3
+            label: 'Delta Candle (Min → Max)',
+            data: [],
+            backgroundColor: ctx => {
+              const value = ctx.raw.y;
+              return value >= 0 ? 'rgba(0,255,0,0.6)' : 'rgba(255,0,0,0.6)';
+            },
+            borderColor: ctx => {
+              const value = ctx.raw.y;
+              return value >= 0 ? 'rgba(0,255,0,1)' : 'rgba(255,0,0,1)';
+            },
+            borderWidth: 2,
+            barPercentage: 0.4
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        parsing: false,
         scales: {
           x: { ticks: { color: '#aaa' }},
           y: { ticks: { color: '#aaa' }}
@@ -128,7 +128,7 @@
       }
     });
 
-    // Bar tracking
+    // Data tracking
     let lastBarTime = null;
     let deltaUSD = 0;
     let buyVol = 0;
@@ -145,23 +145,30 @@
 
     function addBar(label, delta, buyVol, sellVol, minD, maxD) {
       const totalVol = buyVol + sellVol;
-      const color = buyVol >= sellVol
+      const volColor = buyVol >= sellVol
         ? 'rgba(255,255,0,0.3)' : 'rgba(0,100,255,0.3)';
 
       labels.push(label);
       deltas.push(delta);
       volumes.push(totalVol);
-      volumeColors.push(color);
+      volumeColors.push(volColor);
       minDeltas.push(minD);
       maxDeltas.push(maxD);
+
+      deltaWickChart.data.datasets[0].data.push({
+        x: label,
+        y: delta,
+        _custom: { min: minD, max: maxD }
+      });
 
       if (labels.length > maxBars) {
         labels.shift(); deltas.shift(); volumes.shift(); volumeColors.shift();
         minDeltas.shift(); maxDeltas.shift();
+        deltaWickChart.data.datasets[0].data.shift();
       }
 
-      mainChart.update();
-      rangeChart.update();
+      volumeChart.update();
+      deltaWickChart.update();
     }
 
     const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
