@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT Taker Delta (5 Min)</title>
+  <title>BTCUSDT Delta Chart (5 Min)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -10,35 +10,32 @@
       font-family: sans-serif;
       margin: 0;
       padding: 20px;
+      overflow-x: hidden;
     }
     h2 {
       text-align: center;
       margin-bottom: 20px;
     }
-    .chart-box {
-      width: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
-      background: #222;
-      border-radius: 8px;
-      padding: 10px;
+    .chart-container {
+      width: 100vw;
+      height: 80vh;
     }
     canvas {
       width: 100% !important;
-      height: 500px !important;
+      height: 100% !important;
     }
   </style>
 </head>
 <body>
   <h2>BTCUSDT Taker Delta (5-Min)</h2>
-  <div class="chart-box">
+  <div class="chart-container">
     <canvas id="deltaChart"></canvas>
   </div>  <script>
     const labels = [];
-    const deltaDataset = [];
-    const minDeltaDataset = [];
-    const maxDeltaDataset = [];
-    const maxBars = 288; // for 24 hours of 5-min bars
+    const deltaData = [];
+    const minDeltaData = [];
+    const maxDeltaData = [];
+    const maxBars = 288;
 
     const deltaChart = new Chart(document.getElementById("deltaChart").getContext("2d"), {
       type: 'bar',
@@ -47,18 +44,21 @@
         datasets: [
           {
             label: 'Min Delta',
-            data: minDeltaDataset,
-            backgroundColor: 'rgba(255,0,0,0.5)'
+            data: minDeltaData,
+            backgroundColor: 'rgba(255,0,0,0.6)',
+            borderRadius: 2,
           },
           {
             label: 'Delta',
-            data: deltaDataset,
-            backgroundColor: 'rgba(100,100,255,0.7)'
+            data: deltaData,
+            backgroundColor: 'rgba(100,100,255,0.7)',
+            borderRadius: 2,
           },
           {
             label: 'Max Delta',
-            data: maxDeltaDataset,
-            backgroundColor: 'rgba(0,255,0,0.5)'
+            data: maxDeltaData,
+            backgroundColor: 'rgba(0,255,0,0.6)',
+            borderRadius: 2,
           }
         ]
       },
@@ -66,24 +66,19 @@
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: {
-            stacked: true,
-            ticks: { color: '#aaa' }
-          },
-          y: {
-            ticks: { color: '#aaa' }
-          }
+          x: { stacked: true, ticks: { color: '#aaa' } },
+          y: { stacked: false, ticks: { color: '#aaa' } }
         },
         plugins: {
-          legend: {
-            labels: { color: '#fff' }
-          }
+          legend: { labels: { color: '#fff' } }
         }
       }
     });
 
     let lastBarTime = null;
     let deltaUSD = 0;
+    let buyVol = 0;
+    let sellVol = 0;
     let minDelta = 0;
     let maxDelta = 0;
 
@@ -94,17 +89,14 @@
       return date.getTime();
     }
 
-    function addDeltaBar(label, delta, minD, maxD) {
+    function addBar(label, delta, minD, maxD) {
       labels.push(label);
-      deltaDataset.push(delta);
-      minDeltaDataset.push(minD);
-      maxDeltaDataset.push(maxD);
+      deltaData.push(delta);
+      minDeltaData.push(minD);
+      maxDeltaData.push(maxD);
 
       if (labels.length > maxBars) {
-        labels.shift();
-        deltaDataset.shift();
-        minDeltaDataset.shift();
-        maxDeltaDataset.shift();
+        labels.shift(); deltaData.shift(); minDeltaData.shift(); maxDeltaData.shift();
       }
       deltaChart.update();
     }
@@ -124,9 +116,10 @@
 
       if (currentBar > lastBarTime) {
         const label = new Date(lastBarTime).toLocaleTimeString();
-        addDeltaBar(label, parseFloat(deltaUSD.toFixed(2)), minDelta, maxDelta);
-
+        addBar(label, parseFloat(deltaUSD.toFixed(2)), minDelta, maxDelta);
         deltaUSD = 0;
+        buyVol = 0;
+        sellVol = 0;
         minDelta = 0;
         maxDelta = 0;
         lastBarTime = currentBar;
@@ -134,6 +127,7 @@
 
       const delta = isSell ? -usd : usd;
       deltaUSD += delta;
+      isSell ? sellVol += usd : buyVol += usd;
       minDelta = Math.min(minDelta, deltaUSD);
       maxDelta = Math.max(maxDelta, deltaUSD);
     };
