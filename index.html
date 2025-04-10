@@ -1,9 +1,8 @@
 <!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT Delta OHLC Chart</title>
+  <title>BTCUSDT Taker Delta (5 Min)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
   <style>
     body {
       background-color: #111;
@@ -16,112 +15,77 @@
       text-align: center;
       margin-bottom: 20px;
     }
-    .chart-container {
+    .chart-box {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
       background: #222;
       border-radius: 8px;
       padding: 10px;
-      max-width: 1000px;
-      margin: auto;
     }
     canvas {
       width: 100% !important;
-      height: 600px !important;
+      height: 500px !important;
     }
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Delta OHLC Candlestick (5-Min)</h2>
-  <div class="chart-container">
+  <h2>BTCUSDT Taker Delta (5-Min)</h2>
+  <div class="chart-box">
     <canvas id="deltaChart"></canvas>
   </div>  <script>
-    const ctx = document.getElementById("deltaChart").getContext("2d");
-    const deltaData = [];
-    const maxBars = 288; // 1 day = 288 * 5-min intervals
+    const labels = [];
+    const deltaDataset = [];
+    const minDeltaDataset = [];
+    const maxDeltaDataset = [];
+    const maxBars = 288; // for 24 hours of 5-min bars
 
-    const deltaChart = new Chart(ctx, {
-      type: 'candlestick',
+    const deltaChart = new Chart(document.getElementById("deltaChart").getContext("2d"), {
+      type: 'bar',
       data: {
-        datasets: [{
-          label: 'Delta Candles',
-          data: deltaData,
-          borderColor: '#fff',
-          color: {
-            up: 'green',
-            down: 'red',
-            unchanged: 'gray'
+        labels,
+        datasets: [
+          {
+            label: 'Min Delta',
+            data: minDeltaDataset,
+            backgroundColor: 'rgba(255,0,0,0.5)'
+          },
+          {
+            label: 'Delta',
+            data: deltaDataset,
+            backgroundColor: 'rgba(100,100,255,0.7)'
+          },
+          {
+            label: 'Max Delta',
+            data: maxDeltaDataset,
+            backgroundColor: 'rgba(0,255,0,0.5)'
           }
-        }]
+        ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { labels: { color: '#fff' } }
-        },
         scales: {
           x: {
-            ticks: { color: '#aaa' },
-            time: { unit: 'minute' },
-            adapters: { date: { locale: 'en-US' } },
-            type: 'time'
+            stacked: true,
+            ticks: { color: '#aaa' }
           },
           y: {
             ticks: { color: '#aaa' }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: '#fff' }
           }
         }
       }
     });
 
-    let currentBarTime = null;
-    let open = null;
-    let high = null;
-    let low = null;
-    let close = null;
-
-    const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
-    ws.onmessage = (e) => {
-      const t = JSON.parse(e.data);
-      const qty = parseFloat(t.q);
-      const price = parseFloat(t.p);
-      const isSell = t.m;
-      const usd = qty * price;
-      const delta = isSell ? -usd : usd;
-      const now = Date.now();
-      const barTime = roundTo5Min(now);
-
-      if (!currentBarTime) {
-        currentBarTime = barTime;
-        open = delta;
-        high = delta;
-        low = delta;
-        close = delta;
-      }
-
-      if (barTime > currentBarTime) {
-        deltaData.push({
-          x: new Date(currentBarTime),
-          o: open,
-          h: high,
-          l: low,
-          c: close
-        });
-
-        if (deltaData.length > maxBars) deltaData.shift();
-
-        deltaChart.update();
-
-        // Reset
-        currentBarTime = barTime;
-        open = delta;
-        high = delta;
-        low = delta;
-        close = delta;
-      } else {
-        close = delta;
-        if (delta > high) high = delta;
-        if (delta < low) low = delta;
-      }
-    };
+    let lastBarTime = null;
+    let deltaUSD = 0;
+    let minDelta = 0;
+    let maxDelta = 0;
 
     function roundTo5Min(timestamp) {
       const date = new Date(timestamp);
@@ -129,5 +93,49 @@
       date.setMinutes(date.getMinutes() - (date.getMinutes() % 5));
       return date.getTime();
     }
+
+    function addDeltaBar(label, delta, minD, maxD) {
+      labels.push(label);
+      deltaDataset.push(delta);
+      minDeltaDataset.push(minD);
+      maxDeltaDataset.push(maxD);
+
+      if (labels.length > maxBars) {
+        labels.shift();
+        deltaDataset.shift();
+        minDeltaDataset.shift();
+        maxDeltaDataset.shift();
+      }
+      deltaChart.update();
+    }
+
+    const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
+    ws.onmessage = e => {
+      const t = JSON.parse(e.data);
+      const qty = parseFloat(t.q);
+      const price = parseFloat(t.p);
+      const isSell = t.m;
+      const usd = qty * price;
+
+      const now = Date.now();
+      const currentBar = roundTo5Min(now);
+
+      if (!lastBarTime) lastBarTime = currentBar;
+
+      if (currentBar > lastBarTime) {
+        const label = new Date(lastBarTime).toLocaleTimeString();
+        addDeltaBar(label, parseFloat(deltaUSD.toFixed(2)), minDelta, maxDelta);
+
+        deltaUSD = 0;
+        minDelta = 0;
+        maxDelta = 0;
+        lastBarTime = currentBar;
+      }
+
+      const delta = isSell ? -usd : usd;
+      deltaUSD += delta;
+      minDelta = Math.min(minDelta, deltaUSD);
+      maxDelta = Math.max(maxDelta, deltaUSD);
+    };
   </script></body>
 </html>
