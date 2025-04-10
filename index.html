@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT Taker Delta Chart</title>
+  <title>BTCUSDT Price + Delta Chart</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -16,44 +16,45 @@
       margin-bottom: 20px;
     }
     .chart-box {
-      width: 100%;
-      height: 400px;
-      margin-bottom: 30px;
       background: #222;
-      padding: 10px;
       border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 20px;
     }
     canvas {
       width: 100% !important;
-      height: 100% !important;
+      height: 400px !important;
     }
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Price & Delta (5-Min)</h2>
+  <h2>BTCUSDT 5-Min Price & Taker Delta</h2>
   <div class="chart-box">
     <canvas id="priceChart"></canvas>
   </div>
   <div class="chart-box">
     <canvas id="deltaChart"></canvas>
   </div>  <script>
-    const labels = [];
+    const priceLabels = [];
     const priceData = [];
+
+    const deltaLabels = [];
     const deltaData = [];
     const minDeltaData = [];
     const maxDeltaData = [];
     const maxBars = 288;
 
+    // Price chart setup
     const priceChart = new Chart(document.getElementById("priceChart").getContext("2d"), {
       type: 'line',
       data: {
-        labels,
+        labels: priceLabels,
         datasets: [{
           label: 'Price',
           data: priceData,
-          borderColor: 'yellow',
-          backgroundColor: 'transparent',
-          tension: 0.2
+          borderColor: 'rgba(0, 200, 255, 1)',
+          borderWidth: 2,
+          fill: false,
         }]
       },
       options: {
@@ -69,25 +70,31 @@
       }
     });
 
+    // Delta Chart with overlayed bars and wicks
     const deltaChart = new Chart(document.getElementById("deltaChart").getContext("2d"), {
       type: 'bar',
       data: {
-        labels,
+        labels: deltaLabels,
         datasets: [
           {
-            label: 'Max Delta',
-            data: maxDeltaData,
-            backgroundColor: 'rgba(0,255,0,0.5)'
-          },
-          {
+            type: 'bar',
             label: 'Delta',
             data: deltaData,
-            backgroundColor: 'rgba(255,255,0,0.8)'
+            backgroundColor: ctx => {
+              const value = ctx.raw;
+              return value >= 0 ? 'rgba(0,255,0,0.7)' : 'rgba(255,0,0,0.7)';
+            },
+            borderSkipped: false,
+            order: 2
           },
           {
-            label: 'Min Delta',
-            data: minDeltaData,
-            backgroundColor: 'rgba(255,0,0,0.5)'
+            type: 'bar',
+            label: 'Wick (Min to Max)',
+            data: deltaData.map((d, i) => maxDeltaData[i] - minDeltaData[i]),
+            backgroundColor: 'rgba(255,255,255,0.1)',
+            base: ctx => minDeltaData[ctx.dataIndex],
+            borderSkipped: false,
+            order: 1
           }
         ]
       },
@@ -95,7 +102,7 @@
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { ticks: { color: '#aaa' } },
+          x: { stacked: true, ticks: { color: '#aaa' } },
           y: { ticks: { color: '#aaa' } }
         },
         plugins: {
@@ -104,6 +111,8 @@
       }
     });
 
+    // WebSocket for trade data
+    const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
     let lastBarTime = null;
     let deltaUSD = 0;
     let buyVol = 0;
@@ -119,37 +128,42 @@
       return date.getTime();
     }
 
-    function addBar(label, delta, minD, maxD, price) {
-      labels.push(label);
-      deltaData.push(delta);
-      minDeltaData.push(minD);
-      maxDeltaData.push(maxD);
-      priceData.push(price);
-
-      if (labels.length > maxBars) {
-        labels.shift(); deltaData.shift(); minDeltaData.shift(); maxDeltaData.shift(); priceData.shift();
-      }
-
-      deltaChart.update();
-      priceChart.update();
-    }
-
-    const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
     ws.onmessage = e => {
       const t = JSON.parse(e.data);
       const qty = parseFloat(t.q);
       const price = parseFloat(t.p);
       const isSell = t.m;
       const usd = qty * price;
-
       const now = Date.now();
       const currentBar = roundTo5Min(now);
+
+      lastPrice = price;
 
       if (!lastBarTime) lastBarTime = currentBar;
 
       if (currentBar > lastBarTime) {
         const label = new Date(lastBarTime).toLocaleTimeString();
-        addBar(label, parseFloat(deltaUSD.toFixed(2)), minDelta, maxDelta, lastPrice);
+        // Update charts
+        deltaLabels.push(label);
+        deltaData.push(deltaUSD);
+        minDeltaData.push(minDelta);
+        maxDeltaData.push(maxDelta);
+
+        priceLabels.push(label);
+        priceData.push(lastPrice);
+
+        if (deltaLabels.length > maxBars) {
+          deltaLabels.shift();
+          deltaData.shift();
+          minDeltaData.shift();
+          maxDeltaData.shift();
+
+          priceLabels.shift();
+          priceData.shift();
+        }
+
+        deltaChart.update();
+        priceChart.update();
 
         // Reset
         deltaUSD = 0;
@@ -165,7 +179,6 @@
       isSell ? sellVol += usd : buyVol += usd;
       minDelta = Math.min(minDelta, deltaUSD);
       maxDelta = Math.max(maxDelta, deltaUSD);
-      lastPrice = price;
     };
   </script></body>
 </html>
