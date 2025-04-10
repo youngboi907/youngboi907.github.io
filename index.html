@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT 5-min Delta History</title>
+  <title>BTCUSDT 5-min Delta Tracker</title>
   <style>
     body {
       background: #111;
@@ -48,7 +48,7 @@
     const statsContainer = document.getElementById("statsContainer");
 
     const history = [];
-    const maxHistory = 288; // 288 boxes = 24h of 5-min intervals
+    const maxHistory = 288; // 288 = 24 hours of 5-min intervals
 
     let lastCandleTime = null;
     let delta = 0;
@@ -83,8 +83,7 @@
 
     const ws = new WebSocket('wss://fstream.binance.com/ws/btcusdt@trade');
     ws.onmessage = function(event) {
-      const msg = JSON.parse(event.data);
-      const trade = msg.data;
+      const trade = JSON.parse(event.data);
       const qty = parseFloat(trade.q);
       const isSell = trade.m;
 
@@ -95,7 +94,6 @@
 
       if (!lastCandleTime || currentTime > lastCandleTime) {
         if (lastCandleTime !== null) {
-          // Finalize and store previous
           const candle = {
             time: lastCandleTime,
             open: open,
@@ -107,14 +105,12 @@
           createBox(candle);
         }
 
-        // Start new interval
         lastCandleTime = currentTime;
         open = delta;
         high = delta;
         low = delta;
       }
 
-      // Update high/low
       high = Math.max(high, delta);
       low = Math.min(low, delta);
     };
