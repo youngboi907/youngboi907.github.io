@@ -42,7 +42,7 @@
   </div>
 
   <script>
-    // ================= TAKER DELTA CHART ================= //
+    // === ORIGINAL DELTA CHART FROM YOUR CODE ===
     const labels = [];
     const deltaDataset = [];
     const minDeltaDataset = [];
@@ -81,11 +81,18 @@
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { stacked: true, ticks: { color: '#aaa' } },
-          y: { ticks: { color: '#aaa' } }
+          x: {
+            stacked: true,
+            ticks: { color: '#aaa' }
+          },
+          y: {
+            ticks: { color: '#aaa' }
+          }
         },
         plugins: {
-          legend: { labels: { color: '#fff' } }
+          legend: {
+            labels: { color: '#fff' }
+          }
         }
       }
     });
@@ -143,7 +150,7 @@
       maxDelta = Math.max(maxDelta, deltaUSD);
     };
 
-    // ================= OI & ELR LINE CHART ================= //
+    // === OI & ELR CHART BELOW ===
     const oiLabels = [];
     const oiData = [];
     const elrData = [];
@@ -227,8 +234,8 @@
       }
     }
 
-    setInterval(fetchOIandELR, 60000); // Fetch every 60 seconds
-    fetchOIandELR(); // Initial fetch on page load
+    setInterval(fetchOIandELR, 60000);
+    fetchOIandELR();
   </script>
 </body>
 </html>
