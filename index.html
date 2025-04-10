@@ -1,94 +1,216 @@
-<script>
-  const depthLabels = [];
-  const bidHistory = [];
-  const askHistory = [];
-  const maxDepthBars = 288;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BTC Delta & Order Book Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #111;
+      color: white;
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    canvas {
+      background-color: #222;
+      margin-bottom: 30px;
+      border-radius: 10px;
+    }
+    .row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .chart-box {
+      flex: 1;
+      min-width: 600px;
+    }
+  </style>
+</head>
+<body>
+  <h2>BTCUSDT Delta + Volume (5-min)</h2>
+  <div class="row">
+    <div class="chart-box">
+      <canvas id="deltaVolumeChart" height="300"></canvas>
+    </div>
+    <div class="chart-box">
+      <canvas id="minMaxDeltaChart" height="300"></canvas>
+    </div>
+  </div>
 
-  const depthChart = new Chart(document.getElementById("depthHistoryChart").getContext("2d"), {
-    type: 'bar',
-    data: {
-      labels: depthLabels,
-      datasets: [
-        {
-          label: 'Bid Volume (0-10%)',
-          data: bidHistory,
-          backgroundColor: 'rgba(0,255,0,0.6)',
-          stack: 'stack'
-        },
-        {
-          label: 'Ask Volume (0-10%)',
-          data: askHistory,
-          backgroundColor: 'rgba(255,0,0,0.6)',
-          stack: 'stack'
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: {
-          ticks: { color: '#aaa', maxRotation: 45, minRotation: 45 }
-        },
-        y: {
-          ticks: { color: '#aaa' },
-          beginAtZero: true
-        }
+  <h3>0–10% Bid/Ask Depth (5-min)</h3>
+  <canvas id="depthHistoryChart" height="300"></canvas>
+
+  <script>
+    const deltaLabels = [];
+    const deltas = [], volumes = [];
+    const minDeltas = [], maxDeltas = [];
+    const bidHistory = [], askHistory = [];
+    const depthLabels = [];
+    const maxBars = 288;
+
+    // Chart 1 - Delta + Volume
+    const deltaVolumeChart = new Chart(document.getElementById("deltaVolumeChart").getContext("2d"), {
+      type: 'bar',
+      data: {
+        labels: deltaLabels,
+        datasets: [
+          {
+            label: 'Taker Delta',
+            data: deltas,
+            backgroundColor: ctx => {
+              return ctx.raw >= 0 ? 'green' : 'red';
+            }
+          },
+          {
+            label: 'Volume (Buy)',
+            data: volumes,
+            type: 'bar',
+            backgroundColor: 'rgba(255,255,0,0.2)',
+            barThickness: 'flex'
+          }
+        ]
       },
-      plugins: {
-        legend: { labels: { color: '#fff' } }
+      options: {
+        responsive: true,
+        scales: {
+          x: { ticks: { color: '#ccc' } },
+          y: { ticks: { color: '#ccc' } }
+        },
+        plugins: {
+          legend: { labels: { color: '#fff' } }
+        }
+      }
+    });
+
+    // Chart 2 - Min/Max Delta
+    const minMaxDeltaChart = new Chart(document.getElementById("minMaxDeltaChart").getContext("2d"), {
+      type: 'bar',
+      data: {
+        labels: deltaLabels,
+        datasets: [
+          {
+            label: 'Min Delta',
+            data: minDeltas,
+            backgroundColor: 'blue'
+          },
+          {
+            label: 'Max Delta',
+            data: maxDeltas,
+            backgroundColor: 'orange'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { ticks: { color: '#ccc' } },
+          y: { ticks: { color: '#ccc' } }
+        },
+        plugins: {
+          legend: { labels: { color: '#fff' } }
+        }
+      }
+    });
+
+    // Chart 3 - 0-10% Depth Bid vs Ask
+    const depthChart = new Chart(document.getElementById("depthHistoryChart").getContext("2d"), {
+      type: 'bar',
+      data: {
+        labels: depthLabels,
+        datasets: [
+          {
+            label: 'Bid Vol (0-10%)',
+            data: bidHistory,
+            backgroundColor: 'rgba(0,255,0,0.6)',
+            stack: 'stack'
+          },
+          {
+            label: 'Ask Vol (0-10%)',
+            data: askHistory,
+            backgroundColor: 'rgba(255,0,0,0.6)',
+            stack: 'stack'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { ticks: { color: '#ccc' } },
+          y: { ticks: { color: '#ccc' } }
+        },
+        plugins: {
+          legend: { labels: { color: '#fff' } }
+        }
+      }
+    });
+
+    async function fetchData() {
+      try {
+        // Simulated delta and volume
+        const delta = Math.random() * 2000 - 1000;
+        const volume = Math.random() * 5000 + 1000;
+        const minDelta = delta - Math.random() * 500;
+        const maxDelta = delta + Math.random() * 500;
+
+        const label = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Push to delta/volume/min/max
+        deltaLabels.push(label);
+        deltas.push(delta);
+        volumes.push(volume);
+        minDeltas.push(minDelta);
+        maxDeltas.push(maxDelta);
+
+        if (deltas.length > maxBars) {
+          deltaLabels.shift(); deltas.shift(); volumes.shift();
+          minDeltas.shift(); maxDeltas.shift();
+        }
+
+        deltaVolumeChart.update();
+        minMaxDeltaChart.update();
+
+        // Fetch orderbook snapshot
+        const res = await fetch("https://fapi.binance.com/fapi/v1/depth?symbol=BTCUSDT&limit=5000");
+        const data = await res.json();
+        const bids = data.bids.map(([p, q]) => ({ p: parseFloat(p), q: parseFloat(q) }));
+        const asks = data.asks.map(([p, q]) => ({ p: parseFloat(p), q: parseFloat(q) }));
+        const mid = (bids[0].p + asks[0].p) / 2;
+
+        let bidSum = 0, askSum = 0;
+        for (let b of bids) {
+          if ((mid - b.p) / mid <= 0.1) bidSum += b.p * b.q;
+        }
+        for (let a of asks) {
+          if ((a.p - mid) / mid <= 0.1) askSum += a.p * a.q;
+        }
+
+        depthLabels.push(label);
+        bidHistory.push(bidSum);
+        askHistory.push(askSum);
+
+        if (depthLabels.length > maxBars) {
+          depthLabels.shift(); bidHistory.shift(); askHistory.shift();
+        }
+
+        depthChart.update();
+      } catch (e) {
+        console.error(e);
       }
     }
-  });
 
-  async function fetchDepthSnapshot() {
-    try {
-      const res = await fetch("https://fapi.binance.com/fapi/v1/depth?symbol=BTCUSDT&limit=5000");
-      const data = await res.json();
-      const bids = data.bids.map(([p, q]) => ({ p: parseFloat(p), q: parseFloat(q) }));
-      const asks = data.asks.map(([p, q]) => ({ p: parseFloat(p), q: parseFloat(q) }));
-      const bestBid = bids[0].p;
-      const bestAsk = asks[0].p;
-      const mid = (bestBid + bestAsk) / 2;
-
-      let totalBid = 0;
-      let totalAsk = 0;
-
-      for (let b of bids) {
-        const pct = (mid - b.p) / mid;
-        if (pct <= 0.1) totalBid += b.p * b.q;
-      }
-
-      for (let a of asks) {
-        const pct = (a.p - mid) / mid;
-        if (pct <= 0.1) totalAsk += a.p * a.q;
-      }
-
-      const timestamp = new Date();
-      const label = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      depthLabels.push(label);
-      bidHistory.push(parseFloat(totalBid.toFixed(2)));
-      askHistory.push(parseFloat(totalAsk.toFixed(2)));
-
-      if (depthLabels.length > maxDepthBars) {
-        depthLabels.shift(); bidHistory.shift(); askHistory.shift();
-      }
-
-      depthChart.update();
-    } catch (err) {
-      console.error("Depth fetch error", err);
+    // Sync to 5-min schedule
+    function sync5Min() {
+      const now = new Date();
+      const ms = (5 - now.getMinutes() % 5) * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
+      setTimeout(() => {
+        fetchData();
+        setInterval(fetchData, 5 * 60 * 1000);
+      }, ms);
     }
-  }
 
-  function scheduleDepthUpdate() {
-    const now = new Date();
-    const delay = (5 - (now.getMinutes() % 5)) * 60 * 1000 - now.getSeconds() * 1000 - now.getMilliseconds();
-    setTimeout(() => {
-      fetchDepthSnapshot();
-      setInterval(fetchDepthSnapshot, 5 * 60 * 1000);
-    }, delay);
-  }
-
-  scheduleDepthUpdate();
-  fetchDepthSnapshot(); // first fetch
-</script>
+    sync5Min();
+    fetchData(); // initial fetch
+  </script>
+</body>
+</html>
