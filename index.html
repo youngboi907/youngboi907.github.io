@@ -2,59 +2,70 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSD 5-min Delta Tracker</title>
+  <title>Live Market Taker Delta (USD) - Binance BTCUSDT</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      background: #111;
+      background-color: #111;
       color: #fff;
       font-family: sans-serif;
-      text-align: center;
       padding: 20px;
+      text-align: center;
     }
-    h2 {
-      margin-bottom: 10px;
-    }
-    #statsContainer {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 12px;
-      max-width: 1200px;
+    canvas {
+      max-width: 1000px;
       margin: auto;
-    }
-    .box {
-      border: 1px solid #444;
-      background: #1c1c1c;
-      padding: 10px;
+      background: #222;
       border-radius: 8px;
-      width: 160px;
-      text-align: left;
-    }
-    .box h4 {
-      margin: 0 0 5px;
-      font-size: 14px;
-      color: #0f0;
-    }
-    .box div {
-      font-size: 13px;
     }
   </style>
 </head>
 <body>
-  <h2>BTCUSD 5-min Delta Tracker (Last 24h)</h2>
-  <div id="statsContainer"></div>
+  <h2>BTCUSDT Volume Delta (Taker Buy - Taker Sell) – 5 Min</h2>
+  <canvas id="deltaChart" height="400"></canvas>
 
   <script>
-    const statsContainer = document.getElementById("statsContainer");
+    const labels = [];
+    const deltas = [];
+    const maxBars = 288; // 24h of 5-minute bars
 
-    const history = [];
-    const maxHistory = 288; // 288 = 24 hours of 5-min intervals
+    const ctx = document.getElementById("deltaChart").getContext("2d");
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Volume Delta (USD)',
+          data: deltas,
+          backgroundColor: ctx => {
+            const val = ctx.raw;
+            return val > 0 ? 'rgba(0, 255, 0, 0.6)' : 'rgba(255, 0, 0, 0.6)';
+          },
+          borderRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { ticks: { color: '#aaa' }},
+          y: { ticks: { color: '#aaa' }}
+        },
+        plugins: { legend: { display: false }}
+      }
+    });
 
-    let lastCandleTime = null;
-    let delta = 0;
-    let open = 0;
-    let high = 0;
-    let low = 0;
+    function addBar(label, delta) {
+      labels.push(label);
+      deltas.push(delta);
+      if (labels.length > maxBars) {
+        labels.shift();
+        deltas.shift();
+      }
+      chart.update();
+    }
+
+    let lastBarTime = null;
+    let deltaUSD = 0;
 
     function roundTo5Min(timestamp) {
       const date = new Date(timestamp);
@@ -63,69 +74,28 @@
       return date.getTime();
     }
 
-    function createBox(candle) {
-      const box = document.createElement("div");
-      box.className = "box";
-      box.innerHTML = `
-        <h4>${new Date(candle.time).toLocaleTimeString()}</h4>
-        <div>Open: ${candle.open.toFixed(2)}</div>
-        <div>High: ${candle.high.toFixed(2)}</div>
-        <div>Low: ${candle.low.toFixed(2)}</div>
-        <div>Close: ${candle.close.toFixed(2)}</div>
-        <div>Total Delta: ${(candle.close - candle.open).toFixed(2)}</div>
-      `;
-      statsContainer.prepend(box);
+    const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
+    ws.onmessage = event => {
+      const trade = JSON.parse(event.data);
+      const qty = parseFloat(trade.q);
+      const price = parseFloat(trade.p);
+      const isSell = trade.m;
+      const volume = price * qty;
 
-      if (statsContainer.children.length > maxHistory) {
-        statsContainer.removeChild(statsContainer.lastChild);
+      // Taker Buy: +volume | Taker Sell: -volume
+      deltaUSD += isSell ? -volume : volume;
+
+      const now = Date.now();
+      const currentBar = roundTo5Min(now);
+
+      if (!lastBarTime) lastBarTime = currentBar;
+
+      if (currentBar > lastBarTime) {
+        const label = new Date(lastBarTime).toLocaleTimeString();
+        addBar(label, parseFloat(deltaUSD.toFixed(2)));
+        deltaUSD = 0;
+        lastBarTime = currentBar;
       }
-    }
-
-    const ws = new WebSocket('wss://ws.bitmex.com/realtime?subscribe=trade:XBTUSD');
-    ws.onopen = function() {
-      console.log('Connected to BitMEX WebSocket');
-    };
-    ws.onmessage = function(event) {
-      const message = JSON.parse(event.data);
-      if (message.table === 'trade' && message.action === 'insert') {
-        message.data.forEach(trade => {
-          const qty = trade.size;
-          const isBuy = trade.side === 'Buy';
-
-          delta += isBuy ? qty : -qty;
-
-          const now = Date.now();
-          const currentTime = roundTo5Min(now);
-
-          if (!lastCandleTime || currentTime > lastCandleTime) {
-            if (lastCandleTime !== null) {
-              const candle = {
-                time: lastCandleTime,
-                open: open,
-                high: high,
-                low: low,
-                close: delta
-              };
-              history.push(candle);
-              createBox(candle);
-            }
-
-            lastCandleTime = currentTime;
-            open = delta;
-            high = delta;
-            low = delta;
-          }
-
-          high = Math.max(high, delta);
-          low = Math.min(low, delta);
-        });
-      }
-    };
-    ws.onerror = function(error) {
-      console.error('WebSocket error:', error);
-    };
-    ws.onclose = function() {
-      console.log('WebSocket connection closed');
     };
   </script>
 </body>
