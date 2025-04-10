@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT Taker Volume Delta Chart</title>
+  <title>BTCUSDT 1-Min Taker Volume Delta</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -21,13 +21,13 @@
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Market Taker Volume Delta (5 Min)</h2>
+  <h2>BTCUSDT Market Taker Volume Delta (1 Min)</h2>
   <canvas id="deltaChart" height="400"></canvas>
 
   <script>
     const labels = [];
     const deltas = [];
-    const maxBars = 288; // 24h of 5-min candles
+    const maxBars = 1440; // 24h of 1-min candles
 
     const ctx = document.getElementById("deltaChart").getContext("2d");
     const chart = new Chart(ctx, {
@@ -41,7 +41,7 @@
             const value = context.raw;
             const maxAbs = Math.max(...deltas.map(d => Math.abs(d))) || 1;
             const intensity = Math.min(Math.abs(value) / maxAbs, 1);
-            const alpha = 0.3 + intensity * 0.7; // scale between 0.3 and 1
+            const alpha = 0.3 + intensity * 0.7;
             return value >= 0
               ? `rgba(0, 255, 0, ${alpha})`
               : `rgba(255, 0, 0, ${alpha})`;
@@ -52,8 +52,8 @@
       options: {
         responsive: true,
         scales: {
-          x: { ticks: { color: '#aaa' } },
-          y: { ticks: { color: '#aaa' } }
+          x: { ticks: { color: '#aaa' }},
+          y: { ticks: { color: '#aaa' }}
         },
         plugins: {
           legend: { display: false },
@@ -79,10 +79,9 @@
     let lastBarTime = null;
     let deltaUSD = 0;
 
-    function roundTo5Min(timestamp) {
+    function roundTo1Min(timestamp) {
       const date = new Date(timestamp);
       date.setSeconds(0, 0);
-      date.setMinutes(date.getMinutes() - (date.getMinutes() % 5));
       return date.getTime();
     }
 
@@ -97,7 +96,7 @@
       deltaUSD += isSell ? -volume : volume;
 
       const now = Date.now();
-      const currentBar = roundTo5Min(now);
+      const currentBar = roundTo1Min(now);
 
       if (!lastBarTime) lastBarTime = currentBar;
 
