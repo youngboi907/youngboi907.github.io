@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT 5-min Delta Tracker</title>
+  <title>BTCUSD 5-min Delta Tracker</title>
   <style>
     body {
       background: #111;
@@ -41,7 +41,7 @@
   </style>
 </head>
 <body>
-  <h2>BTCUSDT 5-min Delta Tracker (Last 24h)</h2>
+  <h2>BTCUSD 5-min Delta Tracker (Last 24h)</h2>
   <div id="statsContainer"></div>
 
   <script>
@@ -81,38 +81,51 @@
       }
     }
 
-    const ws = new WebSocket('wss://fstream.binance.com/ws/btcusdt@trade');
+    const ws = new WebSocket('wss://ws.bitmex.com/realtime?subscribe=trade:XBTUSD');
+    ws.onopen = function() {
+      console.log('Connected to BitMEX WebSocket');
+    };
     ws.onmessage = function(event) {
-      const trade = JSON.parse(event.data);
-      const qty = parseFloat(trade.q);
-      const isSell = trade.m;
+      const message = JSON.parse(event.data);
+      if (message.table === 'trade' && message.action === 'insert') {
+        message.data.forEach(trade => {
+          const qty = trade.size;
+          const isBuy = trade.side === 'Buy';
 
-      delta += isSell ? -qty : qty;
+          delta += isBuy ? qty : -qty;
 
-      const now = Date.now();
-      const currentTime = roundTo5Min(now);
+          const now = Date.now();
+          const currentTime = roundTo5Min(now);
 
-      if (!lastCandleTime || currentTime > lastCandleTime) {
-        if (lastCandleTime !== null) {
-          const candle = {
-            time: lastCandleTime,
-            open: open,
-            high: high,
-            low: low,
-            close: delta
-          };
-          history.push(candle);
-          createBox(candle);
-        }
+          if (!lastCandleTime || currentTime > lastCandleTime) {
+            if (lastCandleTime !== null) {
+              const candle = {
+                time: lastCandleTime,
+                open: open,
+                high: high,
+                low: low,
+                close: delta
+              };
+              history.push(candle);
+              createBox(candle);
+            }
 
-        lastCandleTime = currentTime;
-        open = delta;
-        high = delta;
-        low = delta;
+            lastCandleTime = currentTime;
+            open = delta;
+            high = delta;
+            low = delta;
+          }
+
+          high = Math.max(high, delta);
+          low = Math.min(low, delta);
+        });
       }
-
-      high = Math.max(high, delta);
-      low = Math.min(low, delta);
+    };
+    ws.onerror = function(error) {
+      console.error('WebSocket error:', error);
+    };
+    ws.onclose = function() {
+      console.log('WebSocket connection closed');
     };
   </script>
 </body>
