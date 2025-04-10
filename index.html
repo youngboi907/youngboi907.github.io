@@ -2,215 +2,113 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTC Delta & Order Book Dashboard</title>
+  <title>BTCUSDT Delta Candles (5 Min)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
   <style>
     body {
       background-color: #111;
-      color: white;
+      color: #fff;
       font-family: sans-serif;
+      margin: 0;
       padding: 20px;
     }
     canvas {
-      background-color: #222;
-      margin-bottom: 30px;
-      border-radius: 10px;
-    }
-    .row {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-    .chart-box {
-      flex: 1;
-      min-width: 600px;
+      width: 100% !important;
+      height: 600px !important;
     }
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Delta + Volume (5-min)</h2>
-  <div class="row">
-    <div class="chart-box">
-      <canvas id="deltaVolumeChart" height="300"></canvas>
-    </div>
-    <div class="chart-box">
-      <canvas id="minMaxDeltaChart" height="300"></canvas>
-    </div>
-  </div>
-
-  <h3>0–10% Bid/Ask Depth (5-min)</h3>
-  <canvas id="depthHistoryChart" height="300"></canvas>
+  <h2 style="text-align:center">BTCUSDT Delta Candlestick (5 Min)</h2>
+  <canvas id="deltaChart"></canvas>
 
   <script>
-    const deltaLabels = [];
-    const deltas = [], volumes = [];
-    const minDeltas = [], maxDeltas = [];
-    const bidHistory = [], askHistory = [];
-    const depthLabels = [];
-    const maxBars = 288;
+    const deltaData = [];
 
-    // Chart 1 - Delta + Volume
-    const deltaVolumeChart = new Chart(document.getElementById("deltaVolumeChart").getContext("2d"), {
-      type: 'bar',
+    const maxCandles = 288; // 1 day of 5-min candles
+
+    const ctx = document.getElementById('deltaChart').getContext('2d');
+    const deltaChart = new Chart(ctx, {
+      type: 'candlestick',
       data: {
-        labels: deltaLabels,
-        datasets: [
-          {
-            label: 'Taker Delta',
-            data: deltas,
-            backgroundColor: ctx => {
-              return ctx.raw >= 0 ? 'green' : 'red';
-            }
-          },
-          {
-            label: 'Volume (Buy)',
-            data: volumes,
-            type: 'bar',
-            backgroundColor: 'rgba(255,255,0,0.2)',
-            barThickness: 'flex'
+        datasets: [{
+          label: 'Delta OHLC',
+          data: deltaData,
+          color: {
+            up: '#00ff00',
+            down: '#ff0000',
+            unchanged: '#999'
           }
-        ]
+        }]
       },
       options: {
         responsive: true,
         scales: {
-          x: { ticks: { color: '#ccc' } },
-          y: { ticks: { color: '#ccc' } }
+          x: { ticks: { color: '#aaa' }},
+          y: { ticks: { color: '#aaa' }}
         },
         plugins: {
-          legend: { labels: { color: '#fff' } }
+          legend: { labels: { color: '#fff' }}
         }
       }
     });
 
-    // Chart 2 - Min/Max Delta
-    const minMaxDeltaChart = new Chart(document.getElementById("minMaxDeltaChart").getContext("2d"), {
-      type: 'bar',
-      data: {
-        labels: deltaLabels,
-        datasets: [
-          {
-            label: 'Min Delta',
-            data: minDeltas,
-            backgroundColor: 'blue'
-          },
-          {
-            label: 'Max Delta',
-            data: maxDeltas,
-            backgroundColor: 'orange'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: { ticks: { color: '#ccc' } },
-          y: { ticks: { color: '#ccc' } }
-        },
-        plugins: {
-          legend: { labels: { color: '#fff' } }
-        }
-      }
-    });
+    let lastBarTime = null;
+    let delta = 0;
+    let openDelta = null;
+    let minDelta = 0;
+    let maxDelta = 0;
 
-    // Chart 3 - 0-10% Depth Bid vs Ask
-    const depthChart = new Chart(document.getElementById("depthHistoryChart").getContext("2d"), {
-      type: 'bar',
-      data: {
-        labels: depthLabels,
-        datasets: [
-          {
-            label: 'Bid Vol (0-10%)',
-            data: bidHistory,
-            backgroundColor: 'rgba(0,255,0,0.6)',
-            stack: 'stack'
-          },
-          {
-            label: 'Ask Vol (0-10%)',
-            data: askHistory,
-            backgroundColor: 'rgba(255,0,0,0.6)',
-            stack: 'stack'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: { ticks: { color: '#ccc' } },
-          y: { ticks: { color: '#ccc' } }
-        },
-        plugins: {
-          legend: { labels: { color: '#fff' } }
-        }
-      }
-    });
-
-    async function fetchData() {
-      try {
-        // Simulated delta and volume
-        const delta = Math.random() * 2000 - 1000;
-        const volume = Math.random() * 5000 + 1000;
-        const minDelta = delta - Math.random() * 500;
-        const maxDelta = delta + Math.random() * 500;
-
-        const label = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        // Push to delta/volume/min/max
-        deltaLabels.push(label);
-        deltas.push(delta);
-        volumes.push(volume);
-        minDeltas.push(minDelta);
-        maxDeltas.push(maxDelta);
-
-        if (deltas.length > maxBars) {
-          deltaLabels.shift(); deltas.shift(); volumes.shift();
-          minDeltas.shift(); maxDeltas.shift();
-        }
-
-        deltaVolumeChart.update();
-        minMaxDeltaChart.update();
-
-        // Fetch orderbook snapshot
-        const res = await fetch("https://fapi.binance.com/fapi/v1/depth?symbol=BTCUSDT&limit=5000");
-        const data = await res.json();
-        const bids = data.bids.map(([p, q]) => ({ p: parseFloat(p), q: parseFloat(q) }));
-        const asks = data.asks.map(([p, q]) => ({ p: parseFloat(p), q: parseFloat(q) }));
-        const mid = (bids[0].p + asks[0].p) / 2;
-
-        let bidSum = 0, askSum = 0;
-        for (let b of bids) {
-          if ((mid - b.p) / mid <= 0.1) bidSum += b.p * b.q;
-        }
-        for (let a of asks) {
-          if ((a.p - mid) / mid <= 0.1) askSum += a.p * a.q;
-        }
-
-        depthLabels.push(label);
-        bidHistory.push(bidSum);
-        askHistory.push(askSum);
-
-        if (depthLabels.length > maxBars) {
-          depthLabels.shift(); bidHistory.shift(); askHistory.shift();
-        }
-
-        depthChart.update();
-      } catch (e) {
-        console.error(e);
-      }
+    function roundTo5Min(timestamp) {
+      const date = new Date(timestamp);
+      date.setSeconds(0, 0);
+      date.setMinutes(date.getMinutes() - (date.getMinutes() % 5));
+      return date.getTime();
     }
 
-    // Sync to 5-min schedule
-    function sync5Min() {
-      const now = new Date();
-      const ms = (5 - now.getMinutes() % 5) * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
-      setTimeout(() => {
-        fetchData();
-        setInterval(fetchData, 5 * 60 * 1000);
-      }, ms);
+    function pushCandle(ts, o, h, l, c) {
+      deltaData.push({
+        x: new Date(ts),
+        o, h, l, c
+      });
+
+      if (deltaData.length > maxCandles) deltaData.shift();
+      deltaChart.update();
     }
 
-    sync5Min();
-    fetchData(); // initial fetch
+    const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
+
+    ws.onmessage = e => {
+      const t = JSON.parse(e.data);
+      const qty = parseFloat(t.q);
+      const price = parseFloat(t.p);
+      const isSell = t.m;
+      const usd = qty * price;
+
+      const now = Date.now();
+      const currentBar = roundTo5Min(now);
+
+      if (!lastBarTime) lastBarTime = currentBar;
+
+      if (currentBar > lastBarTime) {
+        // Push completed candle
+        pushCandle(lastBarTime, openDelta, maxDelta, minDelta, delta);
+
+        // Reset for next candle
+        delta = 0;
+        openDelta = null;
+        minDelta = 0;
+        maxDelta = 0;
+        lastBarTime = currentBar;
+      }
+
+      const deltaMove = isSell ? -usd : usd;
+      if (openDelta === null) openDelta = delta;
+      delta += deltaMove;
+      minDelta = Math.min(minDelta, delta);
+      maxDelta = Math.max(maxDelta, delta);
+    };
   </script>
 </body>
 </html>
