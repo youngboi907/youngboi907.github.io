@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>BTCUSDT Taker Delta (5 Min)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <style>
     body {
       background-color: #111;
@@ -20,7 +19,7 @@
     .chart-box {
       width: 100%;
       max-width: 1200px;
-      margin: 0 auto 40px auto;
+      margin: 0 auto;
       background: #222;
       border-radius: 8px;
       padding: 10px;
@@ -32,85 +31,17 @@
   </style>
 </head>
 <body>
-  <h2>BTCUSDT 5-Min Candlestick Chart</h2>
-  <div class="chart-box">
-    <canvas id="candlestickChart"></canvas>
-  </div>
-
   <h2>BTCUSDT Taker Delta (5-Min)</h2>
   <div class="chart-box">
     <canvas id="deltaChart"></canvas>
   </div>
 
   <script>
-    // Candlestick Chart
-    const candleCtx = document.getElementById("candlestickChart").getContext("2d");
-    const candleLabels = [];
-    const candleData = [];
-
-    const candlestickChart = new Chart(candleCtx, {
-      type: 'bar',
-      data: {
-        labels: candleLabels,
-        datasets: [{
-          label: 'Price',
-          data: candleData,
-          backgroundColor: c => c.raw.c > c.raw.o ? 'rgba(0,255,0,0.4)' : 'rgba(255,0,0,0.4)',
-          borderColor: c => c.raw.c > c.raw.o ? 'lime' : 'red',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        parsing: {
-          xAxisKey: 't',
-          yAxisKey: 'o'
-        },
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          x: {
-            type: 'time',
-            time: { unit: 'minute' },
-            ticks: { color: '#aaa' }
-          },
-          y: {
-            ticks: { color: '#aaa' }
-          }
-        }
-      }
-    });
-
-    async function fetchCandles() {
-      const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=100');
-      const data = await res.json();
-      candleLabels.length = 0;
-      candleData.length = 0;
-
-      data.forEach(c => {
-        const time = c[0];
-        const o = parseFloat(c[1]);
-        const h = parseFloat(c[2]);
-        const l = parseFloat(c[3]);
-        const cl = parseFloat(c[4]);
-        candleLabels.push(time);
-        candleData.push({ t: time, o, h, l, c: cl });
-      });
-
-      candlestickChart.update();
-    }
-
-    fetchCandles();
-    setInterval(fetchCandles, 60 * 1000);
-  </script>
-
-  <script>
-    // Delta Chart
     const labels = [];
     const deltaDataset = [];
     const minDeltaDataset = [];
     const maxDeltaDataset = [];
-    const maxBars = 288;
+    const maxBars = 288; // for 24 hours of 5-min bars
 
     const deltaChart = new Chart(document.getElementById("deltaChart").getContext("2d"), {
       type: 'bar',
@@ -120,17 +51,23 @@
           {
             label: 'Min Delta',
             data: minDeltaDataset,
-            backgroundColor: 'rgba(255,0,0,0.5)'
+            backgroundColor: 'rgba(255,0,0,0.5)',
+            barPercentage: 0.1,
+            categoryPercentage: 1.0
           },
           {
             label: 'Delta',
             data: deltaDataset,
-            backgroundColor: 'rgba(100,100,255,0.7)'
+            backgroundColor: 'rgba(100,100,255,0.7)',
+            barPercentage: 1.0,
+            categoryPercentage: 1.0
           },
           {
             label: 'Max Delta',
             data: maxDeltaDataset,
-            backgroundColor: 'rgba(0,255,0,0.5)'
+            backgroundColor: 'rgba(0,255,0,0.5)',
+            barPercentage: 0.1,
+            categoryPercentage: 1.0
           }
         ]
       },
