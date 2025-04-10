@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT 5-Min Delta & Volume Chart</title>
+  <title>BTCUSDT Taker Delta + Volume (5 Min)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -14,25 +14,30 @@
     }
     canvas {
       max-width: 1000px;
-      margin: auto;
+      margin: 20px auto;
       background: #222;
       border-radius: 8px;
     }
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Taker Volume Delta (5 Min) + Volume Candles</h2>
-  <canvas id="chart" height="400"></canvas>
+  <h2>BTCUSDT Taker Volume Delta (5 Min)</h2>
+  <canvas id="mainChart" height="400"></canvas>
+
+  <h3>Min & Max Delta (5 Min)</h3>
+  <canvas id="deltaRangeChart" height="200"></canvas>
 
   <script>
     const labels = [];
     const deltas = [];
     const volumes = [];
     const volumeColors = [];
+    const deltaMins = [];
+    const deltaMaxs = [];
     const maxBars = 288;
 
-    const ctx = document.getElementById("chart").getContext("2d");
-    const chart = new Chart(ctx, {
+    // Main chart
+    const mainChart = new Chart(document.getElementById("mainChart").getContext("2d"), {
       type: 'bar',
       data: {
         labels,
@@ -50,8 +55,7 @@
             backgroundColor: function(context) {
               const value = context.raw;
               const maxAbs = Math.max(...deltas.map(d => Math.abs(d))) || 1;
-              const intensity = Math.min(Math.abs(value) / maxAbs, 1);
-              const alpha = 0.3 + intensity * 0.7;
+              const alpha = 0.3 + Math.min(Math.abs(value) / maxAbs, 1) * 0.7;
               return value >= 0
                 ? `rgba(0, 255, 0, ${alpha})`
                 : `rgba(255, 0, 0, ${alpha})`;
@@ -68,16 +72,44 @@
           y: { ticks: { color: '#aaa' }}
         },
         plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => {
-                if (ctx.datasetIndex === 0)
-                  return `Volume: $${ctx.raw.toFixed(2)}`;
-                else
-                  return `Delta: $${ctx.raw.toFixed(2)}`;
-              }
-            }
+          legend: { display: false }
+        }
+      }
+    });
+
+    // Delta range chart
+    const rangeChart = new Chart(document.getElementById("deltaRangeChart").getContext("2d"), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Max Delta',
+            data: deltaMaxs,
+            borderColor: 'lime',
+            backgroundColor: 'rgba(0,255,0,0.2)',
+            fill: false,
+            tension: 0.3
+          },
+          {
+            label: 'Min Delta',
+            data: deltaMins,
+            borderColor: 'red',
+            backgroundColor: 'rgba(255,0,0,0.2)',
+            fill: false,
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { ticks: { color: '#aaa' }},
+          y: { ticks: { color: '#aaa' }}
+        },
+        plugins: {
+          legend: {
+            labels: { color: '#fff' }
           }
         }
       }
@@ -87,6 +119,8 @@
     let deltaUSD = 0;
     let buyVol = 0;
     let sellVol = 0;
+    let minDelta = 0;
+    let maxDelta = 0;
 
     function roundTo5Min(timestamp) {
       const date = new Date(timestamp);
@@ -95,22 +129,26 @@
       return date.getTime();
     }
 
-    function addBar(label, delta, buyVol, sellVol) {
+    function addBar(label, delta, buyVol, sellVol, minD, maxD) {
       const totalVol = buyVol + sellVol;
       const majorityColor = buyVol >= sellVol
-        ? 'rgba(255, 255, 0, 0.3)' // Yellow for buy vol
-        : 'rgba(0, 100, 255, 0.3)'; // Blue for sell vol
+        ? 'rgba(255, 255, 0, 0.3)'
+        : 'rgba(0, 100, 255, 0.3)';
 
       labels.push(label);
       deltas.push(delta);
       volumes.push(totalVol);
       volumeColors.push(majorityColor);
+      deltaMins.push(minD);
+      deltaMaxs.push(maxD);
 
       if (labels.length > maxBars) {
         labels.shift(); deltas.shift(); volumes.shift(); volumeColors.shift();
+        deltaMins.shift(); deltaMaxs.shift();
       }
 
-      chart.update();
+      mainChart.update();
+      rangeChart.update();
     }
 
     const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
@@ -121,9 +159,6 @@
       const isSell = trade.m;
       const usd = price * qty;
 
-      deltaUSD += isSell ? -usd : usd;
-      isSell ? sellVol += usd : buyVol += usd;
-
       const now = Date.now();
       const currentBar = roundTo5Min(now);
 
@@ -131,14 +166,21 @@
 
       if (currentBar > lastBarTime) {
         const label = new Date(lastBarTime).toLocaleTimeString();
-        addBar(label, parseFloat(deltaUSD.toFixed(2)), buyVol, sellVol);
+        addBar(label, parseFloat(deltaUSD.toFixed(2)), buyVol, sellVol, minDelta, maxDelta);
 
-        // Reset
         deltaUSD = 0;
         buyVol = 0;
         sellVol = 0;
+        minDelta = 0;
+        maxDelta = 0;
         lastBarTime = currentBar;
       }
+
+      const delta = isSell ? -usd : usd;
+      deltaUSD += delta;
+      isSell ? sellVol += usd : buyVol += usd;
+      minDelta = Math.min(minDelta, deltaUSD);
+      maxDelta = Math.max(maxDelta, deltaUSD);
     };
   </script>
 </body>
