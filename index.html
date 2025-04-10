@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Live Market Taker Delta (USD) - Binance BTCUSDT</title>
+  <title>BTCUSDT Delta + Absorption Detection</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       background-color: #111;
       color: #fff;
       font-family: sans-serif;
-      padding: 20px;
       text-align: center;
+      padding: 20px;
     }
     canvas {
       max-width: 1000px;
@@ -21,13 +21,15 @@
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Volume Delta (Taker Buy - Taker Sell) – 5 Min</h2>
+  <h2>BTCUSDT Taker Volume Delta (5 Min) + Absorption Zones</h2>
   <canvas id="deltaChart" height="400"></canvas>
 
   <script>
     const labels = [];
     const deltas = [];
-    const maxBars = 288; // 24h of 5-minute bars
+    const absorptionFlags = [];
+    const prices = [];
+    const maxBars = 288;
 
     const ctx = document.getElementById("deltaChart").getContext("2d");
     const chart = new Chart(ctx, {
@@ -37,9 +39,20 @@
         datasets: [{
           label: 'Volume Delta (USD)',
           data: deltas,
-          backgroundColor: ctx => {
-            const val = ctx.raw;
-            return val > 0 ? 'rgba(0, 255, 0, 0.6)' : 'rgba(255, 0, 0, 0.6)';
+          backgroundColor: function(context) {
+            const value = context.raw;
+            const index = context.dataIndex;
+            const isAbsorption = absorptionFlags[index];
+
+            if (isAbsorption === 'buy') return 'rgba(0, 200, 255, 0.9)';   // Blue absorption
+            if (isAbsorption === 'sell') return 'rgba(200, 0, 255, 0.9)'; // Purple absorption
+
+            const maxAbs = Math.max(...deltas.map(d => Math.abs(d))) || 1;
+            const intensity = Math.min(Math.abs(value) / maxAbs, 1);
+            const alpha = 0.3 + intensity * 0.7;
+            return value >= 0
+              ? `rgba(0, 255, 0, ${alpha})`
+              : `rgba(255, 0, 0, ${alpha})`;
           },
           borderRadius: 3
         }]
@@ -50,28 +63,55 @@
           x: { ticks: { color: '#aaa' }},
           y: { ticks: { color: '#aaa' }}
         },
-        plugins: { legend: { display: false }}
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const flag = absorptionFlags[ctx.dataIndex];
+                const label = flag ? `Absorption: ${flag}` : '';
+                return [`Delta: $${ctx.raw.toFixed(2)}`, label].filter(Boolean);
+              }
+            }
+          }
+        }
       }
     });
 
-    function addBar(label, delta) {
-      labels.push(label);
-      deltas.push(delta);
-      if (labels.length > maxBars) {
-        labels.shift();
-        deltas.shift();
-      }
-      chart.update();
-    }
-
     let lastBarTime = null;
     let deltaUSD = 0;
+    let barOpen = null;
+    let barHigh = null;
+    let barLow = null;
+    let barClose = null;
 
     function roundTo5Min(timestamp) {
       const date = new Date(timestamp);
       date.setSeconds(0, 0);
       date.setMinutes(date.getMinutes() - (date.getMinutes() % 5));
       return date.getTime();
+    }
+
+    function addBar(label, delta, open, high, low, close) {
+      labels.push(label);
+      deltas.push(delta);
+      prices.push({ open, high, low, close });
+
+      const change = ((close - open) / open) * 100;
+      const isAbsorption =
+        delta > 0 && change < 0.1 ? 'buy' :
+        delta < 0 && change > -0.1 ? 'sell' : null;
+
+      absorptionFlags.push(isAbsorption);
+
+      if (labels.length > maxBars) {
+        labels.shift();
+        deltas.shift();
+        prices.shift();
+        absorptionFlags.shift();
+      }
+
+      chart.update();
     }
 
     const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
@@ -82,8 +122,17 @@
       const isSell = trade.m;
       const volume = price * qty;
 
-      // Taker Buy: +volume | Taker Sell: -volume
       deltaUSD += isSell ? -volume : volume;
+
+      if (barOpen === null) {
+        barOpen = price;
+        barHigh = price;
+        barLow = price;
+      }
+
+      barHigh = Math.max(barHigh, price);
+      barLow = Math.min(barLow, price);
+      barClose = price;
 
       const now = Date.now();
       const currentBar = roundTo5Min(now);
@@ -92,8 +141,14 @@
 
       if (currentBar > lastBarTime) {
         const label = new Date(lastBarTime).toLocaleTimeString();
-        addBar(label, parseFloat(deltaUSD.toFixed(2)));
+        addBar(label, parseFloat(deltaUSD.toFixed(2)), barOpen, barHigh, barLow, barClose);
+
+        // Reset
         deltaUSD = 0;
+        barOpen = price;
+        barHigh = price;
+        barLow = price;
+        barClose = price;
         lastBarTime = currentBar;
       }
     };
