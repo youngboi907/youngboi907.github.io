@@ -2,41 +2,60 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT Taker Delta + Volume (5 Min)</title>
+  <title>BTCUSDT Delta Charts (5 Min)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       background-color: #111;
       color: #fff;
       font-family: sans-serif;
-      text-align: center;
+      margin: 0;
       padding: 20px;
     }
-    canvas {
-      max-width: 1000px;
-      margin: 20px auto;
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+    .chart-box {
+      flex: 1 1 45%;
+      min-width: 450px;
       background: #222;
       border-radius: 8px;
+      padding: 10px;
+    }
+    canvas {
+      width: 100% !important;
+      height: 500px !important;
     }
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Taker Volume Delta (5 Min)</h2>
-  <canvas id="mainChart" height="400"></canvas>
-
-  <h3>Min & Max Delta (5 Min)</h3>
-  <canvas id="deltaRangeChart" height="200"></canvas>
+  <h2>BTCUSDT Taker Delta & Volume (5-Min)</h2>
+  <div class="container">
+    <div class="chart-box">
+      <canvas id="mainChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <canvas id="rangeChart"></canvas>
+    </div>
+  </div>
 
   <script>
     const labels = [];
     const deltas = [];
     const volumes = [];
     const volumeColors = [];
-    const deltaMins = [];
-    const deltaMaxs = [];
+    const minDeltas = [];
+    const maxDeltas = [];
     const maxBars = 288;
 
-    // Main chart
+    // Chart 1: Delta + Volume
     const mainChart = new Chart(document.getElementById("mainChart").getContext("2d"), {
       type: 'bar',
       data: {
@@ -52,13 +71,11 @@
           {
             label: 'Delta',
             data: deltas,
-            backgroundColor: function(context) {
-              const value = context.raw;
+            backgroundColor: ctx => {
+              const value = ctx.raw;
               const maxAbs = Math.max(...deltas.map(d => Math.abs(d))) || 1;
               const alpha = 0.3 + Math.min(Math.abs(value) / maxAbs, 1) * 0.7;
-              return value >= 0
-                ? `rgba(0, 255, 0, ${alpha})`
-                : `rgba(255, 0, 0, ${alpha})`;
+              return value >= 0 ? `rgba(0,255,0,${alpha})` : `rgba(255,0,0,${alpha})`;
             },
             borderRadius: 3,
             order: 2
@@ -67,54 +84,51 @@
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         scales: {
           x: { ticks: { color: '#aaa' }},
           y: { ticks: { color: '#aaa' }}
         },
         plugins: {
-          legend: { display: false }
+          legend: { labels: { color: '#fff' }}
         }
       }
     });
 
-    // Delta range chart
-    const rangeChart = new Chart(document.getElementById("deltaRangeChart").getContext("2d"), {
-      type: 'line',
+    // Chart 2: Min/Max Delta
+    const rangeChart = new Chart(document.getElementById("rangeChart").getContext("2d"), {
+      type: 'bar',
       data: {
         labels,
         datasets: [
           {
             label: 'Max Delta',
-            data: deltaMaxs,
-            borderColor: 'lime',
-            backgroundColor: 'rgba(0,255,0,0.2)',
-            fill: false,
-            tension: 0.3
+            data: maxDeltas,
+            backgroundColor: 'rgba(0,255,0,0.6)',
+            borderRadius: 3
           },
           {
             label: 'Min Delta',
-            data: deltaMins,
-            borderColor: 'red',
-            backgroundColor: 'rgba(255,0,0,0.2)',
-            fill: false,
-            tension: 0.3
+            data: minDeltas,
+            backgroundColor: 'rgba(255,0,0,0.6)',
+            borderRadius: 3
           }
         ]
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         scales: {
           x: { ticks: { color: '#aaa' }},
           y: { ticks: { color: '#aaa' }}
         },
         plugins: {
-          legend: {
-            labels: { color: '#fff' }
-          }
+          legend: { labels: { color: '#fff' }}
         }
       }
     });
 
+    // Bar tracking
     let lastBarTime = null;
     let deltaUSD = 0;
     let buyVol = 0;
@@ -131,20 +145,19 @@
 
     function addBar(label, delta, buyVol, sellVol, minD, maxD) {
       const totalVol = buyVol + sellVol;
-      const majorityColor = buyVol >= sellVol
-        ? 'rgba(255, 255, 0, 0.3)'
-        : 'rgba(0, 100, 255, 0.3)';
+      const color = buyVol >= sellVol
+        ? 'rgba(255,255,0,0.3)' : 'rgba(0,100,255,0.3)';
 
       labels.push(label);
       deltas.push(delta);
       volumes.push(totalVol);
-      volumeColors.push(majorityColor);
-      deltaMins.push(minD);
-      deltaMaxs.push(maxD);
+      volumeColors.push(color);
+      minDeltas.push(minD);
+      maxDeltas.push(maxD);
 
       if (labels.length > maxBars) {
         labels.shift(); deltas.shift(); volumes.shift(); volumeColors.shift();
-        deltaMins.shift(); deltaMaxs.shift();
+        minDeltas.shift(); maxDeltas.shift();
       }
 
       mainChart.update();
@@ -152,12 +165,12 @@
     }
 
     const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
-    ws.onmessage = event => {
-      const trade = JSON.parse(event.data);
-      const qty = parseFloat(trade.q);
-      const price = parseFloat(trade.p);
-      const isSell = trade.m;
-      const usd = price * qty;
+    ws.onmessage = e => {
+      const t = JSON.parse(e.data);
+      const qty = parseFloat(t.q);
+      const price = parseFloat(t.p);
+      const isSell = t.m;
+      const usd = qty * price;
 
       const now = Date.now();
       const currentBar = roundTo5Min(now);
@@ -168,6 +181,7 @@
         const label = new Date(lastBarTime).toLocaleTimeString();
         addBar(label, parseFloat(deltaUSD.toFixed(2)), buyVol, sellVol, minDelta, maxDelta);
 
+        // Reset
         deltaUSD = 0;
         buyVol = 0;
         sellVol = 0;
