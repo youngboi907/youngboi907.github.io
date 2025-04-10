@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>BTCUSDT Taker Delta (5 Min)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0"></script>
   <style>
     body {
       background-color: #111;
@@ -19,7 +18,7 @@
     }
     .chart-box {
       width: 100%;
-      max-width: 2200px;
+      max-width: 1200px;
       margin: 0 auto;
       background: #222;
       border-radius: 8px;
@@ -42,10 +41,9 @@
     const deltaDataset = [];
     const minDeltaDataset = [];
     const maxDeltaDataset = [];
-    const maxBars = 288;
+    const maxBars = 288; // for 24 hours of 5-min bars
 
-    const ctx = document.getElementById("deltaChart").getContext("2d");
-    const deltaChart = new Chart(ctx, {
+    const deltaChart = new Chart(document.getElementById("deltaChart").getContext("2d"), {
       type: 'bar',
       data: {
         labels,
@@ -60,7 +58,7 @@
           {
             label: 'Delta',
             data: deltaDataset,
-            backgroundColor: 'rgba(100,100,255,0)',
+            backgroundColor: 'rgba(100,100,255,0.7)',
             barPercentage: 1.0,
             categoryPercentage: 1.0
           },
@@ -79,31 +77,15 @@
         scales: {
           x: {
             stacked: true,
-            ticks: { color: '#aaa' },
-            min: 0,
-            max: 19
+            ticks: { color: '#aaa' }
           },
           y: {
             ticks: { color: '#aaa' }
           }
         },
         plugins: {
-          legend: { labels: { color: '#fff' } },
-          zoom: {
-            pan: {
-              enabled: true,
-              mode: 'x',
-              modifierKey: 'ctrl',
-            },
-            zoom: {
-              wheel: {
-                enabled: true,
-              },
-              pinch: {
-                enabled: true
-              },
-              mode: 'x'
-            }
+          legend: {
+            labels: { color: '#fff' }
           }
         }
       }
@@ -133,13 +115,6 @@
         minDeltaDataset.shift();
         maxDeltaDataset.shift();
       }
-
-      // Auto-scroll to the last 20 bars
-      const start = Math.max(0, labels.length - 20);
-      const end = labels.length - 1;
-      deltaChart.options.scales.x.min = start;
-      deltaChart.options.scales.x.max = end;
-
       deltaChart.update();
     }
 
@@ -159,6 +134,7 @@
       if (currentBar > lastBarTime) {
         const label = new Date(lastBarTime).toLocaleTimeString();
         addDeltaBar(label, parseFloat(deltaUSD.toFixed(2)), minDelta, maxDelta);
+
         deltaUSD = 0;
         minDelta = 0;
         maxDelta = 0;
