@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT Buy-Sell Delta (Futures)</title>
+  <title>BTCUSDT 5-Min Delta Chart</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
       background: #111;
       color: #fff;
+      font-family: sans-serif;
       text-align: center;
       padding: 20px;
     }
@@ -16,46 +17,112 @@
       max-width: 100%;
       height: 400px;
     }
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    .box {
+      border: 1px solid #444;
+      padding: 10px;
+      border-radius: 8px;
+      background: #222;
+      min-width: 120px;
+    }
+    .box h4 {
+      margin: 0 0 5px;
+    }
   </style>
 </head>
 <body>
-  <h2>Live BTCUSDT Futures Buy-Sell Delta</h2>
+  <h2>BTCUSDT Futures - 5 Min Delta Candles</h2>
   <canvas id="deltaChart"></canvas>
+
+  <div class="stats" id="statsContainer"></div>
 
   <script>
     const ctx = document.getElementById('deltaChart').getContext('2d');
 
-    const maxPoints = 100;
-    const labels = [];
-    const dataPoints = [];
+    const candles = []; // {time, open, high, low, close}
+    const statsContainer = document.getElementById("statsContainer");
 
-    const deltaChart = new Chart(ctx, {
-      type: 'line',
+    let currentCandle = null;
+    let lastCandleTime = null;
+    let cumulativeDelta = 0;
+
+    const candleChart = new Chart(ctx, {
+      type: 'candlestick',
       data: {
-        labels: labels,
         datasets: [{
-          label: 'Cumulative Delta (Buys - Sells)',
-          borderColor: 'rgb(0, 255, 100)',
-          backgroundColor: 'rgba(0, 255, 100, 0.1)',
-          data: dataPoints,
-          tension: 0.3
+          label: 'Delta (Buys - Sells)',
+          data: candles,
+          borderColor: '#00ff99',
+          borderWidth: 1
         }]
       },
       options: {
         responsive: true,
         animation: false,
+        plugins: {
+          legend: { display: false },
+        },
         scales: {
           x: {
-            display: false
+            type: 'time',
+            time: {
+              unit: 'minute',
+              displayFormats: { minute: 'HH:mm' }
+            },
+            ticks: { color: '#aaa' }
           },
           y: {
+            ticks: { color: '#aaa' },
             beginAtZero: false
           }
         }
       }
     });
 
-    let delta = 0;
+    function createNewCandle(timestamp) {
+      return {
+        time: timestamp,
+        open: cumulativeDelta,
+        high: cumulativeDelta,
+        low: cumulativeDelta,
+        close: cumulativeDelta
+      };
+    }
+
+    function updateStatsBox(candle) {
+      const box = document.createElement("div");
+      box.className = "box";
+      box.innerHTML = `
+        <h4>${new Date(candle.time).toLocaleTimeString()}</h4>
+        <div>Open: ${candle.open.toFixed(2)}</div>
+        <div>High: ${candle.high.toFixed(2)}</div>
+        <div>Low: ${candle.low.toFixed(2)}</div>
+        <div>Close: ${candle.close.toFixed(2)}</div>
+        <div>Total Delta: ${(candle.close - candle.open).toFixed(2)}</div>
+      `;
+      statsContainer.prepend(box);
+      if (statsContainer.children.length > 10) {
+        statsContainer.removeChild(statsContainer.lastChild);
+      }
+    }
+
+    function updateChart() {
+      candleChart.update();
+    }
+
+    function roundTimeTo5Min(timestamp) {
+      const date = new Date(timestamp);
+      date.setSeconds(0, 0);
+      const minutes = date.getMinutes();
+      date.setMinutes(minutes - (minutes % 5));
+      return date.getTime();
+    }
 
     const ws = new WebSocket('wss://fstream.binance.com/ws/btcusdt@trade');
     ws.onmessage = function(event) {
@@ -64,19 +131,29 @@
       const qty = parseFloat(trade.q);
       const isSell = trade.m;
 
-      delta += isSell ? -qty : qty;
+      cumulativeDelta += isSell ? -qty : qty;
 
-      const now = new Date().toLocaleTimeString();
+      const now = Date.now();
+      const candleTime = roundTimeTo5Min(now);
 
-      labels.push(now);
-      dataPoints.push(delta);
-
-      if (labels.length > maxPoints) {
-        labels.shift();
-        dataPoints.shift();
+      if (!lastCandleTime || candleTime > lastCandleTime) {
+        if (currentCandle) {
+          // Finalize previous candle
+          currentCandle.close = cumulativeDelta;
+          candles.push(currentCandle);
+          updateStatsBox(currentCandle);
+          updateChart();
+        }
+        lastCandleTime = candleTime;
+        currentCandle = createNewCandle(candleTime);
       }
 
-      deltaChart.update();
+      // Update candle in real-time
+      if (currentCandle) {
+        currentCandle.high = Math.max(currentCandle.high, cumulativeDelta);
+        currentCandle.low = Math.min(currentCandle.low, cumulativeDelta);
+        currentCandle.close = cumulativeDelta;
+      }
     };
   </script>
 </body>
