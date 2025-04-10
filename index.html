@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT 1-Min Taker Volume Delta</title>
+  <title>BTCUSDT 5-Min Delta & Volume Chart</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -21,33 +21,45 @@
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Market Taker Volume Delta (1 Min)</h2>
-  <canvas id="deltaChart" height="400"></canvas>
+  <h2>BTCUSDT Taker Volume Delta (5 Min) + Volume Candles</h2>
+  <canvas id="chart" height="400"></canvas>
 
   <script>
     const labels = [];
     const deltas = [];
-    const maxBars = 1440; // 24h of 1-min candles
+    const volumes = [];
+    const volumeColors = [];
+    const maxBars = 288;
 
-    const ctx = document.getElementById("deltaChart").getContext("2d");
+    const ctx = document.getElementById("chart").getContext("2d");
     const chart = new Chart(ctx, {
       type: 'bar',
       data: {
         labels,
-        datasets: [{
-          label: 'Volume Delta (USD)',
-          data: deltas,
-          backgroundColor: function(context) {
-            const value = context.raw;
-            const maxAbs = Math.max(...deltas.map(d => Math.abs(d))) || 1;
-            const intensity = Math.min(Math.abs(value) / maxAbs, 1);
-            const alpha = 0.3 + intensity * 0.7;
-            return value >= 0
-              ? `rgba(0, 255, 0, ${alpha})`
-              : `rgba(255, 0, 0, ${alpha})`;
+        datasets: [
+          {
+            label: 'Volume',
+            data: volumes,
+            backgroundColor: volumeColors,
+            borderRadius: 3,
+            order: 1
           },
-          borderRadius: 3
-        }]
+          {
+            label: 'Delta',
+            data: deltas,
+            backgroundColor: function(context) {
+              const value = context.raw;
+              const maxAbs = Math.max(...deltas.map(d => Math.abs(d))) || 1;
+              const intensity = Math.min(Math.abs(value) / maxAbs, 1);
+              const alpha = 0.3 + intensity * 0.7;
+              return value >= 0
+                ? `rgba(0, 255, 0, ${alpha})`
+                : `rgba(255, 0, 0, ${alpha})`;
+            },
+            borderRadius: 3,
+            order: 2
+          }
+        ]
       },
       options: {
         responsive: true,
@@ -59,30 +71,46 @@
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: ctx => `Delta: $${ctx.raw.toFixed(2)}`
+              label: ctx => {
+                if (ctx.datasetIndex === 0)
+                  return `Volume: $${ctx.raw.toFixed(2)}`;
+                else
+                  return `Delta: $${ctx.raw.toFixed(2)}`;
+              }
             }
           }
         }
       }
     });
 
-    function addBar(label, delta) {
-      labels.push(label);
-      deltas.push(delta);
-      if (labels.length > maxBars) {
-        labels.shift();
-        deltas.shift();
-      }
-      chart.update();
-    }
-
     let lastBarTime = null;
     let deltaUSD = 0;
+    let buyVol = 0;
+    let sellVol = 0;
 
-    function roundTo1Min(timestamp) {
+    function roundTo5Min(timestamp) {
       const date = new Date(timestamp);
       date.setSeconds(0, 0);
+      date.setMinutes(date.getMinutes() - (date.getMinutes() % 5));
       return date.getTime();
+    }
+
+    function addBar(label, delta, buyVol, sellVol) {
+      const totalVol = buyVol + sellVol;
+      const majorityColor = buyVol >= sellVol
+        ? 'rgba(255, 255, 0, 0.3)' // Yellow for buy vol
+        : 'rgba(0, 100, 255, 0.3)'; // Blue for sell vol
+
+      labels.push(label);
+      deltas.push(delta);
+      volumes.push(totalVol);
+      volumeColors.push(majorityColor);
+
+      if (labels.length > maxBars) {
+        labels.shift(); deltas.shift(); volumes.shift(); volumeColors.shift();
+      }
+
+      chart.update();
     }
 
     const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
@@ -91,19 +119,24 @@
       const qty = parseFloat(trade.q);
       const price = parseFloat(trade.p);
       const isSell = trade.m;
-      const volume = price * qty;
+      const usd = price * qty;
 
-      deltaUSD += isSell ? -volume : volume;
+      deltaUSD += isSell ? -usd : usd;
+      isSell ? sellVol += usd : buyVol += usd;
 
       const now = Date.now();
-      const currentBar = roundTo1Min(now);
+      const currentBar = roundTo5Min(now);
 
       if (!lastBarTime) lastBarTime = currentBar;
 
       if (currentBar > lastBarTime) {
         const label = new Date(lastBarTime).toLocaleTimeString();
-        addBar(label, parseFloat(deltaUSD.toFixed(2)));
+        addBar(label, parseFloat(deltaUSD.toFixed(2)), buyVol, sellVol);
+
+        // Reset
         deltaUSD = 0;
+        buyVol = 0;
+        sellVol = 0;
         lastBarTime = currentBar;
       }
     };
