@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT Taker Delta (5 Min)</title>
+  <title>BTCUSDT Taker Delta + OI & ELR</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -12,14 +12,14 @@
       margin: 0;
       padding: 20px;
     }
-    h2 {
+    h2, h3 {
       text-align: center;
       margin-bottom: 20px;
     }
     .chart-box {
       width: 100%;
       max-width: 2200px;
-      margin: 0 auto;
+      margin: 0 auto 50px auto;
       background: #222;
       border-radius: 8px;
       padding: 10px;
@@ -36,12 +36,18 @@
     <canvas id="deltaChart"></canvas>
   </div>
 
+  <h3>Open Interest & Estimated Leverage Ratio</h3>
+  <div class="chart-box">
+    <canvas id="oiChart"></canvas>
+  </div>
+
   <script>
+    // ================= TAKER DELTA CHART ================= //
     const labels = [];
     const deltaDataset = [];
     const minDeltaDataset = [];
     const maxDeltaDataset = [];
-    const maxBars = 288; // for 24 hours of 5-min bars
+    const maxBars = 288;
 
     const deltaChart = new Chart(document.getElementById("deltaChart").getContext("2d"), {
       type: 'bar',
@@ -58,7 +64,7 @@
           {
             label: 'Delta',
             data: deltaDataset,
-            backgroundColor: 'rgba(100,100,255,0.7)',
+            backgroundColor: 'rgba(100,100,255,0)',
             barPercentage: 1.0,
             categoryPercentage: 1.0
           },
@@ -75,18 +81,11 @@
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: {
-            stacked: true,
-            ticks: { color: '#aaa' }
-          },
-          y: {
-            ticks: { color: '#aaa' }
-          }
+          x: { stacked: true, ticks: { color: '#aaa' } },
+          y: { ticks: { color: '#aaa' } }
         },
         plugins: {
-          legend: {
-            labels: { color: '#fff' }
-          }
+          legend: { labels: { color: '#fff' } }
         }
       }
     });
@@ -108,7 +107,6 @@
       deltaDataset.push(delta);
       minDeltaDataset.push(minD);
       maxDeltaDataset.push(maxD);
-
       if (labels.length > maxBars) {
         labels.shift();
         deltaDataset.shift();
@@ -128,13 +126,11 @@
 
       const now = Date.now();
       const currentBar = roundTo5Min(now);
-
       if (!lastBarTime) lastBarTime = currentBar;
 
       if (currentBar > lastBarTime) {
         const label = new Date(lastBarTime).toLocaleTimeString();
         addDeltaBar(label, parseFloat(deltaUSD.toFixed(2)), minDelta, maxDelta);
-
         deltaUSD = 0;
         minDelta = 0;
         maxDelta = 0;
@@ -146,6 +142,93 @@
       minDelta = Math.min(minDelta, deltaUSD);
       maxDelta = Math.max(maxDelta, deltaUSD);
     };
+
+    // ================= OI & ELR LINE CHART ================= //
+    const oiLabels = [];
+    const oiData = [];
+    const elrData = [];
+
+    const oiChart = new Chart(document.getElementById("oiChart").getContext("2d"), {
+      type: 'line',
+      data: {
+        labels: oiLabels,
+        datasets: [
+          {
+            label: 'Open Interest',
+            data: oiData,
+            borderColor: 'orange',
+            backgroundColor: 'rgba(255,165,0,0.2)',
+            yAxisID: 'y',
+            tension: 0.3
+          },
+          {
+            label: 'Estimated Leverage Ratio',
+            data: elrData,
+            borderColor: 'cyan',
+            backgroundColor: 'rgba(0,255,255,0.2)',
+            yAxisID: 'y1',
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        stacked: false,
+        scales: {
+          y: {
+            type: 'linear',
+            position: 'left',
+            ticks: { color: '#ffa500' }
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            grid: { drawOnChartArea: false },
+            ticks: { color: '#0ff' }
+          },
+          x: {
+            ticks: { color: '#aaa' }
+          }
+        },
+        plugins: {
+          legend: { labels: { color: '#fff' } }
+        }
+      }
+    });
+
+    async function fetchOIandELR() {
+      try {
+        const [oiRes, elrRes] = await Promise.all([
+          fetch('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT'),
+          fetch('https://fapi.binance.com/futures/data/estimatedLeverageRatio?symbol=BTCUSDT')
+        ]);
+        const oiJson = await oiRes.json();
+        const elrJson = await elrRes.json();
+
+        const timestamp = new Date().toLocaleTimeString();
+        const oi = parseFloat(oiJson.openInterest);
+        const elr = parseFloat(elrJson.estimatedLeverageRatio);
+
+        oiLabels.push(timestamp);
+        oiData.push(oi);
+        elrData.push(elr);
+
+        if (oiLabels.length > 288) {
+          oiLabels.shift();
+          oiData.shift();
+          elrData.shift();
+        }
+
+        oiChart.update();
+      } catch (err) {
+        console.error("Error fetching OI/ELR:", err);
+      }
+    }
+
+    setInterval(fetchOIandELR, 60000); // Fetch every 60 seconds
+    fetchOIandELR(); // Initial fetch on page load
   </script>
 </body>
 </html>
