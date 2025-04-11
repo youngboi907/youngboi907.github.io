@@ -1,8 +1,10 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>BTCUSDT ELR, OI & Long/Short Ratio</title>
+  <meta charset="UTF-8">
+  <title>BTCUSDT Futures Metrics</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
   <style>
     body {
       background-color: #111;
@@ -13,148 +15,133 @@
     }
     h2 {
       text-align: center;
-      margin: 20px 0 10px;
     }
-    .chart-box {
+    .chart-container {
       width: 100%;
       max-width: 1200px;
-      margin: 0 auto 40px;
+      margin: 30px auto;
       background: #222;
-      border-radius: 8px;
       padding: 20px;
+      border-radius: 10px;
     }
     canvas {
       width: 100% !important;
-      height: 300px !important;
+      height: 400px !important;
     }
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Estimated Leverage Ratio (ELR)</h2>
-  <div class="chart-box">
-    <canvas id="elrChart"></canvas>
-  </div>
-  <h2>BTCUSDT Open Interest (OI)</h2>
-  <div class="chart-box">
-    <canvas id="oiChart"></canvas>
-  </div>
-  <h2>BTCUSDT Top Trader Long/Short Ratio</h2>
-  <div class="chart-box">
-    <canvas id="lsRatioChart"></canvas>
-  </div>  <script>
-    const maxPoints = 288; // 1 day of 5-min data
 
-    const elrLabels = [], elrData = [];
-    const oiLabels = [], oiData = [];
-    const lsLabels = [], longRatioData = [], shortRatioData = [];
+  <h2>BTCUSDT - Estimated Leverage Ratio (ELR)</h2>
+  <div class="chart-container"><canvas id="elrChart"></canvas></div>
 
-    const elrChart = new Chart(document.getElementById('elrChart').getContext('2d'), {
+  <h2>BTCUSDT - Open Interest (OI)</h2>
+  <div class="chart-container"><canvas id="oiChart"></canvas></div>
+
+  <h2>BTCUSDT - Top Trader Long/Short Ratio</h2>
+  <div class="chart-container"><canvas id="ratioChart"></canvas></div>
+
+  <script>
+    const maxPoints = 288;
+
+    const elrChart = new Chart(document.getElementById("elrChart").getContext("2d"), {
       type: 'line',
-      data: {
-        labels: elrLabels,
-        datasets: [{
-          label: 'ELR',
-          data: elrData,
-          borderColor: 'cyan',
-          backgroundColor: 'rgba(0,255,255,0.2)',
-          fill: true
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { x: { ticks: { color: '#aaa' } }, y: { ticks: { color: '#aaa' } } },
-        plugins: { legend: { labels: { color: '#fff' } } }
-      }
+      data: { labels: [], datasets: [{
+        label: 'ELR',
+        data: [],
+        borderColor: 'lime',
+        backgroundColor: 'rgba(0,255,0,0.2)',
+        tension: 0.2
+      }]},
+      options: baseOptions("Estimated Leverage Ratio")
     });
 
-    const oiChart = new Chart(document.getElementById('oiChart').getContext('2d'), {
+    const oiChart = new Chart(document.getElementById("oiChart").getContext("2d"), {
       type: 'line',
-      data: {
-        labels: oiLabels,
-        datasets: [{
-          label: 'OI',
-          data: oiData,
-          borderColor: 'orange',
-          backgroundColor: 'rgba(255,165,0,0.2)',
-          fill: true
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { x: { ticks: { color: '#aaa' } }, y: { ticks: { color: '#aaa' } } },
-        plugins: { legend: { labels: { color: '#fff' } } }
-      }
+      data: { labels: [], datasets: [{
+        label: 'OI (USD)',
+        data: [],
+        borderColor: 'orange',
+        backgroundColor: 'rgba(255,165,0,0.2)',
+        tension: 0.2
+      }]},
+      options: baseOptions("Open Interest")
     });
 
-    const lsChart = new Chart(document.getElementById('lsRatioChart').getContext('2d'), {
+    const ratioChart = new Chart(document.getElementById("ratioChart").getContext("2d"), {
       type: 'line',
-      data: {
-        labels: lsLabels,
-        datasets: [
-          {
-            label: 'Long Ratio',
-            data: longRatioData,
-            borderColor: 'green',
-            backgroundColor: 'rgba(0,255,0,0.2)',
-            fill: true
-          },
-          {
-            label: 'Short Ratio',
-            data: shortRatioData,
-            borderColor: 'red',
-            backgroundColor: 'rgba(255,0,0,0.2)',
-            fill: true
+      data: { labels: [], datasets: [{
+        label: 'Top Trader Long/Short Ratio',
+        data: [],
+        borderColor: 'skyblue',
+        backgroundColor: 'rgba(135,206,235,0.2)',
+        tension: 0.2
+      }]},
+      options: baseOptions("Top Trader Long/Short Ratio")
+    });
+
+    function baseOptions(title) {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: { display: false },
+          legend: { labels: { color: '#fff' }},
+          zoom: {
+            zoom: {
+              wheel: { enabled: true },
+              pinch: { enabled: true },
+              mode: 'x'
+            },
+            pan: {
+              enabled: true,
+              mode: 'x',
+            }
           }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { x: { ticks: { color: '#aaa' } }, y: { ticks: { color: '#aaa' } } },
-        plugins: { legend: { labels: { color: '#fff' } } }
-      }
-    });
+        },
+        scales: {
+          x: { ticks: { color: '#aaa' }},
+          y: { ticks: { color: '#aaa' }}
+        }
+      };
+    }
 
     async function fetchMetrics() {
       try {
-        const res = await fetch('https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=1');
-        const resOI = await fetch('https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m&limit=1');
-        const resELR = await fetch('https://fapi.binance.com/futures/data/estimatedLeverageRatio?symbol=BTCUSDT&period=5m&limit=1');
+        const [elrRes, oiRes, ratioRes] = await Promise.all([
+          fetch("https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=288"),
+          fetch("https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m&limit=288"),
+          fetch("https://fapi.binance.com/futures/data/topLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=288")
+        ]);
 
-        const ls = await res.json();
-        const oi = await resOI.json();
-        const elr = await resELR.json();
+        const elrData = await elrRes.json();
+        const oiData = await oiRes.json();
+        const ratioData = await ratioRes.json();
 
-        if (ls.length && oi.length && elr.length) {
-          const time = new Date(ls[0].timestamp).toLocaleTimeString();
-          const longR = parseFloat(ls[0].longAccount);
-          const shortR = parseFloat(ls[0].shortAccount);
-          const openInterest = parseFloat(oi[0].sumOpenInterest);
-          const leverage = parseFloat(elr[0].estimatedLeverageRatio);
+        const timestamps = elrData.map(item => new Date(item.timestamp).toLocaleTimeString());
 
-          pushData(elrLabels, elrData, time, leverage, elrChart);
-          pushData(oiLabels, oiData, time, openInterest, oiChart);
-          pushData(lsLabels, longRatioData, time, longR, lsChart);
-          pushData(lsLabels, shortRatioData, time, shortR, lsChart);
-        }
-      } catch (err) {
-        console.error('Error fetching metrics:', err);
+        // Update ELR chart
+        elrChart.data.labels = timestamps;
+        elrChart.data.datasets[0].data = elrData.map(item => parseFloat(item.longShortRatio));
+        elrChart.update();
+
+        // Update OI chart
+        oiChart.data.labels = timestamps;
+        oiChart.data.datasets[0].data = oiData.map(item => parseFloat(item.sumOpenInterestValue));
+        oiChart.update();
+
+        // Update Long/Short Ratio chart
+        ratioChart.data.labels = timestamps;
+        ratioChart.data.datasets[0].data = ratioData.map(item => parseFloat(item.longShortRatio));
+        ratioChart.update();
+      } catch (e) {
+        console.error("Data fetch error:", e);
       }
-    }
-
-    function pushData(labelsArr, dataArr, label, value, chart) {
-      if (labelsArr.length >= maxPoints) {
-        labelsArr.shift();
-        dataArr.shift();
-      }
-      labelsArr.push(label);
-      dataArr.push(value);
-      chart.update();
     }
 
     fetchMetrics();
-    setInterval(fetchMetrics, 300000); // every 5 min
-  </script></body>
+    setInterval(fetchMetrics, 5 * 60 * 1000); // Refresh every 5 min
+  </script>
+
+</body>
 </html>
