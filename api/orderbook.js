@@ -1,5 +1,3 @@
-// api/orderbook.js
-
 import axios from 'axios';
 
 export default async function handler(req, res) {
@@ -21,21 +19,21 @@ export default async function handler(req, res) {
       }, 0);
     };
 
-    const bids = {
-      "0-2.5%": getTotal(data.bids, 0, 2.5),
-      "2.5-5%": getTotal(data.bids, 2.5, 5),
-      "5-10%": getTotal(data.bids, 5, 10)
+    const result = {
+      labels: ['0-2.5%', '2.5-5%', '5-10%', '0-2.5%', '2.5-5%', '5-10%'],
+      datasets: [
+        [getTotal(data.bids, 0, 2.5)],
+        [getTotal(data.bids, 2.5, 5)],
+        [getTotal(data.bids, 5, 10)],
+        [getTotal(data.asks, 0, 2.5)],
+        [getTotal(data.asks, 2.5, 5)],
+        [getTotal(data.asks, 5, 10)]
+      ]
     };
 
-    const asks = {
-      "0-2.5%": getTotal(data.asks, 0, 2.5),
-      "2.5-5%": getTotal(data.asks, 2.5, 5),
-      "5-10%": getTotal(data.asks, 5, 10)
-    };
-
-    res.status(200).json({ bids, asks, midPrice });
+    res.status(200).json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error fetching order book' });
+    res.status(500).json({ error: 'Failed to fetch orderbook data' });
   }
 }
