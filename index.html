@@ -1,130 +1,41 @@
-<!DOCTYPE html><html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Binance Order Book Depth</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      background-color: #111;
-      color: white;
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    .chart-box {
-      width: 100%;
-      max-width: 1400px;
-      margin: auto;
-      background: #222;
-      border-radius: 10px;
-      padding: 20px;
-    }
-    canvas {
-      width: 100% !important;
-      height: 500px !important;
-    }
-  </style>
-</head>
-<body>
-  <h2 style="text-align:center;">Binance Order Book Depth (0% - 10%)</h2>
-  <div class="chart-box">
-    <canvas id="orderBookChart"></canvas>
-  </div>  <script>
-    const ctx = document.getElementById('orderBookChart').getContext('2d');
-
-    const orderBookChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: [], // Depth height levels
-        datasets: [
-          {
-            label: 'Buy 0-2.5%',
-            data: [],
-            backgroundColor: 'rgba(0, 255, 0, 0.6)'
-          },
-          {
-            label: 'Buy 2.5-5%',
-            data: [],
-            backgroundColor: 'rgba(0, 180, 0, 0.5)'
-          },
-          {
-            label: 'Buy 5-10%',
-            data: [],
-            backgroundColor: 'rgba(0, 120, 0, 0.4)'
-          },
-          {
-            label: 'Sell 0-2.5%',
-            data: [],
-            backgroundColor: 'rgba(255, 0, 0, 0.6)'
-          },
-          {
-            label: 'Sell 2.5-5%',
-            data: [],
-            backgroundColor: 'rgba(180, 0, 0, 0.5)'
-          },
-          {
-            label: 'Sell 5-10%',
-            data: [],
-            backgroundColor: 'rgba(120, 0, 0, 0.4)'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            stacked: true,
-            ticks: { color: '#ccc' }
-          },
-          y: {
-            title: {
-              display: true,
-              text: 'Order Size (USDT)',
-              color: '#ccc'
-            },
-            ticks: { color: '#ccc' },
-            stacked: true
-          }
+<canvas id="btcChart"></canvas>
+<script>
+  const ctx = document.getElementById('btcChart').getContext('2d');
+  const btcChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [], // Time or price labels
+      datasets: [
+        {
+          label: 'BTC Price',
+          data: [], // BTC price data
+          borderColor: '#ffffff',
+          fill: false,
         },
-        plugins: {
-          legend: {
-            labels: { color: 'white' }
-          }
+        {
+          label: 'Buy 0-2.5%',
+          data: [], // Order sizes for 0-2.5% buy depth
+          backgroundColor: 'rgba(0, 255, 0, 0.6)',
+          type: 'bar',
+        },
+        {
+          label: 'Sell 0-2.5%',
+          data: [], // Order sizes for 0-2.5% sell depth
+          backgroundColor: 'rgba(255, 0, 0, 0.6)',
+          type: 'bar',
+        },
+        // Add additional datasets for other depth ranges
+      ]
+    },
+    options: {
+      scales: {
+        x: {
+          // Define x-axis settings
+        },
+        y: {
+          // Define y-axis settings
         }
       }
-    });
-
-    // When you provide the private API endpoint, use this function to fetch and update:
-    async function updateOrderBook() {
-      // Example placeholder logic - replace with your private API call
-      // const res = await fetch('https://your-private-api/orderbook');
-      // const data = await res.json();
-
-      // Simulated example data
-      const data = {
-        buy: {
-          zone1: [1000, 900, 800],
-          zone2: [600, 500, 400],
-          zone3: [300, 200, 100]
-        },
-        sell: {
-          zone1: [950, 850, 750],
-          zone2: [550, 450, 350],
-          zone3: [250, 150, 50]
-        },
-        labels: ['Level 1', 'Level 2', 'Level 3']
-      };
-
-      orderBookChart.data.labels = data.labels;
-      orderBookChart.data.datasets[0].data = data.buy.zone1;
-      orderBookChart.data.datasets[1].data = data.buy.zone2;
-      orderBookChart.data.datasets[2].data = data.buy.zone3;
-      orderBookChart.data.datasets[3].data = data.sell.zone1;
-      orderBookChart.data.datasets[4].data = data.sell.zone2;
-      orderBookChart.data.datasets[5].data = data.sell.zone3;
-      orderBookChart.update();
     }
-
-    setInterval(updateOrderBook, 3000); // Refresh every 3 seconds
-  </script></body>
-</html>
+  });
+</script>
