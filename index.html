@@ -1,8 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT Futures Metrics</title>
+  <title>BTCUSDT Metrics</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
   <style>
@@ -30,62 +29,31 @@
     }
   </style>
 </head>
-<body>
-
-  <h2>BTCUSDT - Estimated Leverage Ratio (ELR)</h2>
-  <div class="chart-container"><canvas id="elrChart"></canvas></div>
-
-  <h2>BTCUSDT - Open Interest (OI)</h2>
-  <div class="chart-container"><canvas id="oiChart"></canvas></div>
-
-  <h2>BTCUSDT - Top Trader Long/Short Ratio</h2>
-  <div class="chart-container"><canvas id="ratioChart"></canvas></div>
-
-  <script>
+<body>  <h2>BTCUSDT - Price</h2>
+  <div class="chart-container"><canvas id="priceChart"></canvas></div>  <h2>BTCUSDT - Estimated Leverage Ratio (ELR)</h2>
+  <div class="chart-container"><canvas id="elrChart"></canvas></div>  <h2>BTCUSDT - Open Interest (OI)</h2>
+  <div class="chart-container"><canvas id="oiChart"></canvas></div>  <h2>BTCUSDT - Top Trader Long/Short Ratio</h2>
+  <div class="chart-container"><canvas id="ratioChart"></canvas></div>  <script>
     const maxPoints = 288;
+    const sharedLabels = [];
 
-    const elrChart = new Chart(document.getElementById("elrChart").getContext("2d"), {
+    const chartOptions = (label, color) => ({
       type: 'line',
-      data: { labels: [], datasets: [{
-        label: 'ELR',
-        data: [],
-        borderColor: 'lime',
-        backgroundColor: 'rgba(0,255,0,0.2)',
-        tension: 0.2
-      }]},
-      options: baseOptions("Estimated Leverage Ratio")
-    });
-
-    const oiChart = new Chart(document.getElementById("oiChart").getContext("2d"), {
-      type: 'line',
-      data: { labels: [], datasets: [{
-        label: 'OI (USD)',
-        data: [],
-        borderColor: 'orange',
-        backgroundColor: 'rgba(255,165,0,0.2)',
-        tension: 0.2
-      }]},
-      options: baseOptions("Open Interest")
-    });
-
-    const ratioChart = new Chart(document.getElementById("ratioChart").getContext("2d"), {
-      type: 'line',
-      data: { labels: [], datasets: [{
-        label: 'Top Trader Long/Short Ratio',
-        data: [],
-        borderColor: 'skyblue',
-        backgroundColor: 'rgba(135,206,235,0.2)',
-        tension: 0.2
-      }]},
-      options: baseOptions("Top Trader Long/Short Ratio")
-    });
-
-    function baseOptions(title) {
-      return {
+      data: {
+        labels: sharedLabels,
+        datasets: [{
+          label,
+          data: [],
+          borderColor: color,
+          backgroundColor: color.replace("1)", "0.2)"),
+          tension: 0.2,
+          pointRadius: 0
+        }]
+      },
+      options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          title: { display: false },
           legend: { labels: { color: '#fff' }},
           zoom: {
             zoom: {
@@ -93,55 +61,72 @@
               pinch: { enabled: true },
               mode: 'x'
             },
-            pan: {
-              enabled: true,
-              mode: 'x',
-            }
+            pan: { enabled: true, mode: 'x' }
           }
         },
         scales: {
-          x: { ticks: { color: '#aaa' }},
-          y: { ticks: { color: '#aaa' }}
+          x: {
+            ticks: { color: '#aaa' }
+          },
+          y: {
+            ticks: { color: '#aaa' }
+          }
         }
-      };
+      }
+    });
+
+    const priceChart = new Chart(document.getElementById("priceChart").getContext("2d"), chartOptions("Price", "rgba(255,255,255,1)"));
+    const elrChart = new Chart(document.getElementById("elrChart").getContext("2d"), chartOptions("ELR", "rgba(0,255,0,1)"));
+    const oiChart = new Chart(document.getElementById("oiChart").getContext("2d"), chartOptions("OI", "rgba(255,165,0,1)"));
+    const ratioChart = new Chart(document.getElementById("ratioChart").getContext("2d"), chartOptions("Long/Short Ratio", "rgba(135,206,235,1)"));
+
+    const charts = [priceChart, elrChart, oiChart, ratioChart];
+
+    function syncZoom(chart) {
+      const zoomOptions = chart.options.plugins.zoom;
+      charts.forEach(c => {
+        if (c !== chart) {
+          c.options.plugins.zoom.zoom = zoomOptions.zoom;
+          c.options.plugins.zoom.pan = zoomOptions.pan;
+          c.update();
+        }
+      });
     }
 
-    async function fetchMetrics() {
+    charts.forEach(c => {
+      c.options.onZoom = ({ chart }) => syncZoom(chart);
+      c.options.onPan = ({ chart }) => syncZoom(chart);
+    });
+
+    async function fetchData() {
       try {
-        const [elrRes, oiRes, ratioRes] = await Promise.all([
-          fetch("https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=288"),
-          fetch("https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m&limit=288"),
-          fetch("https://fapi.binance.com/futures/data/topLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=288")
+        const [klines, elrRes, oiRes, ratioRes] = await Promise.all([
+          fetch("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=5m&limit=288").then(res => res.json()),
+          fetch("https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=288").then(res => res.json()),
+          fetch("https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m&limit=288").then(res => res.json()),
+          fetch("https://fapi.binance.com/futures/data/topLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=288").then(res => res.json())
         ]);
 
-        const elrData = await elrRes.json();
-        const oiData = await oiRes.json();
-        const ratioData = await ratioRes.json();
+        const labels = klines.map(k => new Date(k[0]).toLocaleTimeString());
+        sharedLabels.length = 0;
+        sharedLabels.push(...labels);
 
-        const timestamps = elrData.map(item => new Date(item.timestamp).toLocaleTimeString());
+        priceChart.data.datasets[0].data = klines.map(k => parseFloat(k[4])); // closing price
+        elrChart.data.datasets[0].data = elrRes.map(r => parseFloat(r.longShortRatio));
+        oiChart.data.datasets[0].data = oiRes.map(r => parseFloat(r.sumOpenInterestValue));
+        ratioChart.data.datasets[0].data = ratioRes.map(r => parseFloat(r.longShortRatio));
 
-        // Update ELR chart
-        elrChart.data.labels = timestamps;
-        elrChart.data.datasets[0].data = elrData.map(item => parseFloat(item.longShortRatio));
-        elrChart.update();
+        charts.forEach(c => {
+          c.data.labels = sharedLabels;
+          c.update();
+        });
 
-        // Update OI chart
-        oiChart.data.labels = timestamps;
-        oiChart.data.datasets[0].data = oiData.map(item => parseFloat(item.sumOpenInterestValue));
-        oiChart.update();
-
-        // Update Long/Short Ratio chart
-        ratioChart.data.labels = timestamps;
-        ratioChart.data.datasets[0].data = ratioData.map(item => parseFloat(item.longShortRatio));
-        ratioChart.update();
-      } catch (e) {
-        console.error("Data fetch error:", e);
+      } catch (err) {
+        console.error("Fetch failed:", err);
       }
     }
 
-    fetchMetrics();
-    setInterval(fetchMetrics, 5 * 60 * 1000); // Refresh every 5 min
-  </script>
-
-</body>
+    fetchData();
+    setInterval(fetchData, 5 * 60 * 1000); // refresh every 5 minutes
+  </script></body>
 </html>
