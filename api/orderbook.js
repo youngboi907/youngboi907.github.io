@@ -1,3 +1,5 @@
+// api/orderbook.js
+
 import axios from 'axios';
 
 export default async function handler(req, res) {
@@ -19,23 +21,21 @@ export default async function handler(req, res) {
       }, 0);
     };
 
-    const result = {
-      bids: {
-        '0-2.5%': getTotal(data.bids, 0, 2.5),
-        '2.5-5%': getTotal(data.bids, 2.5, 5),
-        '5-10%': getTotal(data.bids, 5, 10)
-      },
-      asks: {
-        '0-2.5%': getTotal(data.asks, 0, 2.5),
-        '2.5-5%': getTotal(data.asks, 2.5, 5),
-        '5-10%': getTotal(data.asks, 5, 10)
-      },
-      midPrice
+    const bids = {
+      "0-2.5%": getTotal(data.bids, 0, 2.5),
+      "2.5-5%": getTotal(data.bids, 2.5, 5),
+      "5-10%": getTotal(data.bids, 5, 10)
     };
 
-    res.status(200).json(result);
-  } catch (error) {
-    console.error(error.message);
-    res.status(500).json({ error: 'Error fetching orderbook data' });
+    const asks = {
+      "0-2.5%": getTotal(data.asks, 0, 2.5),
+      "2.5-5%": getTotal(data.asks, 2.5, 5),
+      "5-10%": getTotal(data.asks, 5, 10)
+    };
+
+    res.status(200).json({ bids, asks, midPrice });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error fetching order book' });
   }
 }
