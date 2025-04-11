@@ -1,8 +1,10 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT Dashboard</title>
+  <title>BTCUSDT Metrics</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
   <style>
     body {
       background-color: #111;
@@ -13,15 +15,14 @@
     }
     h2 {
       text-align: center;
-      margin-bottom: 10px;
     }
-    .chart-box {
+    .chart-container {
       width: 100%;
-      max-width: 1400px;
-      margin: 20px auto;
+      max-width: 1200px;
+      margin: 30px auto;
       background: #222;
-      border-radius: 8px;
-      padding: 10px;
+      padding: 20px;
+      border-radius: 10px;
     }
     canvas {
       width: 100% !important;
@@ -30,183 +31,115 @@
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Dashboard (Live)</h2>  <div class="chart-box">
-    <canvas id="priceChart"></canvas>
-  </div>
-  <div class="chart-box">
-    <canvas id="elrChart"></canvas>
-  </div>
-  <div class="chart-box">
-    <canvas id="oiChart"></canvas>
-  </div>
-  <div class="chart-box">
-    <canvas id="avgLevChart"></canvas>
-  </div>
-  <div class="chart-box">
-    <canvas id="deltaChart"></canvas>
-  </div>  <script>
-    const chartConfig = (label, borderColor, backgroundColor) => ({
+
+  <h2>BTCUSDT - Price</h2>
+  <div class="chart-container"><canvas id="priceChart"></canvas></div>
+
+  <h2>BTCUSDT - Estimated Leverage Ratio (ELR)</h2>
+  <div class="chart-container"><canvas id="elrChart"></canvas></div>
+
+  <h2>BTCUSDT - Open Interest (OI)</h2>
+  <div class="chart-container"><canvas id="oiChart"></canvas></div>
+
+  <h2>BTCUSDT - Top Trader Long/Short Ratio</h2>
+  <div class="chart-container"><canvas id="ratioChart"></canvas></div>
+
+  <script>
+    const maxPoints = 288;
+    const sharedLabels = [];
+
+    const chartOptions = (label, color) => ({
       type: 'line',
       data: {
-        labels: [],
+        labels: sharedLabels,
         datasets: [{
           label,
           data: [],
-          borderColor,
-          backgroundColor,
-          tension: 0.3,
+          borderColor: color,
+          backgroundColor: color.replace("1)", "0.2)"),
+          tension: 0.2,
           pointRadius: 0
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: {
-          x: { ticks: { color: '#aaa' } },
-          y: { ticks: { color: '#aaa' } }
-        },
         plugins: {
-          legend: { labels: { color: '#fff' } }
+          legend: { labels: { color: '#fff' }},
+          zoom: {
+            zoom: {
+              wheel: { enabled: true },
+              pinch: { enabled: true },
+              mode: 'x'
+            },
+            pan: { enabled: true, mode: 'x' }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#aaa' }
+          },
+          y: {
+            ticks: { color: '#aaa' }
+          }
         }
       }
     });
 
-    const priceChart = new Chart(document.getElementById("priceChart"), chartConfig("BTC Price", "#00ffcc", "#00ffcc22"));
-    const elrChart = new Chart(document.getElementById("elrChart"), chartConfig("Estimated Leverage Ratio", "#ffaa00", "#ffaa0022"));
-    const oiChart = new Chart(document.getElementById("oiChart"), chartConfig("Open Interest", "#33cc33", "#33cc3322"));
-    const avgLevChart = new Chart(document.getElementById("avgLevChart"), chartConfig("Avg Long/Short Leverage", "#9999ff", "#9999ff22"));
+    const priceChart = new Chart(document.getElementById("priceChart").getContext("2d"), chartOptions("Price", "rgba(255,255,255,1)"));
+    const elrChart = new Chart(document.getElementById("elrChart").getContext("2d"), chartOptions("ELR", "rgba(0,255,0,1)"));
+    const oiChart = new Chart(document.getElementById("oiChart").getContext("2d"), chartOptions("OI", "rgba(255,165,0,1)"));
+    const ratioChart = new Chart(document.getElementById("ratioChart").getContext("2d"), chartOptions("Long/Short Ratio", "rgba(135,206,235,1)"));
 
-    // Delta chart setup (same as your provided config)
-    const deltaLabels = [], deltaDataset = [], minDeltaDataset = [], maxDeltaDataset = [];
-    const maxBars = 288;
-    const deltaChart = new Chart(document.getElementById("deltaChart").getContext("2d"), {
-      type: 'bar',
-      data: {
-        labels: deltaLabels,
-        datasets: [
-          {
-            label: 'Min Delta',
-            data: minDeltaDataset,
-            backgroundColor: 'rgba(255,0,0,0.5)',
-            barPercentage: 0.1,
-            categoryPercentage: 1.0
-          },
-          {
-            label: 'Delta',
-            data: deltaDataset,
-            backgroundColor: 'rgba(100,100,255,0.0)',
-            barPercentage: 1.0,
-            categoryPercentage: 1.0
-          },
-          {
-            label: 'Max Delta',
-            data: maxDeltaDataset,
-            backgroundColor: 'rgba(0,255,0,0.5)',
-            barPercentage: 0.1,
-            categoryPercentage: 1.0
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { stacked: true, ticks: { color: '#aaa' } },
-          y: { ticks: { color: '#aaa' } }
-        },
-        plugins: { legend: { labels: { color: '#fff' } } }
-      }
+    const charts = [priceChart, elrChart, oiChart, ratioChart];
+
+    function syncZoom(chart) {
+      const zoomOptions = chart.options.plugins.zoom;
+      charts.forEach(c => {
+        if (c !== chart) {
+          c.options.plugins.zoom.zoom = zoomOptions.zoom;
+          c.options.plugins.zoom.pan = zoomOptions.pan;
+          c.update();
+        }
+      });
+    }
+
+    charts.forEach(c => {
+      c.options.onZoom = ({ chart }) => syncZoom(chart);
+      c.options.onPan = ({ chart }) => syncZoom(chart);
     });
 
-    let deltaLastTime = null;
-    let deltaUSD = 0, minDelta = 0, maxDelta = 0;
-    function roundTo5Min(timestamp) {
-      const d = new Date(timestamp);
-      d.setSeconds(0, 0);
-      d.setMinutes(d.getMinutes() - (d.getMinutes() % 5));
-      return d.getTime();
-    }
-    function updateDelta(label, delta, minD, maxD) {
-      deltaLabels.push(label);
-      deltaDataset.push(delta);
-      minDeltaDataset.push(minD);
-      maxDeltaDataset.push(maxD);
-      if (deltaLabels.length > maxBars) {
-        deltaLabels.shift(); deltaDataset.shift();
-        minDeltaDataset.shift(); maxDeltaDataset.shift();
-      }
-      deltaChart.update();
-    }
-
-    // Price + ELR + OI + Avg Leverage + Delta WebSocket
-    const priceData = priceChart.data.datasets[0].data;
-    const elrData = elrChart.data.datasets[0].data;
-    const oiData = oiChart.data.datasets[0].data;
-    const avgLevData = avgLevChart.data.datasets[0].data;
-    const labelSet = priceChart.data.labels;
-
-    const maxPoints = 288;
-    function pushToAllCharts(label, price, elr, oi, avgLev) {
-      labelSet.push(label);
-      priceData.push(price);
-      elrData.push(elr);
-      oiData.push(oi);
-      avgLevData.push(avgLev);
-      if (labelSet.length > maxPoints) {
-        labelSet.shift();
-        priceData.shift(); elrData.shift();
-        oiData.shift(); avgLevData.shift();
-      }
-      priceChart.update();
-      elrChart.update();
-      oiChart.update();
-      avgLevChart.update();
-    }
-
-    setInterval(async () => {
+    async function fetchData() {
       try {
-        const [elrRes, oiRes, priceRes] = await Promise.all([
-          fetch('https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=1').then(r => r.json()),
-          fetch('https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m&limit=1').then(r => r.json()),
-          fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT').then(r => r.json())
+        const [klines, elrRes, oiRes, ratioRes] = await Promise.all([
+          fetch("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=5m&limit=288").then(res => res.json()),
+          fetch("https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=288").then(res => res.json()),
+          fetch("https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m&limit=288").then(res => res.json()),
+          fetch("https://fapi.binance.com/futures/data/topLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=288").then(res => res.json())
         ]);
 
-        const label = new Date().toLocaleTimeString();
-        const elr = parseFloat(elrRes[0].longAccount / elrRes[0].shortAccount).toFixed(3);
-        const oi = parseFloat(oiRes[0].sumOpenInterestValue);
-        const price = parseFloat(priceRes.price);
-        const avgLev = parseFloat(elrRes[0].longShortRatio).toFixed(3);
+        const labels = klines.map(k => new Date(k[0]).toLocaleTimeString());
+        sharedLabels.length = 0;
+        sharedLabels.push(...labels);
 
-        pushToAllCharts(label, price, elr, oi, avgLev);
+        priceChart.data.datasets[0].data = klines.map(k => parseFloat(k[4])); // closing price
+        elrChart.data.datasets[0].data = elrRes.map(r => parseFloat(r.longShortRatio));
+        oiChart.data.datasets[0].data = oiRes.map(r => parseFloat(r.sumOpenInterestValue));
+        ratioChart.data.datasets[0].data = ratioRes.map(r => parseFloat(r.longShortRatio));
+
+        charts.forEach(c => {
+          c.data.labels = sharedLabels;
+          c.update();
+        });
+
       } catch (err) {
-        console.error("Data fetch error:", err);
+        console.error("Fetch failed:", err);
       }
-    }, 5000);
+    }
 
-    // Taker Delta WebSocket
-    const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
-    ws.onmessage = e => {
-      const t = JSON.parse(e.data);
-      const qty = parseFloat(t.q);
-      const price = parseFloat(t.p);
-      const isSell = t.m;
-      const usd = qty * price;
-      const now = Date.now();
-      const currentBar = roundTo5Min(now);
+    fetchData();
+    setInterval(fetchData, 5 * 60 * 1000); // refresh every 5 minutes
+  </script>
 
-      if (!deltaLastTime) deltaLastTime = currentBar;
-
-      if (currentBar > deltaLastTime) {
-        const label = new Date(deltaLastTime).toLocaleTimeString();
-        updateDelta(label, parseFloat(deltaUSD.toFixed(2)), minDelta, maxDelta);
-        deltaUSD = 0; minDelta = 0; maxDelta = 0;
-        deltaLastTime = currentBar;
-      }
-
-      const delta = isSell ? -usd : usd;
-      deltaUSD += delta;
-      minDelta = Math.min(minDelta, deltaUSD);
-      maxDelta = Math.max(maxDelta, deltaUSD);
-    };
-  </script></body>
+</body>
 </html>
