@@ -1,40 +1,71 @@
 <!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT 5-Min Custom Candles</title>
+  <title>BTCUSDT 5-Min Hollow Candles with Trade Prices</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     canvas { background: #f7f7f7; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
-  <h2>BTCUSDT Custom 5-Min Candles (Hollow + Trade Data)</h2>
+  <h2>BTCUSDT 5-Min Hollow Candles with Trade Prices</h2>
   <canvas id="candleChart" width="1000" height="500"></canvas>  <script>
     const tradeBuffer = [];
     const candleData = [];
     const ctx = document.getElementById("candleChart").getContext("2d");
 
     const chart = new Chart(ctx, {
-      type: 'bar',
+      type: 'scatter',
       data: {
-        labels: [],
-        datasets: [{
-          label: 'Price Range',
-          data: [],
-          backgroundColor: 'rgba(255,255,255,0)',
-          borderColor: 'black',
-          borderWidth: 2,
-        }]
+        datasets: [
+          {
+            label: 'Trades',
+            data: [],
+            backgroundColor: 'rgba(0, 123, 255, 0.6)',
+            pointRadius: 3,
+            parsing: false,
+            showLine: false,
+          },
+          {
+            label: 'Hollow Candles',
+            data: [],
+            type: 'bar',
+            backgroundColor: 'rgba(255,255,255,0)',
+            borderColor: 'black',
+            borderWidth: 2,
+            barPercentage: 1.0,
+            categoryPercentage: 1.0,
+            parsing: false,
+          }
+        ]
       },
       options: {
         plugins: {
-          tooltip: { enabled: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                if (context.dataset.label === 'Trades') {
+                  const qty = context.raw.qty;
+                  const price = context.raw.y;
+                  return `Qty: ${qty}, Price: ${price}`;
+                }
+                return false;
+              }
+            }
+          },
           legend: { display: false },
         },
-        responsive: true,
+        parsing: false,
         scales: {
-          x: { title: { display: true, text: 'Time' } },
-          y: { title: { display: true, text: 'Price' }, beginAtZero: false }
+          x: {
+            type: 'time',
+            time: { unit: 'minute' },
+            title: { display: true, text: 'Time' }
+          },
+          y: {
+            title: { display: true, text: 'Price' },
+            beginAtZero: false
+          }
         }
       }
     });
@@ -42,24 +73,35 @@
     function processCandle() {
       if (tradeBuffer.length === 0) return;
 
-      const open = parseFloat(tradeBuffer[0].p);
-      const close = parseFloat(tradeBuffer[tradeBuffer.length - 1].p);
-      const high = Math.max(...tradeBuffer.map(t => parseFloat(t.p)));
-      const low = Math.min(...tradeBuffer.map(t => parseFloat(t.p)));
-      const volume = tradeBuffer.reduce((sum, t) => sum + parseFloat(t.q), 0);
-      const count = tradeBuffer.length;
-      const timestamp = new Date().toLocaleTimeString();
+      const trades = [...tradeBuffer];
+      const prices = trades.map(t => parseFloat(t.p));
+      const quantities = trades.map(t => parseFloat(t.q));
+      const timestamps = trades.map(t => new Date(t.T));
 
-      candleData.push({ timestamp, open, high, low, close, volume, count });
+      const low = Math.min(...prices);
+      const high = Math.max(...prices);
+      const timestamp = timestamps[0];
 
-      chart.data.labels.push(timestamp);
-      chart.data.datasets[0].data.push({
+      // Add hollow candle (bar from low to high)
+      chart.data.datasets[1].data.push({
         x: timestamp,
-        y: [low, high],
+        y: high,
+        yMin: low,
+        yMax: high
       });
 
+      // Plot individual trade markers at their price level with tooltip info
+      for (let i = 0; i < trades.length; i++) {
+        chart.data.datasets[0].data.push({
+          x: new Date(trades[i].T),
+          y: parseFloat(trades[i].p),
+          qty: parseFloat(trades[i].q),
+          r: Math.max(2, Math.sqrt(parseFloat(trades[i].q)) * 1.5)
+        });
+      }
+
       chart.update();
-      tradeBuffer.length = 0; // clear buffer
+      tradeBuffer.length = 0;
     }
 
     setInterval(processCandle, 5 * 60 * 1000); // every 5 minutes
