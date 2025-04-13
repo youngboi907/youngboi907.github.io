@@ -10,106 +10,108 @@
 <body>
   <h2>BTCUSDT 5-Min Hollow Candles with Trade Prices</h2>
   <canvas id="candleChart" width="1000" height="500"></canvas>  <script>
-    const tradeBuffer = [];
-    const candleData = [];
-    const ctx = document.getElementById("candleChart").getContext("2d");
+    window.onload = function () {
+      const tradeBuffer = [];
+      const candleData = [];
+      const ctx = document.getElementById("candleChart").getContext("2d");
 
-    const chart = new Chart(ctx, {
-      type: 'scatter',
-      data: {
-        datasets: [
-          {
-            label: 'Trades',
-            data: [],
-            backgroundColor: 'rgba(0, 123, 255, 0.6)',
-            pointRadius: 3,
-            parsing: false,
-            showLine: false,
-          },
-          {
-            label: 'Hollow Candles',
-            data: [],
-            type: 'bar',
-            backgroundColor: 'rgba(255,255,255,0)',
-            borderColor: 'black',
-            borderWidth: 2,
-            barPercentage: 1.0,
-            categoryPercentage: 1.0,
-            parsing: false,
-          }
-        ]
-      },
-      options: {
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                if (context.dataset.label === 'Trades') {
-                  const qty = context.raw.qty;
-                  const price = context.raw.y;
-                  return `Qty: ${qty}, Price: ${price}`;
-                }
-                return false;
-              }
+      const chart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: 'Trades',
+              data: [],
+              backgroundColor: 'rgba(0, 123, 255, 0.6)',
+              pointRadius: ctx => ctx.raw.pointRadius || 3,
+              parsing: false,
+              showLine: false,
+            },
+            {
+              label: 'Hollow Candles',
+              data: [],
+              type: 'bar',
+              backgroundColor: 'rgba(255,255,255,0)',
+              borderColor: 'black',
+              borderWidth: 2,
+              barPercentage: 1.0,
+              categoryPercentage: 1.0,
+              parsing: false,
             }
-          },
-          legend: { display: false },
+          ]
         },
-        parsing: false,
-        scales: {
-          x: {
-            type: 'time',
-            time: { unit: 'minute' },
-            title: { display: true, text: 'Time' }
+        options: {
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  if (context.dataset.label === 'Trades') {
+                    const qty = context.raw.qty;
+                    const price = context.raw.y;
+                    return `Qty: ${qty}, Price: ${price}`;
+                  }
+                  return false;
+                }
+              }
+            },
+            legend: { display: false },
           },
-          y: {
-            title: { display: true, text: 'Price' },
-            beginAtZero: false
+          parsing: false,
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'minute' },
+              title: { display: true, text: 'Time' }
+            },
+            y: {
+              title: { display: true, text: 'Price' },
+              beginAtZero: false
+            }
           }
         }
-      }
-    });
-
-    function processCandle() {
-      if (tradeBuffer.length === 0) return;
-
-      const trades = [...tradeBuffer];
-      const prices = trades.map(t => parseFloat(t.p));
-      const quantities = trades.map(t => parseFloat(t.q));
-      const timestamps = trades.map(t => new Date(t.T));
-
-      const low = Math.min(...prices);
-      const high = Math.max(...prices);
-      const timestamp = timestamps[0];
-
-      // Add hollow candle (bar from low to high)
-      chart.data.datasets[1].data.push({
-        x: timestamp,
-        y: high,
-        yMin: low,
-        yMax: high
       });
 
-      // Plot individual trade markers at their price level with tooltip info
-      for (let i = 0; i < trades.length; i++) {
-        chart.data.datasets[0].data.push({
-          x: new Date(trades[i].T),
-          y: parseFloat(trades[i].p),
-          qty: parseFloat(trades[i].q),
-          r: Math.max(2, Math.sqrt(parseFloat(trades[i].q)) * 1.5)
+      function processCandle() {
+        if (tradeBuffer.length === 0) return;
+
+        const trades = [...tradeBuffer];
+        const prices = trades.map(t => parseFloat(t.p));
+        const timestamps = trades.map(t => new Date(t.T));
+
+        const low = Math.min(...prices);
+        const high = Math.max(...prices);
+        const timestamp = timestamps[0];
+
+        // Add hollow candle (bar from low to high)
+        chart.data.datasets[1].data.push({
+          x: timestamp,
+          y: high,
+          yMin: low,
+          yMax: high
         });
+
+        // Plot individual trade markers at their price level with tooltip info
+        for (let i = 0; i < trades.length; i++) {
+          const qty = parseFloat(trades[i].q);
+          chart.data.datasets[0].data.push({
+            x: new Date(trades[i].T),
+            y: parseFloat(trades[i].p),
+            qty: qty,
+            pointRadius: Math.max(2, Math.sqrt(qty) * 1.5)
+          });
+        }
+
+        chart.update();
+        tradeBuffer.length = 0;
       }
 
-      chart.update();
-      tradeBuffer.length = 0;
-    }
+      setInterval(processCandle, 5 * 60 * 1000); // every 5 minutes
 
-    setInterval(processCandle, 5 * 60 * 1000); // every 5 minutes
-
-    const socket = new WebSocket("wss://fstream.binance.com/ws/btcusdt@aggTrade");
-    socket.onmessage = event => {
-      const trade = JSON.parse(event.data);
-      tradeBuffer.push(trade);
+      const socket = new WebSocket("wss://fstream.binance.com/ws/btcusdt@aggTrade");
+      socket.onmessage = event => {
+        const trade = JSON.parse(event.data);
+        tradeBuffer.push(trade);
+      };
     };
   </script></body>
 </html>
