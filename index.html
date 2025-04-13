@@ -5,25 +5,51 @@
   <title>BTCUSDT Leverage Tracker</title>
   <style>
     body {
-      background-color: #111;
-      color: #eee;
-      font-family: Arial, sans-serif;
+      background-color: #0d1117;
+      color: #c9d1d9;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
-    h1 {
-      color: #00ff99;
+    header {
+      padding: 1rem;
+      background-color: #161b22;
+      text-align: center;
+      border-bottom: 1px solid #30363d;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #58a6ff;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
     }
     canvas {
-      background: #222;
-      border: 1px solid #333;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100%;
+      max-height: 100%;
+      background-color: #161b22;
       border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0, 255, 153, 0.1);
     }
   </style>
 </head>
 <body>
-  <h1>BTCUSDT 5-min Leverage Tracker</h1>
-  <canvas id="leverageChart" width="1000" height="500"></canvas>  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  <script>
+  <header>
+    <h1>BTCUSDT 5-min Leverage Tracker</h1>
+  </header>
+  <main>
+    <canvas id="leverageChart"></canvas>
+  </main>  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  <script>
     const ctx = document.getElementById('leverageChart').getContext('2d');
 
     const chartData = {
@@ -35,43 +61,83 @@
           borderColor: '#00ff99',
           backgroundColor: 'transparent',
           yAxisID: 'y1',
+          pointRadius: 2,
+          tension: 0.3,
         },
         {
           label: 'OI Change / Volume',
           data: [],
           borderColor: '#ff6666',
-          backgroundColor: 'rgba(255,102,102,0.3)',
+          backgroundColor: 'rgba(255,102,102,0.2)',
           yAxisID: 'y2',
+          fill: true,
+          pointRadius: 3,
+          tension: 0.3,
         }
       ]
     };
 
     const chartOptions = {
       responsive: true,
+      maintainAspectRatio: false,
       interaction: {
         mode: 'index',
         intersect: false,
       },
-      stacked: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: '#c9d1d9',
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.dataset.label || '';
+              const value = context.formattedValue;
+              return `${label}: ${value}`;
+            }
+          }
+        }
+      },
       scales: {
+        x: {
+          ticks: {
+            color: '#c9d1d9'
+          },
+          grid: {
+            color: '#30363d'
+          }
+        },
         y1: {
           type: 'linear',
           position: 'left',
           title: {
             display: true,
-            text: 'Price'
+            text: 'Price',
+            color: '#00ff99'
           },
-          ticks: { color: '#00ff99' }
+          ticks: {
+            color: '#00ff99'
+          },
+          grid: {
+            color: '#222'
+          }
         },
         y2: {
           type: 'linear',
           position: 'right',
           title: {
             display: true,
-            text: 'Estimated Leverage'
+            text: 'Estimated Leverage (OI / Volume)',
+            color: '#ff6666'
           },
-          grid: { drawOnChartArea: false },
-          ticks: { color: '#ff6666' }
+          grid: {
+            drawOnChartArea: false
+          },
+          ticks: {
+            color: '#ff6666'
+          }
         }
       }
     };
@@ -82,7 +148,6 @@
       options: chartOptions
     });
 
-    let lastPrice = null;
     let lastOI = null;
     let intervalData = [];
     let lastFetch = 0;
@@ -112,12 +177,9 @@
       const msg = JSON.parse(event.data);
       const now = Date.now();
 
-      if (!lastPrice) {
-        lastPrice = parseFloat(msg.p);
-        lastOI = await fetchOI();
-      }
-
       intervalData.push({ p: parseFloat(msg.p), q: parseFloat(msg.q) });
+
+      if (!lastOI) lastOI = await fetchOI();
 
       if (now - lastFetch > 5 * 60 * 1000) {
         const closePrice = parseFloat(msg.p);
