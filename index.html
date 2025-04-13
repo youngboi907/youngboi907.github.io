@@ -1,117 +1,267 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTCUSDT 5-Min Hollow Candles with Trade Prices</title>
+  <title>BTCUSDT Metrics</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
   <style>
-    canvas { background: #f7f7f7; border: 1px solid #ccc; }
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h2 {
+      text-align: center;
+    }
+    .chart-container {
+      width: 100%;
+      max-width: 2200px;
+      margin: 30px auto;
+      background: #222;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    canvas {
+      width: 100% !important;
+      height: 400px !important;
+    }
   </style>
 </head>
 <body>
-  <h2>BTCUSDT 5-Min Hollow Candles with Trade Prices</h2>
-  <canvas id="candleChart" width="1000" height="500"></canvas>  <script>
-    window.onload = function () {
-      const tradeBuffer = [];
-      const candleData = [];
-      const ctx = document.getElementById("candleChart").getContext("2d");
 
-      const chart = new Chart(ctx, {
-        type: 'scatter',
-        data: {
-          datasets: [
-            {
-              label: 'Trades',
-              data: [],
-              backgroundColor: 'rgba(0, 123, 255, 0.6)',
-              pointRadius: ctx => ctx.raw.pointRadius || 3,
-              parsing: false,
-              showLine: false,
+  <h2>BTCUSDT - Price</h2>
+  <div class="chart-container"><canvas id="priceChart"></canvas></div>
+
+  <h2>BTCUSDT - Estimated Leverage Ratio (ELR)</h2>
+  <div class="chart-container"><canvas id="elrChart"></canvas></div>
+
+  <h2>BTCUSDT - Open Interest (OI)</h2>
+  <div class="chart-container"><canvas id="oiChart"></canvas></div>
+
+  <h2>BTCUSDT - Top Trader Long/Short Ratio</h2>
+  <div class="chart-container"><canvas id="ratioChart"></canvas></div>
+
+  <script>
+    const maxPoints = 288;
+    const sharedLabels = [];
+
+    const chartOptions = (label, color) => ({
+      type: 'line',
+      data: {
+        labels: sharedLabels,
+        datasets: [{
+          label,
+          data: [],
+          borderColor: color,
+          backgroundColor: color.replace("1)", "0.2)"),
+          tension: 0.2,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#fff' }},
+          zoom: {
+            zoom: {
+              wheel: { enabled: true },
+              pinch: { enabled: true },
+              mode: 'x'
             },
-            {
-              label: 'Hollow Candles',
-              data: [],
-              type: 'bar',
-              backgroundColor: 'rgba(255,255,255,0)',
-              borderColor: 'black',
-              borderWidth: 2,
-              barPercentage: 1.0,
-              categoryPercentage: 1.0,
-              parsing: false,
-            }
-          ]
+            pan: { enabled: true, mode: 'x' }
+          }
         },
-        options: {
-          plugins: {
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  if (context.dataset.label === 'Trades') {
-                    const qty = context.raw.qty;
-                    const price = context.raw.y;
-                    return `Qty: ${qty}, Price: ${price}`;
-                  }
-                  return false;
-                }
-              }
-            },
-            legend: { display: false },
+        scales: {
+          x: {
+            ticks: { color: '#aaa' }
           },
-          parsing: false,
-          scales: {
-            x: {
-              type: 'time',
-              time: { unit: 'minute' },
-              title: { display: true, text: 'Time' }
-            },
-            y: {
-              title: { display: true, text: 'Price' },
-              beginAtZero: false
-            }
+          y: {
+            ticks: { color: '#aaa' }
           }
         }
+      }
+    });
+
+    const priceChart = new Chart(document.getElementById("priceChart").getContext("2d"), chartOptions("Price", "rgba(255,255,255,1)"));
+    const elrChart = new Chart(document.getElementById("elrChart").getContext("2d"), chartOptions("ELR", "rgba(0,255,0,1)"));
+    const oiChart = new Chart(document.getElementById("oiChart").getContext("2d"), chartOptions("OI", "rgba(255,165,0,1)"));
+    const ratioChart = new Chart(document.getElementById("ratioChart").getContext("2d"), chartOptions("Long/Short Ratio", "rgba(135,206,235,1)"));
+
+    const charts = [priceChart, elrChart, oiChart, ratioChart];
+
+    function syncZoom(chart) {
+      const zoomOptions = chart.options.plugins.zoom;
+      charts.forEach(c => {
+        if (c !== chart) {
+          c.options.plugins.zoom.zoom = zoomOptions.zoom;
+          c.options.plugins.zoom.pan = zoomOptions.pan;
+          c.update();
+        }
       });
+    }
 
-      function processCandle() {
-        if (tradeBuffer.length === 0) return;
+    charts.forEach(c => {
+      c.options.onZoom = ({ chart }) => syncZoom(chart);
+      c.options.onPan = ({ chart }) => syncZoom(chart);
+    });
 
-        const trades = [...tradeBuffer];
-        const prices = trades.map(t => parseFloat(t.p));
-        const timestamps = trades.map(t => new Date(t.T));
+    async function fetchData() {
+      try {
+        const [klines, elrRes, oiRes, ratioRes] = await Promise.all([
+          fetch("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=5m&limit=288").then(res => res.json()),
+          fetch("https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=288").then(res => res.json()),
+          fetch("https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m&limit=288").then(res => res.json()),
+          fetch("https://fapi.binance.com/futures/data/topLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=288").then(res => res.json())
+        ]);
 
-        const low = Math.min(...prices);
-        const high = Math.max(...prices);
-        const timestamp = timestamps[0];
+        const labels = klines.map(k => new Date(k[0]).toLocaleTimeString());
+        sharedLabels.length = 0;
+        sharedLabels.push(...labels);
 
-        // Add hollow candle (bar from low to high)
-        chart.data.datasets[1].data.push({
-          x: timestamp,
-          y: high,
-          yMin: low,
-          yMax: high
+        priceChart.data.datasets[0].data = klines.map(k => parseFloat(k[4])); // closing price
+        elrChart.data.datasets[0].data = elrRes.map(r => parseFloat(r.longShortRatio));
+        oiChart.data.datasets[0].data = oiRes.map(r => parseFloat(r.sumOpenInterestValue));
+        ratioChart.data.datasets[0].data = ratioRes.map(r => parseFloat(r.longShortRatio));
+
+        charts.forEach(c => {
+          c.data.labels = sharedLabels;
+          c.update();
         });
 
-        // Plot individual trade markers at their price level with tooltip info
-        for (let i = 0; i < trades.length; i++) {
-          const qty = parseFloat(trades[i].q);
-          chart.data.datasets[0].data.push({
-            x: new Date(trades[i].T),
-            y: parseFloat(trades[i].p),
-            qty: qty,
-            pointRadius: Math.max(2, Math.sqrt(qty) * 1.5)
-          });
-        }
+      } catch (err) {
+        console.error("Fetch failed:", err);
+      }
+    }
 
-        chart.update();
-        tradeBuffer.length = 0;
+    fetchData();
+    setInterval(fetchData, 5 * 60 * 1000); // refresh every 5 minutes
+  </script>
+
+</body>
+
+
+
+<body>
+  <h2>BTCUSDT Taker Delta (5-Min)</h2>
+  <div class="chart-box">
+    <canvas id="deltaChart"></canvas>
+  </div>
+
+  <script>
+    const labels = [];
+    const deltaDataset = [];
+    const minDeltaDataset = [];
+    const maxDeltaDataset = [];
+    const maxBars = 288; // for 24 hours of 5-min bars
+
+    const deltaChart = new Chart(document.getElementById("deltaChart").getContext("2d"), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Min Delta',
+            data: minDeltaDataset,
+            backgroundColor: 'rgba(255,0,0,0.5)',
+            barPercentage: 0.1,
+            categoryPercentage: 1.0
+          },
+          {
+            label: 'Delta',
+            data: deltaDataset,
+            backgroundColor: 'rgba(100,100,255,0.7)',
+            barPercentage: 1.0,
+            categoryPercentage: 1.0
+          },
+          {
+            label: 'Max Delta',
+            data: maxDeltaDataset,
+            backgroundColor: 'rgba(0,255,0,0.5)',
+            barPercentage: 0.1,
+            categoryPercentage: 1.0
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            stacked: true,
+            ticks: { color: '#aaa' }
+          },
+          y: {
+            ticks: { color: '#aaa' }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: '#fff' }
+          }
+        }
+      }
+    });
+
+    let lastBarTime = null;
+    let deltaUSD = 0;
+    let minDelta = 0;
+    let maxDelta = 0;
+
+    function roundTo5Min(timestamp) {
+      const date = new Date(timestamp);
+      date.setSeconds(0, 0);
+      date.setMinutes(date.getMinutes() - (date.getMinutes() % 5));
+      return date.getTime();
+    }
+
+    function addDeltaBar(label, delta, minD, maxD) {
+      labels.push(label);
+      deltaDataset.push(delta);
+      minDeltaDataset.push(minD);
+      maxDeltaDataset.push(maxD);
+
+      if (labels.length > maxBars) {
+        labels.shift();
+        deltaDataset.shift();
+        minDeltaDataset.shift();
+        maxDeltaDataset.shift();
+      }
+      deltaChart.update();
+    }
+
+    const ws = new WebSocket("wss://fstream.binance.com/ws/btcusdt@trade");
+    ws.onmessage = e => {
+      const t = JSON.parse(e.data);
+      const qty = parseFloat(t.q);
+      const price = parseFloat(t.p);
+      const isSell = t.m;
+      const usd = qty * price;
+
+      const now = Date.now();
+      const currentBar = roundTo5Min(now);
+
+      if (!lastBarTime) lastBarTime = currentBar;
+
+      if (currentBar > lastBarTime) {
+        const label = new Date(lastBarTime).toLocaleTimeString();
+        addDeltaBar(label, parseFloat(deltaUSD.toFixed(2)), minDelta, maxDelta);
+
+        deltaUSD = 0;
+        minDelta = 0;
+        maxDelta = 0;
+        lastBarTime = currentBar;
       }
 
-      setInterval(processCandle, 5 * 60 * 1000); // every 5 minutes
-
-      const socket = new WebSocket("wss://fstream.binance.com/ws/btcusdt@aggTrade");
-      socket.onmessage = event => {
-        const trade = JSON.parse(event.data);
-        tradeBuffer.push(trade);
-      };
+      const delta = isSell ? -usd : usd;
+      deltaUSD += delta;
+      minDelta = Math.min(minDelta, deltaUSD);
+      maxDelta = Math.max(maxDelta, deltaUSD);
     };
-  </script></body>
+  </script>
+</body>
+
 </html>
