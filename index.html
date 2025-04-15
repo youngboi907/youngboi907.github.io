@@ -10,9 +10,12 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       height: 100vh;
       background-color: #f4f4f4;
+    }
+    #controls {
+      margin: 10px;
     }
     canvas {
       max-width: 90%;
@@ -21,6 +24,12 @@
   </style>
 </head>
 <body>
+  <!-- Add the threshold input field -->
+  <div id="controls">
+    <label for="threshold">Set Volume Threshold:</label>
+    <input type="number" id="threshold" value="50" min="0" step="1">
+  </div>
+  
   <canvas id="btcChart"></canvas>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -29,7 +38,7 @@
 
     // Initial data
     const data = {
-      labels: [], // Timestamps or price levels
+      labels: [],
       datasets: [
         {
           label: 'Bid Volume',
@@ -81,19 +90,19 @@
         const response = await fetch("https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=5000");
         const orderbook = await response.json();
 
-        // Convert data to a simple format (e.g., price levels and volumes)
         const bids = orderbook.bids.map(bid => ({ price: parseFloat(bid[0]), volume: parseFloat(bid[1]) }));
         const asks = orderbook.asks.map(ask => ({ price: parseFloat(ask[0]), volume: parseFloat(ask[1]) }));
 
-        // Update chart data (for example, plot only a subset)
-        data.labels = bids.slice(0, 100).map(bid => bid.price); // Example: just using prices for labels
-        data.datasets[0].data = bids.slice(0, 100).map(bid => bid.volume); // First 100 bids
-        data.datasets[1].data = asks.slice(0, 100).map(ask => ask.volume); // First 100 asks
+        data.labels = bids.slice(0, 100).map(bid => bid.price);
+        data.datasets[0].data = bids.slice(0, 100).map(bid => bid.volume);
+        data.datasets[1].data = asks.slice(0, 100).map(ask => ask.volume);
 
         btcChart.update();
 
-        // Detect large orders (simple example: any volume > a threshold)
-        const threshold = 50; // Example threshold
+        // Get the threshold from the input field
+        const threshold = parseFloat(document.getElementById('threshold').value) || 50;
+
+        // Detect large orders
         const largeBids = bids.filter(bid => bid.volume > threshold);
         const largeAsks = asks.filter(ask => ask.volume > threshold);
 
@@ -105,8 +114,8 @@
       }
     }
 
-    // Fetch data periodically (20 times per minute or less)
-    setInterval(fetchOrderBook, 3000); // ~20 requests per minute
+    // Fetch data periodically
+    setInterval(fetchOrderBook, 3000);
     fetchOrderBook(); // Initial fetch on load
   </script>
 </body>
