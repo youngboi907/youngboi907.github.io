@@ -1,4 +1,6 @@
-You're right. Let me improve the implementation to make it fully responsive and ensure it displays actual data. Here's a complete solution that uses Binance's API to fetch real taker buy/sell volumes and calculates the delta:
+# Improved BTC/USDT Taker Delta Monitor with Working Data Fetching
+
+I understand you're still having issues with the data not displaying. Let me provide a more reliable implementation that uses WebSockets for real-time data and includes fallback API calls.
 
 ```html
 <!DOCTYPE html>
@@ -41,6 +43,22 @@ You're right. Let me improve the implementation to make it fully responsive and 
         }
         #loading-spinner {
             display: none;
+        }
+        #connection-status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+        }
+        .connected {
+            background-color: #28a745;
+            color: white;
+        }
+        .disconnected {
+            background-color: #dc3545;
+            color: white;
         }
         @media (max-width: 768px) {
             .delta-value {
@@ -131,6 +149,8 @@ You're right. Let me improve the implementation to make it fully responsive and 
             </div>
             <p>Fetching data...</p>
         </div>
+        
+        <div id="connection-status" class="disconnected">Disconnected</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -139,7 +159,9 @@ You're right. Let me improve the implementation to make it fully responsive and 
         let currentMarket = 'spot';
         let currentTimeframe = '5m';
         let dataHistory = [];
-        let intervalId = null;
+        let websocket = null;
+        let tradeData = [];
+        let isWebSocketConnected = false;
         
         // DOM Elements
         const marketBtns = document.querySelectorAll('.market-btn');
@@ -153,6 +175,7 @@ You're right. Let me improve the implementation to make it fully responsive and 
         const timeMinEl = document.getElementById('time-min');
         const lastUpdatedEl = document.getElementById('last-updated');
         const loadingSpinner = document.getElementById('loading-spinner');
+        const connectionStatusEl = document.getElementById('connection-status');
         
         // Event Listeners
         marketBtns.forEach(btn => {
@@ -160,7 +183,8 @@ You're right. Let me improve the implementation to make it fully responsive and 
                 marketBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentMarket = btn.dataset.market;
-                fetchData();
+                resetData();
+                connectWebSocket();
             });
         });
         
@@ -169,158 +193,142 @@ You're right. Let me improve the implementation to make it fully responsive and 
                 timeframeBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentTimeframe = btn.dataset.timeframe;
-                fetchData();
+                processTradeData();
             });
         });
         
         // Functions
-        async function fetchData() {
-            try {
+        function connectWebSocket() {
+            // Close existing connection if any
+            if (websocket) {
+                websocket.close();
+            }
+            
+            const symbol = 'btcusdt';
+            const streamName = currentMarket === 'spot' 
+                ? `${symbol}@aggTrade` 
+                : `${symbol}@aggTrade`;
+            
+            const wsUrl = currentMarket === 'spot'
+                ? `wss://stream.binance.com:9443/ws/${streamName}`
+                : `wss://fstream.binance.com/ws/${streamName}`;
+            
+            websocket = new WebSocket(wsUrl);
+            
+            websocket.onopen = () => {
+                console.log('WebSocket connected');
+                isWebSocketConnected = true;
+                connectionStatusEl.textContent = 'Connected';
+                connectionStatusEl.className = 'connected';
+                loadingSpinner.style.display = 'none';
+            };
+            
+            websocket.onmessage = (event) => {
+                const trade = JSON.parse(event.data);
+                processNewTrade(trade);
+            };
+            
+            websocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                isWebSocketConnected = false;
+                connectionStatusEl.textContent = 'Connection Error';
+                connectionStatusEl.className = 'disconnected';
                 loadingSpinner.style.display = 'block';
                 
-                // Clear previous interval if exists
-                if (intervalId) clearInterval(intervalId);
+                // Try to reconnect after 5 seconds
+                setTimeout(connectWebSocket, 5000);
+            };
+            
+            websocket.onclose = () => {
+                console.log('WebSocket disconnected');
+                isWebSocketConnected = false;
+                connectionStatusEl.textContent = 'Disconnected';
+                connectionStatusEl.className = 'disconnected';
                 
-                // Determine start time based on timeframe
-                const endTime = new Date();
-                let startTime = new Date();
-                
-                switch(currentTimeframe) {
-                    case '5m':
-                        startTime.setMinutes(endTime.getMinutes() - 5);
-                        break;
-                    case '15m':
-                        startTime.setMinutes(endTime.getMinutes() - 15);
-                        break;
-                    case '1h':
-                        startTime.setHours(endTime.getHours() - 1);
-                        break;
-                    case '4h':
-                        startTime.setHours(endTime.getHours() - 4);
-                        break;
-                }
-                
-                // Fetch data from Binance API
-                const data = await fetchTakerData(startTime, endTime);
-                
-                // Process data to calculate delta and extremes
-                const processedData = processData(data);
-                
-                // Update UI
-                updateUI(processedData);
-                
-                // Update last updated time
-                const now = new Date();
-                lastUpdatedEl.textContent = `Last updated: ${now.toLocaleTimeString()}`;
-                
-                // Set up auto-refresh based on timeframe
-                const refreshInterval = getRefreshInterval();
-                intervalId = setInterval(fetchData, refreshInterval);
-                
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                currentDeltaEl.textContent = 'Error';
-                currentDeltaEl.className = 'delta-value negative';
-            } finally {
-                loadingSpinner.style.display = 'none';
-            }
+                // Try to reconnect after 5 seconds
+                setTimeout(connectWebSocket, 5000);
+            };
         }
         
-        async function fetchTakerData(startTime, endTime) {
-            const symbol = 'BTCUSDT';
-            const baseUrl = currentMarket === 'spot' 
-                ? 'https://api.binance.com/api/v3/aggTrades' 
-                : 'https://fapi.binance.com/fapi/v1/aggTrades';
+        function processNewTrade(trade) {
+            // Add trade to our data array
+            tradeData.push({
+                timestamp: new Date(trade.T),
+                isBuyerMaker: trade.m,
+                quantity: parseFloat(trade.q),
+                price: parseFloat(trade.p)
+            });
             
-            // Convert times to milliseconds
-            const startTimestamp = startTime.getTime();
-            const endTimestamp = endTime.getTime();
+            // Process the data to update our display
+            processTradeData();
             
-            // Fetch data from Binance
-            const response = await fetch(`${baseUrl}?symbol=${symbol}&startTime=${startTimestamp}&endTime=${endTimestamp}`);
-            const trades = await response.json();
+            // Update last updated time
+            const now = new Date();
+            lastUpdatedEl.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        }
+        
+        function processTradeData() {
+            // Filter trades based on current timeframe
+            const now = new Date();
+            let cutoffTime = new Date(now);
             
-            // Process trades to calculate taker buy/sell volumes
+            switch(currentTimeframe) {
+                case '5m':
+                    cutoffTime.setMinutes(now.getMinutes() - 5);
+                    break;
+                case '15m':
+                    cutoffTime.setMinutes(now.getMinutes() - 15);
+                    break;
+                case '1h':
+                    cutoffTime.setHours(now.getHours() - 1);
+                    break;
+                case '4h':
+                    cutoffTime.setHours(now.getHours() - 4);
+                    break;
+            }
+            
+            const relevantTrades = tradeData.filter(trade => trade.timestamp >= cutoffTime);
+            
+            // Calculate buy/sell volumes and delta
             let buyVolume = 0;
             let sellVolume = 0;
             const deltaHistory = [];
             
-            trades.forEach(trade => {
-                const quantity = parseFloat(trade.q);
-                const price = parseFloat(trade.p);
-                const value = quantity * price;
+            relevantTrades.forEach(trade => {
+                const value = trade.quantity * trade.price;
                 
-                // Determine if it was a buy or sell (maker is false means taker)
-                if (!trade.m) { // Taker buy (market buy)
-                    buyVolume += value;
-                } else { // Taker sell (market sell)
+                if (trade.isBuyerMaker) { // Taker was seller
                     sellVolume += value;
+                } else { // Taker was buyer
+                    buyVolume += value;
                 }
                 
-                // Calculate delta at each point
+                // Calculate delta at this point
                 const total = buyVolume + sellVolume;
                 const delta = total > 0 ? ((buyVolume - sellVolume) / total) * 100 : 0;
                 
                 deltaHistory.push({
-                    timestamp: new Date(trade.T),
+                    timestamp: trade.timestamp,
                     delta: delta,
                     buyVolume: buyVolume,
                     sellVolume: sellVolume
                 });
             });
             
-            return {
-                current: deltaHistory[deltaHistory.length - 1] || { delta: 0, buyVolume: 0, sellVolume: 0, timestamp: endTime },
-                history: deltaHistory
-            };
-        }
-        
-        function processData(data) {
-            // Calculate min/max delta from history
+            // Get current values (last trade in timeframe)
+            const current = deltaHistory.length > 0 
+                ? deltaHistory[deltaHistory.length - 1] 
+                : { delta: 0, buyVolume: 0, sellVolume: 0, timestamp: now };
+            
+            // Calculate min/max delta
             let minDelta = 0;
             let maxDelta = 0;
-            let timeMin = null;
-            let timeMax = null;
+            let timeMin = now;
+            let timeMax = now;
             
-            data.history.forEach(item => {
+            deltaHistory.forEach(item => {
                 if (item.delta < minDelta) {
                     minDelta = item.delta;
                     timeMin = item.timestamp;
                 }
-                if (item.delta > maxDelta) {
-                    maxDelta = item.delta;
-                    timeMax = item.timestamp;
-                }
-            });
-            
-            return {
-                current: data.current,
-                extremes: {
-                    minDelta: minDelta,
-                    maxDelta: maxDelta,
-                    timeMin: timeMin || data.current.timestamp,
-                    timeMax: timeMax || data.current.timestamp
-                }
-            };
-        }
-        
-        function updateUI(data) {
-            // Current delta
-            currentDeltaEl.textContent = formatDelta(data.current.delta);
-            currentDeltaEl.className = `delta-value ${getDeltaClass(data.current.delta)}`;
-            
-            // Buy/sell volumes
-            deltaBuyEl.textContent = formatNumber(data.current.buyVolume);
-            deltaSellEl.textContent = formatNumber(data.current.sellVolume);
-            
-            // Extremes
-            maxDeltaEl.textContent = formatDelta(data.extremes.maxDelta);
-            minDeltaEl.textContent = formatDelta(data.extremes.minDelta);
-            
-            // Times
-            timeMaxEl.textContent = formatTime(data.extremes.timeMax);
-            timeMinEl.textContent = formatTime(data.extremes.timeMin);
-        }
-        
-        function formatDelta(delta) {
-            if (delta ===
+                if (item.delta > maxDelta
