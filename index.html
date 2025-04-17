@@ -1,122 +1,317 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BTCUSDT Orderbook Chart</title>
-  <style>
-    body {
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      height: 100vh;
-      background-color: #f4f4f4;
-    }
-    #controls {
-      margin: 10px;
-    }
-    canvas {
-      max-width: 90%;
-      max-height: 90%;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC/USDT Taker Delta Monitor</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .market-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .market-btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .market-btn.active {
+            background-color: #2980b9;
+        }
+        .timeframe-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        .timeframe-btn {
+            padding: 8px 15px;
+            margin: 0 5px;
+            background-color: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .timeframe-btn.active {
+            background-color: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        .data-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .data-card {
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .data-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .delta-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .positive {
+            color: #27ae60;
+        }
+        .negative {
+            color: #e74c3c;
+        }
+        .neutral {
+            color: #7f8c8d;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        .stat-box {
+            text-align: center;
+        }
+        .stat-value {
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        .last-updated {
+            text-align: right;
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 20px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+    </style>
 </head>
 <body>
-  <!-- Add the threshold input field -->
-  <div id="controls">
-    <label for="threshold">Set Volume Threshold:</label>
-    <input type="number" id="threshold" value="50" min="0" step="1">
-  </div>
-  
-  <canvas id="btcChart"></canvas>
+    <div class="container">
+        <h1>BTC/USDT Taker Delta Monitor</h1>
+        
+        <div class="market-selector">
+            <button class="market-btn active" id="spot-btn">Spot Market</button>
+            <button class="market-btn" id="futures-btn">Futures Market</button>
+        </div>
+        
+        <div class="timeframe-selector">
+            <button class="timeframe-btn active" data-timeframe="5m">5 Min</button>
+            <button class="timeframe-btn" data-timeframe="15m">15 Min</button>
+            <button class="timeframe-btn" data-timeframe="1h">1 Hour</button>
+            <button class="timeframe-btn" data-timeframe="4h">4 Hours</button>
+        </div>
+        
+        <div class="data-display">
+            <div class="data-card">
+                <h3>Current Taker Delta</h3>
+                <div class="delta-value neutral" id="current-delta">--</div>
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="stat-value" id="delta-buy">--</div>
+                        <div class="stat-label">Buy Volume</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="delta-sell">--</div>
+                        <div class="stat-label">Sell Volume</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <h3>Delta Extremes</h3>
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="stat-value positive" id="max-delta">--</div>
+                        <div class="stat-label">Max Delta</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value negative" id="min-delta">--</div>
+                        <div class="stat-label">Min Delta</div>
+                    </div>
+                </div>
+                <div class="stats" style="margin-top: 30px;">
+                    <div class="stat-box">
+                        <div class="stat-value" id="time-max">--</div>
+                        <div class="stat-label">Time of Max</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="time-min">--</div>
+                        <div class="stat-label">Time of Min</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="last-updated" id="last-updated">
+            Last updated: --
+        </div>
+    </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    const ctx = document.getElementById('btcChart').getContext('2d');
-
-    // Initial data
-    const data = {
-      labels: [],
-      datasets: [
-        {
-          label: 'Bid Volume',
-          borderColor: 'rgb(75, 192, 192)',
-          borderWidth: 2,
-          fill: false,
-          data: []
-        },
-        {
-          label: 'Ask Volume',
-          borderColor: 'rgb(255, 99, 132)',
-          borderWidth: 2,
-          fill: false,
-          data: []
+    <script>
+        // Configuration
+        const API_BASE_URL = 'https://api.example.com'; // Replace with actual API endpoint
+        let currentMarket = 'spot';
+        let currentTimeframe = '5m';
+        let dataHistory = [];
+        
+        // DOM Elements
+        const spotBtn = document.getElementById('spot-btn');
+        const futuresBtn = document.getElementById('futures-btn');
+        const timeframeBtns = document.querySelectorAll('.timeframe-btn');
+        const currentDeltaEl = document.getElementById('current-delta');
+        const deltaBuyEl = document.getElementById('delta-buy');
+        const deltaSellEl = document.getElementById('delta-sell');
+        const maxDeltaEl = document.getElementById('max-delta');
+        const minDeltaEl = document.getElementById('min-delta');
+        const timeMaxEl = document.getElementById('time-max');
+        const timeMinEl = document.getElementById('time-min');
+        const lastUpdatedEl = document.getElementById('last-updated');
+        
+        // Event Listeners
+        spotBtn.addEventListener('click', () => {
+            currentMarket = 'spot';
+            spotBtn.classList.add('active');
+            futuresBtn.classList.remove('active');
+            fetchData();
+        });
+        
+        futuresBtn.addEventListener('click', () => {
+            currentMarket = 'futures';
+            futuresBtn.classList.add('active');
+            spotBtn.classList.remove('active');
+            fetchData();
+        });
+        
+        timeframeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                timeframeBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTimeframe = btn.dataset.timeframe;
+                fetchData();
+            });
+        });
+        
+        // Functions
+        async function fetchData() {
+            try {
+                // In a real implementation, this would fetch from an actual API
+                // const response = await fetch(`${API_BASE_URL}/taker-delta?market=${currentMarket}&timeframe=${currentTimeframe}`);
+                // const data = await response.json();
+                
+                // Simulated data for demonstration
+                const now = new Date();
+                const data = generateMockData(currentMarket, currentTimeframe, now);
+                
+                updateUI(data);
+                
+                // Store data in history
+                dataHistory.push({
+                    timestamp: now,
+                    market: currentMarket,
+                    timeframe: currentTimeframe,
+                    data: data
+                });
+                
+                // Update last updated time
+                lastUpdatedEl.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                // Show error in UI
+                currentDeltaEl.textContent = 'Error';
+                currentDeltaEl.className = 'delta-value negative';
+            }
         }
-      ]
-    };
-
-    // Chart configuration
-    const config = {
-      type: 'line',
-      data: data,
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            type: 'linear',
-            position: 'bottom',
-          },
-          y: {
-            beginAtZero: true,
-          }
-        },
-        plugins: {
-          legend: {
-            position: 'top',
-          },
+        
+        function updateUI(data) {
+            // Update current delta
+            currentDeltaEl.textContent = formatDelta(data.current.delta);
+            currentDeltaEl.className = `delta-value ${getDeltaClass(data.current.delta)}`;
+            
+            // Update buy/sell volumes
+            deltaBuyEl.textContent = formatNumber(data.current.buyVolume);
+            deltaSellEl.textContent = formatNumber(data.current.sellVolume);
+            
+            // Update extremes
+            maxDeltaEl.textContent = formatDelta(data.extremes.maxDelta);
+            minDeltaEl.textContent = formatDelta(data.extremes.minDelta);
+            
+            // Update times
+            timeMaxEl.textContent = formatTime(data.extremes.timeMax);
+            timeMinEl.textContent = formatTime(data.extremes.timeMin);
         }
-      }
-    };
-
-    // Initialize chart
-    const btcChart = new Chart(ctx, config);
-
-    // Fetch Binance orderbook data and update chart
-    async function fetchOrderBook() {
-      try {
-        const response = await fetch("https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=5000");
-        const orderbook = await response.json();
-
-        const bids = orderbook.bids.map(bid => ({ price: parseFloat(bid[0]), volume: parseFloat(bid[1]) }));
-        const asks = orderbook.asks.map(ask => ({ price: parseFloat(ask[0]), volume: parseFloat(ask[1]) }));
-
-        data.labels = bids.slice(0, 100).map(bid => bid.price);
-        data.datasets[0].data = bids.slice(0, 100).map(bid => bid.volume);
-        data.datasets[1].data = asks.slice(0, 100).map(ask => ask.volume);
-
-        btcChart.update();
-
-        // Get the threshold from the input field
-        const threshold = parseFloat(document.getElementById('threshold').value) || 50;
-
-        // Detect large orders
-        const largeBids = bids.filter(bid => bid.volume > threshold);
-        const largeAsks = asks.filter(ask => ask.volume > threshold);
-
-        console.log("Large Bids:", largeBids);
-        console.log("Large Asks:", largeAsks);
-        // You can add visual markers here for large orders if desired
-      } catch (error) {
-        console.error("Error fetching orderbook data:", error);
-      }
-    }
-
-    // Fetch data periodically
-    setInterval(fetchOrderBook, 3000);
-    fetchOrderBook(); // Initial fetch on load
-  </script>
-</body>
-</html>
+        
+        function formatDelta(delta) {
+            if (delta === null || delta === undefined) return '--';
+            return (delta > 0 ? '+' : '') + delta.toFixed(2) + '%';
+        }
+        
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '--';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toFixed(0);
+        }
+        
+        function formatTime(date) {
+            if (!date) return '--';
+            return date.toLocaleTimeString();
+        }
+        
+        function getDeltaClass(delta) {
+            if (delta > 0) return 'positive';
+            if (delta < 0) return 'negative';
+            return 'neutral';
+        }
+        
+        // Mock data generator for demonstration
+        function generateMockData(market, timeframe, now) {
+            // Base values based on market
+            const baseValue = market === 'spot' ? 100 : 150;
+            const volatility = market === 'spot' ? 0.8 : 1.2;
+            
+            // Timeframe multiplier
+            let timeframeMult = 1;
+            if (timeframe === '15m') timeframeMult = 1.5;
+            if (timeframe === '1h') timeframeMult = 2;
+            if (timeframe === '4h') timeframeMult = 3;
+            
+            // Generate current data
+            const currentDelta = (Math.random() * 2 - 1) * baseValue
