@@ -1,8 +1,3 @@
-# Improved BTC/USDT Taker Delta Monitor with Working Data Fetching
-
-I understand you're still having issues with the data not displaying. Let me provide a more reliable implementation that uses WebSockets for real-time data and includes fallback API calls.
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -331,4 +326,79 @@ I understand you're still having issues with the data not displaying. Let me pro
                     minDelta = item.delta;
                     timeMin = item.timestamp;
                 }
-                if (item.delta > maxDelta
+                if (item.delta > maxDelta) {
+                    maxDelta = item.delta;
+                    timeMax = item.timestamp;
+                }
+            });
+            
+            // Update UI
+            updateUI({
+                current: current,
+                extremes: {
+                    minDelta: minDelta,
+                    maxDelta: maxDelta,
+                    timeMin: timeMin,
+                    timeMax: timeMax
+                }
+            });
+        }
+        
+        function updateUI(data) {
+            // Current delta
+            currentDeltaEl.textContent = formatDelta(data.current.delta);
+            currentDeltaEl.className = `delta-value ${getDeltaClass(data.current.delta)}`;
+            
+            // Buy/sell volumes
+            deltaBuyEl.textContent = formatNumber(data.current.buyVolume);
+            deltaSellEl.textContent = formatNumber(data.current.sellVolume);
+            
+            // Extremes
+            maxDeltaEl.textContent = formatDelta(data.extremes.maxDelta);
+            minDeltaEl.textContent = formatDelta(data.extremes.minDelta);
+            
+            // Times
+            timeMaxEl.textContent = formatTime(data.extremes.timeMax);
+            timeMinEl.textContent = formatTime(data.extremes.timeMin);
+        }
+        
+        function resetData() {
+            tradeData = [];
+            currentDeltaEl.textContent = '--';
+            deltaBuyEl.textContent = '--';
+            deltaSellEl.textContent = '--';
+            maxDeltaEl.textContent = '--';
+            minDeltaEl.textContent = '--';
+            timeMaxEl.textContent = '--';
+            timeMinEl.textContent = '--';
+            lastUpdatedEl.textContent = 'Last updated: --';
+        }
+        
+        function formatDelta(delta) {
+            if (delta === null || delta === undefined) return '--';
+            return (delta > 0 ? '+' : '') + delta.toFixed(2) + '%';
+        }
+        
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '--';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toFixed(0);
+        }
+        
+        function formatTime(date) {
+            if (!date) return '--';
+            return date.toLocaleTimeString();
+        }
+        
+        function getDeltaClass(delta) {
+            if (delta > 0) return 'positive';
+            if (delta < 0) return 'negative';
+            return '';
+        }
+        
+        // Initial load
+        connectWebSocket();
+    </script>
+</body>
+</html>
