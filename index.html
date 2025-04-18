@@ -6,19 +6,36 @@
     <title>BTC/USDT Delta Monitor</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: none;
+        }
         .positive { color: #28a745; }
         .negative { color: #dc3545; }
-        .candle-chart-container { height: 200px; margin-bottom: 15px; }
+        .candle-chart-container { 
+            height: 200px; 
+            margin-bottom: 15px;
+            width: 100%;
+        }
         #connection-status {
-            position: fixed; bottom: 10px; right: 10px;
-            padding: 5px 10px; border-radius: 3px;
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 3px;
             font-size: 0.8rem;
         }
         .connected { background-color: #28a745; color: white; }
         .disconnected { background-color: #dc3545; color: white; }
         .reconnecting { background-color: #ffc107; color: black; }
+        .delta-value { font-size: 2rem; font-weight: bold; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -39,14 +56,14 @@
                 <div class="card">
                     <div class="card-header">Current Delta</div>
                     <div class="card-body text-center">
-                        <div id="current-delta" class="h3">--</div>
+                        <div id="current-delta" class="delta-value">--</div>
                         <div class="row mt-3">
                             <div class="col-6">
-                                <div id="delta-buy" class="h4 positive">--</div>
+                                <div id="delta-buy" class="stat-value positive">--</div>
                                 <div>Buy Volume</div>
                             </div>
                             <div class="col-6">
-                                <div id="delta-sell" class="h4 negative">--</div>
+                                <div id="delta-sell" class="stat-value negative">--</div>
                                 <div>Sell Volume</div>
                             </div>
                         </div>
@@ -60,11 +77,11 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-6 text-center">
-                                <div id="max-delta" class="h4 positive">--</div>
+                                <div id="max-delta" class="stat-value positive">--</div>
                                 <div>Max Delta</div>
                             </div>
                             <div class="col-6 text-center">
-                                <div id="min-delta" class="h4 negative">--</div>
+                                <div id="min-delta" class="stat-value negative">--</div>
                                 <div>Min Delta</div>
                             </div>
                         </div>
@@ -108,9 +125,11 @@
         <div id="connection-status" class="disconnected">Disconnected</div>
     </div>
 
+    <!-- Load scripts from CDN with fallbacks -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-financial"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-financial@1.0.0/dist/chartjs-plugin-financial.min.js"></script>
+    
     <script>
         // Configuration
         const CONFIG = {
@@ -142,11 +161,14 @@
             currentStats: {},
             charts: {},
             reconnectAttempts: 0,
-            maxReconnectAttempts: 5
+            maxReconnectAttempts: 5,
+            pingInterval: null
         };
 
         // Initialize the application
         function init() {
+            console.log("Initializing application...");
+            
             // Initialize data structures
             Object.keys(CONFIG.timeframes).forEach(tf => {
                 state.candles[tf] = [];
@@ -157,6 +179,9 @@
             setupEventListeners();
             setupCharts();
             connectWebSocket();
+            
+            // Start ping interval
+            state.pingInterval = setInterval(sendPing, 30000);
         }
 
         function createNewWindowStats() {
@@ -165,12 +190,15 @@
                 buy: 0,
                 sell: 0,
                 max: -Infinity,
-                min: Infinity
+                min: Infinity,
+                lastTradeTime: null
             };
         }
 
         // WebSocket Management
         function connectWebSocket() {
+            console.log("Attempting WebSocket connection...");
+            
             // Close existing connection
             if (state.websocket) {
                 state.websocket.close();
@@ -182,9 +210,9 @@
             state.websocket = new WebSocket(endpoint);
 
             state.websocket.onopen = () => {
+                console.log('WebSocket connected to:', endpoint);
                 updateStatus('Connected', 'connected');
                 state.reconnectAttempts = 0;
-                console.log('WebSocket connected to:', endpoint);
             };
 
             state.websocket.onmessage = (event) => {
@@ -202,6 +230,7 @@
             };
 
             state.websocket.onclose = () => {
+                console.log('WebSocket closed');
                 if (state.reconnectAttempts < state.maxReconnectAttempts) {
                     updateStatus('Reconnecting...', 'reconnecting');
                     state.reconnectAttempts++;
@@ -213,24 +242,37 @@
         }
 
         function tryFallback() {
+            console.log("Trying fallback endpoint...");
             updateStatus('Trying fallback...', 'reconnecting');
             const fallbackUrl = CONFIG.endpoints[state.market][1];
-            console.log('Attempting fallback to:', fallbackUrl);
             
             state.websocket = new WebSocket(fallbackUrl);
             
             state.websocket.onopen = () => {
+                console.log('Connected to fallback endpoint:', fallbackUrl);
                 updateStatus('Connected (fallback)', 'connected');
                 state.reconnectAttempts = 0;
             };
+            
             state.websocket.onerror = () => {
+                console.log('Fallback connection failed');
                 setTimeout(connectWebSocket, 5000);
             };
         }
 
+        function sendPing() {
+            if (state.websocket && state.websocket.readyState === WebSocket.OPEN) {
+                try {
+                    state.websocket.send(JSON.stringify({ ping: Date.now() }));
+                } catch (e) {
+                    console.log('Ping failed, reconnecting...');
+                    connectWebSocket();
+                }
+            }
+        }
+
         // Trade Processing
         function processTrade(trade) {
-            // Store the trade
             const tradeData = {
                 timestamp: new Date(trade.T),
                 value: parseFloat(trade.q) * parseFloat(trade.p),
@@ -274,20 +316,23 @@
             const delta = state.currentStats[timeframe].buy - state.currentStats[timeframe].sell;
             state.currentStats[timeframe].max = Math.max(delta, state.currentStats[timeframe].max);
             state.currentStats[timeframe].min = Math.min(delta, state.currentStats[timeframe].min);
+            state.currentStats[timeframe].lastTradeTime = trade.timestamp;
         }
 
         function createCandle(timeframe) {
             const stats = state.currentStats[timeframe];
             const delta = stats.buy - stats.sell;
 
-            state.candles[timeframe].push({
+            const newCandle = {
                 x: stats.windowStart.getTime(),
                 o: delta,
                 h: stats.max,
                 l: stats.min,
                 c: delta,
                 s: delta >= 0 ? 'rgba(40, 167, 69, 0.8)' : 'rgba(220, 53, 69, 0.8)'
-            });
+            };
+
+            state.candles[timeframe].push(newCandle);
 
             // Keep only last 20 candles
             if (state.candles[timeframe].length > 20) {
@@ -299,8 +344,19 @@
 
         // Chart Management
         function setupCharts() {
+            console.log("Setting up charts...");
+            
+            // Register the financial plugin
+            Chart.register(Chart.Financial);
+
             Object.keys(CONFIG.timeframes).forEach(tf => {
                 const ctx = document.getElementById(`${tf}Chart`).getContext('2d');
+                
+                // Destroy existing chart if it exists
+                if (state.charts[tf]) {
+                    state.charts[tf].destroy();
+                }
+                
                 state.charts[tf] = new Chart(ctx, {
                     type: 'candlestick',
                     data: {
@@ -329,6 +385,24 @@
                                     }
                                 }
                             }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const data = context.raw;
+                                        return [
+                                            `Open: ${formatCurrency(data.o, false)}`,
+                                            `High: ${formatCurrency(data.h, false)}`,
+                                            `Low: ${formatCurrency(data.l, false)}`,
+                                            `Close: ${formatCurrency(data.c, false)}`
+                                        ];
+                                    }
+                                }
+                            }
                         }
                     }
                 });
@@ -336,8 +410,10 @@
         }
 
         function updateChart(timeframe) {
-            state.charts[timeframe].data.datasets[0].data = state.candles[timeframe];
-            state.charts[timeframe].update();
+            if (state.charts[timeframe]) {
+                state.charts[timeframe].data.datasets[0].data = state.candles[timeframe];
+                state.charts[timeframe].update();
+            }
         }
 
         // UI Updates
@@ -348,7 +424,7 @@
 
             // Update current values
             document.getElementById('current-delta').textContent = formatCurrency(delta);
-            document.getElementById('current-delta').className = `h3 ${delta >= 0 ? 'positive' : 'negative'}`;
+            document.getElementById('current-delta').className = `delta-value ${delta >= 0 ? 'positive' : 'negative'}`;
             document.getElementById('delta-buy').textContent = formatCurrency(stats.buy);
             document.getElementById('delta-sell').textContent = formatCurrency(stats.sell);
             
@@ -366,6 +442,7 @@
         // Helper Functions
         function formatCurrency(value, short = false) {
             if (value === undefined || value === null) return '--';
+            if (value === Infinity || value === -Infinity) return '--';
             if (short) {
                 if (Math.abs(value) >= 1000000) return '$' + (value/1000000).toFixed(1) + 'M';
                 if (Math.abs(value) >= 1000) return '$' + (value/1000).toFixed(1) + 'K';
@@ -376,34 +453,61 @@
         // Event Listeners
         function setupEventListeners() {
             document.getElementById('spot-btn').addEventListener('click', () => {
-                state.market = 'spot';
-                document.getElementById('spot-btn').classList.add('active');
-                document.getElementById('futures-btn').classList.remove('active');
-                resetData();
-                connectWebSocket();
+                if (state.market !== 'spot') {
+                    state.market = 'spot';
+                    document.getElementById('spot-btn').classList.add('active');
+                    document.getElementById('futures-btn').classList.remove('active');
+                    resetData();
+                    connectWebSocket();
+                }
             });
 
             document.getElementById('futures-btn').addEventListener('click', () => {
-                state.market = 'futures';
-                document.getElementById('futures-btn').classList.add('active');
-                document.getElementById('spot-btn').classList.remove('active');
-                resetData();
-                connectWebSocket();
+                if (state.market !== 'futures') {
+                    state.market = 'futures';
+                    document.getElementById('futures-btn').classList.add('active');
+                    document.getElementById('spot-btn').classList.remove('active');
+                    resetData();
+                    connectWebSocket();
+                }
             });
         }
 
         function resetData() {
+            console.log("Resetting data for market change...");
             state.trades = [];
             Object.keys(CONFIG.timeframes).forEach(tf => {
                 state.candles[tf] = [];
                 state.currentStats[tf] = createNewWindowStats();
-                state.charts[tf].data.datasets[0].data = [];
-                state.charts[tf].update();
+                if (state.charts[tf]) {
+                    state.charts[tf].data.datasets[0].data = [];
+                    state.charts[tf].update();
+                }
             });
         }
 
-        // Start the application
-        init();
+        // Start the application when everything is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Verify all scripts are loaded
+            if (typeof Chart !== 'undefined' && typeof Chart.Financial !== 'undefined') {
+                init();
+            } else {
+                console.error("Required libraries not loaded!");
+                updateStatus("Error loading charts", "disconnected");
+                // Try reloading as last resort
+                setTimeout(() => location.reload(), 3000);
+            }
+        });
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (state.websocket) {
+                state.websocket.close();
+            }
+            if (state.pingInterval) {
+                clearInterval(state.pingInterval);
+            }
+        });
     </script>
 </body>
 </html>
