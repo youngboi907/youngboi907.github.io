@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Taker Delta Monitor</title>
+    <title>BTC/USDT Taker Delta Monitor (Absolute Values)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
@@ -85,6 +85,12 @@
             --bg-color: #2c3e50;
             --card-bg: #34495e;
         }
+        .timeframe-stats {
+            background-color: rgba(0,0,0,0.05);
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
         @media (max-width: 768px) {
             .delta-value {
                 font-size: 1.4rem;
@@ -101,7 +107,7 @@
 <body>
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1 class="text-center my-4">BTC/USDT Taker Delta Monitor</h1>
+            <h1 class="text-center my-4">BTC/USDT Taker Delta Monitor (USD)</h1>
             <button id="dark-mode-toggle" class="btn btn-sm btn-outline-secondary">Dark Mode</button>
         </div>
         
@@ -129,7 +135,7 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Current Taker Delta</span>
+                        <span>Current Taker Delta (USD)</span>
                         <small id="current-time" class="text-white">--:--:--</small>
                     </div>
                     <div class="card-body text-center">
@@ -146,11 +152,41 @@
                         </div>
                     </div>
                 </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header">Timeframe Closing Deltas</div>
+                    <div class="card-body">
+                        <div class="timeframe-stats" id="5m-stats">
+                            <h6>5 Minute Window</h6>
+                            <div>Closing Delta: <span id="5m-close">--</span></div>
+                            <div>Max Delta: <span id="5m-max">--</span> at <span id="5m-max-time">--</span></div>
+                            <div>Min Delta: <span id="5m-min">--</span> at <span id="5m-min-time">--</span></div>
+                        </div>
+                        <div class="timeframe-stats" id="15m-stats">
+                            <h6>15 Minute Window</h6>
+                            <div>Closing Delta: <span id="15m-close">--</span></div>
+                            <div>Max Delta: <span id="15m-max">--</span> at <span id="15m-max-time">--</span></div>
+                            <div>Min Delta: <span id="15m-min">--</span> at <span id="15m-min-time">--</span></div>
+                        </div>
+                        <div class="timeframe-stats" id="1h-stats">
+                            <h6>1 Hour Window</h6>
+                            <div>Closing Delta: <span id="1h-close">--</span></div>
+                            <div>Max Delta: <span id="1h-max">--</span> at <span id="1h-max-time">--</span></div>
+                            <div>Min Delta: <span id="1h-min">--</span> at <span id="1h-min-time">--</span></div>
+                        </div>
+                        <div class="timeframe-stats" id="4h-stats">
+                            <h6>4 Hour Window</h6>
+                            <div>Closing Delta: <span id="4h-close">--</span></div>
+                            <div>Max Delta: <span id="4h-max">--</span> at <span id="4h-max-time">--</span></div>
+                            <div>Min Delta: <span id="4h-min">--</span> at <span id="4h-min-time">--</span></div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="col-md-6">
                 <div class="card">
-                    <div class="card-header">Delta Extremes</div>
+                    <div class="card-header">Current Window Extremes</div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-6 text-center">
@@ -165,7 +201,7 @@
                             </div>
                         </div>
                         <div class="mt-3">
-                            <canvas id="deltaChart" height="150"></canvas>
+                            <canvas id="deltaChart" height="300"></canvas>
                         </div>
                     </div>
                 </div>
@@ -197,6 +233,22 @@
         let isWebSocketConnected = false;
         let deltaChart = null;
         
+        // Track closing deltas for each timeframe
+        let timeframeStats = {
+            '5m': { closingDeltas: [], maxDelta: null, minDelta: null, maxTime: null, minTime: null },
+            '15m': { closingDeltas: [], maxDelta: null, minDelta: null, maxTime: null, minTime: null },
+            '1h': { closingDeltas: [], maxDelta: null, minDelta: null, maxTime: null, minTime: null },
+            '4h': { closingDeltas: [], maxDelta: null, minDelta: null, maxTime: null, minTime: null }
+        };
+        
+        // Track current window boundaries
+        let windowBoundaries = {
+            '5m': null,
+            '15m': null,
+            '1h': null,
+            '4h': null
+        };
+        
         // DOM Elements
         const marketBtns = document.querySelectorAll('.market-btn');
         const timeframeBtns = document.querySelectorAll('.timeframe-btn');
@@ -222,6 +274,7 @@
             setupChart();
             connectWebSocket();
             startClock();
+            setInterval(checkWindowBoundaries, 1000); // Check every second for window boundaries
         }
         
         function setupEventListeners() {
@@ -260,7 +313,7 @@
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Taker Delta %',
+                        label: 'Taker Delta (USD)',
                         data: [],
                         borderColor: 'rgba(75, 192, 192, 1)',
                         backgroundColor: 'rgba(75, 192, 192, 0.2)',
@@ -280,7 +333,7 @@
                             },
                             ticks: {
                                 callback: function(value) {
-                                    return value + '%';
+                                    return formatCurrency(value, true);
                                 }
                             }
                         },
@@ -297,7 +350,7 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return context.parsed.y.toFixed(2) + '%';
+                                    return formatCurrency(context.parsed.y, false);
                                 }
                             }
                         }
@@ -375,7 +428,80 @@
             
             tradeData.push(tradeObj);
             processTradeData();
+            checkWindowBoundaries();
             updateLastUpdatedTime();
+        }
+        
+        function checkWindowBoundaries() {
+            const now = new Date();
+            
+            // Check all timeframes for window boundaries
+            Object.keys(timeframeStats).forEach(timeframe => {
+                const minutes = parseInt(timeframe);
+                const windowSizeMs = minutes * 60 * 1000;
+                
+                // Initialize window boundary if not set
+                if (!windowBoundaries[timeframe]) {
+                    windowBoundaries[timeframe] = new Date(Math.floor(now.getTime() / windowSizeMs) * windowSizeMs);
+                }
+                
+                // Check if we've crossed into a new window
+                const nextBoundary = new Date(windowBoundaries[timeframe].getTime() + windowSizeMs);
+                if (now >= nextBoundary) {
+                    // Save closing delta for previous window
+                    saveClosingDelta(timeframe);
+                    // Update window boundary
+                    windowBoundaries[timeframe] = nextBoundary;
+                }
+            });
+        }
+        
+        function saveClosingDelta(timeframe) {
+            const now = new Date();
+            let cutoffTime = new Date(now);
+            
+            // Set cutoff time based on timeframe
+            switch(timeframe) {
+                case '5m': cutoffTime.setMinutes(now.getMinutes() - 5); break;
+                case '15m': cutoffTime.setMinutes(now.getMinutes() - 15); break;
+                case '1h': cutoffTime.setHours(now.getHours() - 1); break;
+                case '4h': cutoffTime.setHours(now.getHours() - 4); break;
+            }
+            
+            // Filter trades within timeframe
+            const relevantTrades = tradeData.filter(trade => trade.timestamp >= cutoffTime);
+            
+            // Calculate volumes and delta
+            let buyVolume = 0;
+            let sellVolume = 0;
+            
+            relevantTrades.forEach(trade => {
+                if (trade.isBuyerMaker) {
+                    sellVolume += trade.value;
+                } else {
+                    buyVolume += trade.value;
+                }
+            });
+            
+            const delta = buyVolume - sellVolume;
+            const deltaObj = {
+                value: delta,
+                timestamp: new Date(cutoffTime.getTime())
+            };
+            
+            // Save closing delta
+            timeframeStats[timeframe].closingDeltas.push(deltaObj);
+            
+            // Update max/min deltas
+            if (timeframeStats[timeframe].maxDelta === null || delta > timeframeStats[timeframe].maxDelta.value) {
+                timeframeStats[timeframe].maxDelta = deltaObj;
+            }
+            if (timeframeStats[timeframe].minDelta === null || delta < timeframeStats[timeframe].minDelta.value) {
+                timeframeStats[timeframe].minDelta = deltaObj;
+            }
+            
+            // Update UI for this timeframe
+            updateTimeframeStatsUI(timeframe);
         }
         
         function processTradeData() {
@@ -407,8 +533,7 @@
                     buyVolume += trade.value;
                 }
                 
-                const totalVolume = buyVolume + sellVolume;
-                const delta = totalVolume > 0 ? ((buyVolume - sellVolume) / totalVolume) * 100 : 0;
+                const delta = buyVolume - sellVolume;
                 
                 deltaHistory.push({
                     timestamp: trade.timestamp,
@@ -463,16 +588,16 @@
         
         function updateUI(data) {
             // Current delta
-            currentDeltaEl.textContent = formatDelta(data.current.delta);
+            currentDeltaEl.textContent = formatCurrency(data.current.delta, false);
             currentDeltaEl.className = `delta-value ${getDeltaClass(data.current.delta)}`;
             
             // Buy/sell volumes
-            deltaBuyEl.textContent = formatCurrency(data.current.buyVolume);
-            deltaSellEl.textContent = formatCurrency(data.current.sellVolume);
+            deltaBuyEl.textContent = formatCurrency(data.current.buyVolume, false);
+            deltaSellEl.textContent = formatCurrency(data.current.sellVolume, false);
             
             // Extremes
-            maxDeltaEl.textContent = formatDelta(data.extremes.maxDelta);
-            minDeltaEl.textContent = formatDelta(data.extremes.minDelta);
+            maxDeltaEl.textContent = formatCurrency(data.extremes.maxDelta, false);
+            minDeltaEl.textContent = formatCurrency(data.extremes.minDelta, false);
             
             // Times
             timeMaxEl.textContent = formatTime(data.extremes.timeMax);
@@ -480,6 +605,28 @@
             
             // Current trade time
             currentTimeEl.textContent = formatTime(data.current.timestamp);
+        }
+        
+        function updateTimeframeStatsUI(timeframe) {
+            const stats = timeframeStats[timeframe];
+            const closingDelta = stats.closingDeltas.length > 0 
+                ? stats.closingDeltas[stats.closingDeltas.length - 1] 
+                : { value: 0, timestamp: new Date() };
+            
+            document.getElementById(`${timeframe}-close`).textContent = formatCurrency(closingDelta.value, false);
+            document.getElementById(`${timeframe}-close`).className = getDeltaClass(closingDelta.value);
+            
+            if (stats.maxDelta) {
+                document.getElementById(`${timeframe}-max`).textContent = formatCurrency(stats.maxDelta.value, false);
+                document.getElementById(`${timeframe}-max`).className = getDeltaClass(stats.maxDelta.value);
+                document.getElementById(`${timeframe}-max-time`).textContent = formatTime(stats.maxDelta.timestamp);
+            }
+            
+            if (stats.minDelta) {
+                document.getElementById(`${timeframe}-min`).textContent = formatCurrency(stats.minDelta.value, false);
+                document.getElementById(`${timeframe}-min`).className = getDeltaClass(stats.minDelta.value);
+                document.getElementById(`${timeframe}-min-time`).textContent = formatTime(stats.minDelta.timestamp);
+            }
         }
         
         function updateChart(labels, data) {
@@ -504,6 +651,20 @@
             deltaChart.data.labels = [];
             deltaChart.data.datasets[0].data = [];
             deltaChart.update();
+            
+            // Reset timeframe stats
+            Object.keys(timeframeStats).forEach(timeframe => {
+                timeframeStats[timeframe] = { closingDeltas: [], maxDelta: null, minDelta: null, maxTime: null, minTime: null };
+                updateTimeframeStatsUI(timeframe);
+            });
+            
+            // Reset window boundaries
+            const now = new Date();
+            Object.keys(windowBoundaries).forEach(timeframe => {
+                const minutes = parseInt(timeframe);
+                const windowSizeMs = minutes * 60 * 1000;
+                windowBoundaries[timeframe] = new Date(Math.floor(now.getTime() / windowSizeMs) * windowSizeMs);
+            });
         }
         
         function updateLastUpdatedTime() {
@@ -527,15 +688,12 @@
         }
         
         // Formatting functions
-        function formatDelta(delta) {
-            if (delta === null || delta === undefined) return '--';
-            return (delta > 0 ? '+' : '') + delta.toFixed(2) + '%';
-        }
-        
-        function formatCurrency(value) {
+        function formatCurrency(value, short) {
             if (value === null || value === undefined) return '--';
-            if (value >= 1000000) return '$' + (value / 1000000).toFixed(1) + 'M';
-            if (value >= 1000) return '$' + (value / 1000).toFixed(1) + 'K';
+            if (short) {
+                if (Math.abs(value) >= 1000000) return '$' + (value / 1000000).toFixed(1) + 'M';
+                if (Math.abs(value) >= 1000) return '$' + (value / 1000).toFixed(1) + 'K';
+            }
             return '$' + value.toFixed(0);
         }
         
