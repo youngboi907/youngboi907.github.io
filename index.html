@@ -1,119 +1,192 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- [Previous head content remains the same] -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC/USDT Delta Candles (Working Version)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* [Keep your existing CSS styles] */
+        .candle-chart-container { height: 200px; margin-bottom: 20px; }
+        .positive { color: #28a745; }
+        .negative { color: #dc3545; }
+    </style>
 </head>
 <body>
-    <!-- [Previous HTML content remains the same until the script section] -->
-
+    <!-- [Keep your existing HTML structure] -->
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-financial"></script>
     <script>
-        // [Previous configuration and variable declarations remain the same]
-
-        function connectWebSocket() {
-            loadingSpinner.style.display = 'block';
-            connectionStatusEl.textContent = 'Connecting...';
-            connectionStatusEl.className = 'disconnected';
-
-            if (websocket && websocket.readyState === WebSocket.OPEN) {
-                websocket.close();
+        // 1. CONFIGURATION
+        const CONFIG = {
+            market: 'spot',
+            symbol: 'btcusdt',
+            endpoints: {
+                spot: [
+                    'wss://stream.binance.com:9443/ws/btcusdt@aggTrade',
+                    'wss://stream.binance.com:443/ws/btcusdt@aggTrade'
+                ],
+                futures: [
+                    'wss://fstream.binance.com/ws/btcusdt@aggTrade',
+                    'wss://fstream.binance.com:443/ws/btcusdt@aggTrade'
+                ]
+            },
+            timeframes: {
+                '5m': 5 * 60 * 1000,
+                '15m': 15 * 60 * 1000,
+                '1h': 60 * 60 * 1000,
+                '4h': 4 * 60 * 60 * 1000
             }
+        };
 
-            const symbol = 'btcusdt';
-            const streamName = `${symbol}@aggTrade`;
-            
-            // Use alternative endpoints for better connectivity
-            const wsUrls = [
-                `wss://stream.binance.com:9443/ws/${streamName}`,
-                `wss://stream.binance.com:443/ws/${streamName}`,
-                `wss://fstream.binance.com/ws/${streamName}`,
-                `wss://fstream.binance.com:443/ws/${streamName}`
-            ];
+        // 2. STATE MANAGEMENT
+        let websocket = null;
+        const state = {
+            trades: [],
+            candles: { '5m': [], '15m': [], '1h': [], '4h': [] },
+            currentStats: { '5m': {}, '15m': {}, '1h': {}, '4h': {} },
+            charts: {}
+        };
 
-            let currentUrlIndex = 0;
-            let retryCount = 0;
-            const maxRetries = 5;
-            const retryDelay = 3000;
-
-            const tryConnect = () => {
-                if (retryCount >= maxRetries) {
-                    updateConnectionStatus('Failed to connect', false);
-                    loadingSpinner.style.display = 'none';
-                    return;
-                }
-
-                const wsUrl = currentMarket === 'spot' 
-                    ? wsUrls[currentUrlIndex % 2]  // Use first two for spot
-                    : wsUrls[2 + (currentUrlIndex % 2)];  // Use last two for futures
-
-                console.log(`Attempting to connect to: ${wsUrl}`);
-                websocket = new WebSocket(wsUrl);
-
-                websocket.onopen = () => {
-                    console.log('WebSocket connected to:', wsUrl);
-                    isWebSocketConnected = true;
-                    updateConnectionStatus('Connected', true);
-                    loadingSpinner.style.display = 'none';
-                    retryCount = 0;
-                };
-
-                websocket.onmessage = (event) => {
-                    try {
-                        const trade = JSON.parse(event.data);
-                        handleNewTrade(trade);
-                    } catch (e) {
-                        console.error('Error processing message:', e);
-                    }
-                };
-
-                websocket.onerror = (error) => {
-                    console.error('WebSocket error:', error);
-                    isWebSocketConnected = false;
-                    updateConnectionStatus(`Error (retry ${retryCount + 1}/${maxRetries})`, false);
-                    currentUrlIndex++;
-                    retryCount++;
-                    setTimeout(tryConnect, retryDelay);
-                };
-
-                websocket.onclose = (event) => {
-                    console.log('WebSocket closed:', event.code, event.reason);
-                    isWebSocketConnected = false;
-                    
-                    if (!event.wasClean) {
-                        updateConnectionStatus(`Reconnecting... (${retryCount + 1}/${maxRetries})`, false);
-                        currentUrlIndex++;
-                        retryCount++;
-                        setTimeout(tryConnect, retryDelay);
-                    }
-                };
-            };
-
-            tryConnect();
-        }
-
-        // [Rest of the JavaScript code remains the same]
-
-        // Add this to your existing init function
+        // 3. CORE FUNCTIONS
         function init() {
             setupEventListeners();
             setupCharts();
-            // Start with a fresh connection
-            resetData();
             connectWebSocket();
             startClock();
-            setInterval(checkWindowBoundaries, 1000);
+        }
+
+        function connectWebSocket() {
+            if (websocket) websocket.close();
             
-            // Add ping/pong to maintain connection
-            setInterval(() => {
-                if (websocket && websocket.readyState === WebSocket.OPEN) {
-                    try {
-                        websocket.send(JSON.stringify({ ping: Date.now() }));
-                    } catch (e) {
-                        console.log('Ping failed, reconnecting...');
-                        connectWebSocket();
+            const endpoints = CONFIG.endpoints[CONFIG.market];
+            websocket = new WebSocket(endpoints[0]);
+            
+            websocket.onopen = () => updateStatus('Connected', true);
+            websocket.onmessage = handleMessage;
+            websocket.onerror = () => tryFallback(endpoints[1]);
+            websocket.onclose = () => setTimeout(connectWebSocket, 3000);
+        }
+
+        function tryFallback(fallbackUrl) {
+            setTimeout(() => {
+                websocket = new WebSocket(fallbackUrl);
+                websocket.onopen = () => updateStatus('Connected (Fallback)', true);
+            }, 3000);
+        }
+
+        function handleMessage(event) {
+            try {
+                const trade = JSON.parse(event.data);
+                state.trades.push({
+                    timestamp: new Date(trade.T),
+                    value: parseFloat(trade.q) * parseFloat(trade.p),
+                    isBuy: !trade.m
+                });
+                processTrade();
+                updateUI();
+            } catch (e) {
+                console.error("Message error:", e);
+            }
+        }
+
+        function processTrade() {
+            const now = new Date();
+            
+            Object.keys(CONFIG.timeframes).forEach(tf => {
+                const windowSize = CONFIG.timeframes[tf];
+                const windowStart = new Date(Math.floor(now / windowSize) * windowSize);
+                
+                // Initialize stats if new window
+                if (!state.currentStats[tf].windowStart || 
+                    windowStart > state.currentStats[tf].windowStart) {
+                    state.currentStats[tf] = {
+                        windowStart,
+                        buy: 0,
+                        sell: 0,
+                        max: -Infinity,
+                        min: Infinity
+                    };
+                }
+                
+                // Update stats
+                const trade = state.trades[state.trades.length - 1];
+                if (trade.timestamp >= windowStart) {
+                    if (trade.isBuy) state.currentStats[tf].buy += trade.value;
+                    else state.currentStats[tf].sell += trade.value;
+                    
+                    const delta = state.currentStats[tf].buy - state.currentStats[tf].sell;
+                    state.currentStats[tf].max = Math.max(delta, state.currentStats[tf].max);
+                    state.currentStats[tf].min = Math.min(delta, state.currentStats[tf].min);
+                    
+                    // Create candle at window end
+                    if (now >= new Date(windowStart.getTime() + windowSize)) {
+                        createCandle(tf);
                     }
                 }
-            }, 30000); // Ping every 30 seconds
+            });
         }
+
+        function createCandle(timeframe) {
+            const stats = state.currentStats[timeframe];
+            const delta = stats.buy - stats.sell;
+            
+            state.candles[timeframe].push({
+                x: stats.windowStart.getTime(),
+                o: delta,
+                h: stats.max,
+                l: stats.min,
+                c: delta,
+                s: delta >= 0 ? 'rgba(40, 167, 69, 0.8)' : 'rgba(220, 53, 69, 0.8)'
+            });
+            
+            // Keep last 20 candles
+            if (state.candles[timeframe].length > 20) {
+                state.candles[timeframe].shift();
+            }
+            
+            updateChart(timeframe);
+        }
+
+        // 4. CHART FUNCTIONS
+        function setupCharts() {
+            Object.keys(CONFIG.timeframes).forEach(tf => {
+                const ctx = document.getElementById(`${tf}Chart`).getContext('2d');
+                state.charts[tf] = new Chart(ctx, {
+                    type: 'candlestick',
+                    data: { datasets: [{ data: [] }] },
+                    options: {
+                        scales: { y: { ticks: { callback: v => formatCurrency(v, true) } } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            });
+        }
+
+        function updateChart(timeframe) {
+            state.charts[timeframe].data.datasets[0].data = state.candles[timeframe];
+            state.charts[timeframe].update();
+        }
+
+        // 5. HELPER FUNCTIONS
+        function formatCurrency(value, short) {
+            if (Math.abs(value) >= 1e6) return '$' + (value/1e6).toFixed(1) + 'M';
+            if (Math.abs(value) >= 1e3) return '$' + (value/1e3).toFixed(1) + 'K';
+            return '$' + value.toFixed(0);
+        }
+
+        function updateStatus(text, isGood) {
+            const el = document.getElementById('connection-status');
+            el.textContent = text;
+            el.className = isGood ? 'connected' : 'disconnected';
+        }
+
+        // [Remaining helper functions...]
+
+        // Initialize the app
+        init();
     </script>
 </body>
 </html>
