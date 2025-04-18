@@ -6,22 +6,123 @@
     <title>BTC/USDT Delta Candles (Working Version)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* [Keep your existing CSS styles] */
-        .candle-chart-container { height: 200px; margin-bottom: 20px; }
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
         .positive { color: #28a745; }
         .negative { color: #dc3545; }
+        .candle-chart-container { height: 200px; margin-bottom: 15px; }
+        #connection-status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+        }
+        .connected { background-color: #28a745; color: white; }
+        .disconnected { background-color: #dc3545; color: white; }
     </style>
 </head>
 <body>
-    <!-- [Keep your existing HTML structure] -->
-    
+    <div class="container">
+        <h1 class="text-center my-4">BTC/USDT Delta Candles</h1>
+        
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="btn-group w-100">
+                    <button id="spot-btn" class="btn btn-outline-primary active">Spot</button>
+                    <button id="futures-btn" class="btn btn-outline-primary">Futures</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Current Delta</div>
+                    <div class="card-body text-center">
+                        <div id="current-delta" class="delta-value">--</div>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <div id="delta-buy" class="stat-value positive">--</div>
+                                <div>Buy Volume</div>
+                            </div>
+                            <div class="col-6">
+                                <div id="delta-sell" class="stat-value negative">--</div>
+                                <div>Sell Volume</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Current Window</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6 text-center">
+                                <div id="max-delta" class="stat-value positive">--</div>
+                                <div>Max Delta</div>
+                            </div>
+                            <div class="col-6 text-center">
+                                <div id="min-delta" class="stat-value negative">--</div>
+                                <div>Min Delta</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">Timeframe Candles</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>5 Minute</h5>
+                        <div class="candle-chart-container">
+                            <canvas id="5mChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>15 Minute</h5>
+                        <div class="candle-chart-container">
+                            <canvas id="15mChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>1 Hour</h5>
+                        <div class="candle-chart-container">
+                            <canvas id="1hChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>4 Hour</h5>
+                        <div class="candle-chart-container">
+                            <canvas id="4hChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="connection-status" class="disconnected">Disconnected</div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-financial"></script>
     <script>
-        // 1. CONFIGURATION
+        // 1. Configuration
         const CONFIG = {
-            market: 'spot',
             symbol: 'btcusdt',
             endpoints: {
                 spot: [
@@ -41,98 +142,139 @@
             }
         };
 
-        // 2. STATE MANAGEMENT
-        let websocket = null;
+        // 2. Application State
         const state = {
+            market: 'spot',
+            websocket: null,
             trades: [],
-            candles: { '5m': [], '15m': [], '1h': [], '4h': [] },
-            currentStats: { '5m': {}, '15m': {}, '1h': {}, '4h': {} },
+            candles: {},
+            currentStats: {},
             charts: {}
         };
 
-        // 3. CORE FUNCTIONS
+        // 3. Initialize the application
         function init() {
+            // Initialize data structures
+            Object.keys(CONFIG.timeframes).forEach(tf => {
+                state.candles[tf] = [];
+                state.currentStats[tf] = {
+                    windowStart: null,
+                    buy: 0,
+                    sell: 0,
+                    max: -Infinity,
+                    min: Infinity
+                };
+            });
+
+            // Setup UI elements
             setupEventListeners();
             setupCharts();
             connectWebSocket();
-            startClock();
         }
 
+        // 4. WebSocket Management
         function connectWebSocket() {
-            if (websocket) websocket.close();
-            
-            const endpoints = CONFIG.endpoints[CONFIG.market];
-            websocket = new WebSocket(endpoints[0]);
-            
-            websocket.onopen = () => updateStatus('Connected', true);
-            websocket.onmessage = handleMessage;
-            websocket.onerror = () => tryFallback(endpoints[1]);
-            websocket.onclose = () => setTimeout(connectWebSocket, 3000);
-        }
-
-        function tryFallback(fallbackUrl) {
-            setTimeout(() => {
-                websocket = new WebSocket(fallbackUrl);
-                websocket.onopen = () => updateStatus('Connected (Fallback)', true);
-            }, 3000);
-        }
-
-        function handleMessage(event) {
-            try {
-                const trade = JSON.parse(event.data);
-                state.trades.push({
-                    timestamp: new Date(trade.T),
-                    value: parseFloat(trade.q) * parseFloat(trade.p),
-                    isBuy: !trade.m
-                });
-                processTrade();
-                updateUI();
-            } catch (e) {
-                console.error("Message error:", e);
+            // Close existing connection
+            if (state.websocket) {
+                state.websocket.close();
             }
+
+            updateStatus('Connecting...');
+            
+            const endpoint = CONFIG.endpoints[state.market][0];
+            state.websocket = new WebSocket(endpoint);
+
+            state.websocket.onopen = () => {
+                updateStatus('Connected');
+                console.log('WebSocket connected to:', endpoint);
+            };
+
+            state.websocket.onmessage = (event) => {
+                try {
+                    const trade = JSON.parse(event.data);
+                    processTrade(trade);
+                } catch (e) {
+                    console.error('Error processing trade:', e);
+                }
+            };
+
+            state.websocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                tryFallback();
+            };
+
+            state.websocket.onclose = () => {
+                updateStatus('Disconnected', false);
+                setTimeout(connectWebSocket, 3000);
+            };
         }
 
-        function processTrade() {
-            const now = new Date();
+        function tryFallback() {
+            updateStatus('Trying fallback...');
+            const fallbackUrl = CONFIG.endpoints[state.market][1];
+            console.log('Attempting fallback to:', fallbackUrl);
             
+            state.websocket = new WebSocket(fallbackUrl);
+            
+            state.websocket.onopen = () => updateStatus('Connected (fallback)');
+            state.websocket.onerror = () => setTimeout(connectWebSocket, 5000);
+        }
+
+        // 5. Trade Processing
+        function processTrade(trade) {
+            // Store the trade
+            const tradeData = {
+                timestamp: new Date(trade.T),
+                value: parseFloat(trade.q) * parseFloat(trade.p),
+                isBuy: !trade.m
+            };
+            state.trades.push(tradeData);
+
+            // Update all timeframes
             Object.keys(CONFIG.timeframes).forEach(tf => {
-                const windowSize = CONFIG.timeframes[tf];
-                const windowStart = new Date(Math.floor(now / windowSize) * windowSize);
-                
-                // Initialize stats if new window
-                if (!state.currentStats[tf].windowStart || 
-                    windowStart > state.currentStats[tf].windowStart) {
-                    state.currentStats[tf] = {
-                        windowStart,
-                        buy: 0,
-                        sell: 0,
-                        max: -Infinity,
-                        min: Infinity
-                    };
-                }
-                
-                // Update stats
-                const trade = state.trades[state.trades.length - 1];
-                if (trade.timestamp >= windowStart) {
-                    if (trade.isBuy) state.currentStats[tf].buy += trade.value;
-                    else state.currentStats[tf].sell += trade.value;
-                    
-                    const delta = state.currentStats[tf].buy - state.currentStats[tf].sell;
-                    state.currentStats[tf].max = Math.max(delta, state.currentStats[tf].max);
-                    state.currentStats[tf].min = Math.min(delta, state.currentStats[tf].min);
-                    
-                    // Create candle at window end
-                    if (now >= new Date(windowStart.getTime() + windowSize)) {
-                        createCandle(tf);
-                    }
-                }
+                updateTimeframeStats(tf, tradeData);
             });
+
+            updateUI();
+        }
+
+        function updateTimeframeStats(timeframe, trade) {
+            const windowSize = CONFIG.timeframes[timeframe];
+            const windowStart = new Date(Math.floor(trade.timestamp / windowSize) * windowSize);
+            const stats = state.currentStats[timeframe];
+
+            // Check if we're in a new window
+            if (!stats.windowStart || windowStart > stats.windowStart) {
+                // If we had previous data, create a candle
+                if (stats.windowStart) {
+                    createCandle(timeframe);
+                }
+                
+                // Reset stats for new window
+                stats.windowStart = windowStart;
+                stats.buy = 0;
+                stats.sell = 0;
+                stats.max = -Infinity;
+                stats.min = Infinity;
+            }
+
+            // Update volumes
+            if (trade.isBuy) {
+                stats.buy += trade.value;
+            } else {
+                stats.sell += trade.value;
+            }
+
+            // Update min/max delta
+            const delta = stats.buy - stats.sell;
+            stats.max = Math.max(delta, stats.max);
+            stats.min = Math.min(delta, stats.min);
         }
 
         function createCandle(timeframe) {
             const stats = state.currentStats[timeframe];
             const delta = stats.buy - stats.sell;
-            
+
             state.candles[timeframe].push({
                 x: stats.windowStart.getTime(),
                 o: delta,
@@ -141,25 +283,48 @@
                 c: delta,
                 s: delta >= 0 ? 'rgba(40, 167, 69, 0.8)' : 'rgba(220, 53, 69, 0.8)'
             });
-            
-            // Keep last 20 candles
+
+            // Keep only last 20 candles
             if (state.candles[timeframe].length > 20) {
                 state.candles[timeframe].shift();
             }
-            
+
             updateChart(timeframe);
         }
 
-        // 4. CHART FUNCTIONS
+        // 6. Chart Management
         function setupCharts() {
             Object.keys(CONFIG.timeframes).forEach(tf => {
                 const ctx = document.getElementById(`${tf}Chart`).getContext('2d');
                 state.charts[tf] = new Chart(ctx, {
                     type: 'candlestick',
-                    data: { datasets: [{ data: [] }] },
+                    data: {
+                        datasets: [{
+                            label: tf,
+                            data: []
+                        }]
+                    },
                     options: {
-                        scales: { y: { ticks: { callback: v => formatCurrency(v, true) } } },
-                        plugins: { legend: { display: false } }
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                ticks: {
+                                    callback: function(value) {
+                                        return formatCurrency(value, true);
+                                    }
+                                }
+                            },
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'minute',
+                                    displayFormats: {
+                                        minute: 'HH:mm'
+                                    }
+                                }
+                            }
+                        }
                     }
                 });
             });
@@ -170,22 +335,75 @@
             state.charts[timeframe].update();
         }
 
-        // 5. HELPER FUNCTIONS
-        function formatCurrency(value, short) {
-            if (Math.abs(value) >= 1e6) return '$' + (value/1e6).toFixed(1) + 'M';
-            if (Math.abs(value) >= 1e3) return '$' + (value/1e3).toFixed(1) + 'K';
-            return '$' + value.toFixed(0);
+        // 7. UI Updates
+        function updateUI() {
+            // Get latest trade window (5m)
+            const stats = state.currentStats['5m'];
+            const delta = stats.buy - stats.sell;
+
+            // Update current values
+            document.getElementById('current-delta').textContent = formatCurrency(delta);
+            document.getElementById('current-delta').className = `delta-value ${delta >= 0 ? 'positive' : 'negative'}`;
+            document.getElementById('delta-buy').textContent = formatCurrency(stats.buy);
+            document.getElementById('delta-sell').textContent = formatCurrency(stats.sell);
+            
+            // Update min/max
+            document.getElementById('max-delta').textContent = formatCurrency(stats.max);
+            document.getElementById('min-delta').textContent = formatCurrency(stats.min);
         }
 
-        function updateStatus(text, isGood) {
+        function updateStatus(text, isConnected = true) {
             const el = document.getElementById('connection-status');
             el.textContent = text;
-            el.className = isGood ? 'connected' : 'disconnected';
+            el.className = isConnected ? 'connected' : 'disconnected';
         }
 
-        // [Remaining helper functions...]
+        // 8. Helper Functions
+        function formatCurrency(value, short = false) {
+            if (value === undefined || value === null) return '--';
+            if (short) {
+                if (Math.abs(value) >= 1000000) return '$' + (value/1000000).toFixed(1) + 'M';
+                if (Math.abs(value) >= 1000) return '$' + (value/1000).toFixed(1) + 'K';
+            }
+            return '$' + Math.round(value);
+        }
 
-        // Initialize the app
+        // 9. Event Listeners
+        function setupEventListeners() {
+            document.getElementById('spot-btn').addEventListener('click', () => {
+                state.market = 'spot';
+                document.getElementById('spot-btn').classList.add('active');
+                document.getElementById('futures-btn').classList.remove('active');
+                resetData();
+                connectWebSocket();
+            });
+
+            document.getElementById('futures-btn').addEventListener('click', () => {
+                state.market = 'futures';
+                document.getElementById('futures-btn').classList.add('active');
+                document.getElementById('spot-btn').classList.remove('active');
+                resetData();
+                connectWebSocket();
+            });
+        }
+
+        function resetData() {
+            state.trades = [];
+            Object.keys(CONFIG.timeframes).forEach(tf => {
+                state.candles[tf] = [];
+                state.currentStats[tf] = {
+                    windowStart: null,
+                    buy: 0,
+                    sell: 0,
+                    max: -Infinity,
+                    min: Infinity
+                };
+                state.charts[tf].data.datasets[0].data = [];
+                state.charts[tf].update();
+            });
+        }
+
+        // Start the application
         init();
     </script>
 </body>
