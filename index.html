@@ -3,25 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC/USDT Delta Monitor</title>
+    <title>BTC/USDT Taker Delta Monitor (Absolute Values)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #2c3e50;
+            --positive-color: #28a745;
+            --negative-color: #dc3545;
+            --text-color: #333;
+            --bg-color: #f8f9fa;
+            --card-bg: #fff;
+        }
         body {
-            background-color: #f8f9fa;
+            background-color: var(--bg-color);
             padding: 20px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-color);
         }
         .card {
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             border: none;
+            background-color: var(--card-bg);
         }
-        .positive { color: #28a745; }
-        .negative { color: #dc3545; }
-        .candle-chart-container { 
-            height: 200px; 
-            margin-bottom: 15px;
-            width: 100%;
+        .card-header {
+            font-weight: bold;
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .positive {
+            color: var(--positive-color);
+        }
+        .negative {
+            color: var(--negative-color);
+        }
+        .delta-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+        .timeframe-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        #loading-spinner {
+            display: none;
         }
         #connection-status {
             position: fixed;
@@ -31,22 +60,73 @@
             border-radius: 3px;
             font-size: 0.8rem;
         }
-        .connected { background-color: #28a745; color: white; }
-        .disconnected { background-color: #dc3545; color: white; }
-        .reconnecting { background-color: #ffc107; color: black; }
-        .delta-value { font-size: 2rem; font-weight: bold; }
-        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        .connected {
+            background-color: var(--positive-color);
+            color: white;
+        }
+        .disconnected {
+            background-color: var(--negative-color);
+            color: white;
+        }
+        .btn-group {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn-outline-primary {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .dark-mode {
+            --primary-color: #34495e;
+            --text-color: #ecf0f1;
+            --bg-color: #2c3e50;
+            --card-bg: #34495e;
+        }
+        .timeframe-stats {
+            background-color: rgba(0,0,0,0.05);
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        @media (max-width: 768px) {
+            .delta-value {
+                font-size: 1.4rem;
+            }
+            .stat-value {
+                font-size: 1.1rem;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="text-center my-4">BTC/USDT Delta Monitor</h1>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="text-center my-4">BTC/USDT Taker Delta Monitor (USD)</h1>
+            <button id="dark-mode-toggle" class="btn btn-sm btn-outline-secondary">Dark Mode</button>
+        </div>
         
         <div class="row mb-4">
             <div class="col-12">
                 <div class="btn-group w-100">
-                    <button id="spot-btn" class="btn btn-outline-primary active">Spot</button>
-                    <button id="futures-btn" class="btn btn-outline-primary">Futures</button>
+                    <button class="btn btn-outline-primary market-btn active" data-market="spot">Spot</button>
+                    <button class="btn btn-outline-primary market-btn" data-market="futures">Futures</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="btn-group w-100">
+                    <button class="btn btn-outline-secondary timeframe-btn active" data-timeframe="5m">5m</button>
+                    <button class="btn btn-outline-secondary timeframe-btn" data-timeframe="15m">15m</button>
+                    <button class="btn btn-outline-secondary timeframe-btn" data-timeframe="1h">1h</button>
+                    <button class="btn btn-outline-secondary timeframe-btn" data-timeframe="4h">4h</button>
                 </div>
             </div>
         </div>
@@ -54,18 +134,51 @@
         <div class="row">
             <div class="col-md-6">
                 <div class="card">
-                    <div class="card-header">Current Delta</div>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Current Taker Delta (USD)</span>
+                        <small id="current-time" class="text-white">--:--:--</small>
+                    </div>
                     <div class="card-body text-center">
-                        <div id="current-delta" class="delta-value">--</div>
+                        <div class="delta-value" id="current-delta">--</div>
                         <div class="row mt-3">
                             <div class="col-6">
-                                <div id="delta-buy" class="stat-value positive">--</div>
+                                <div class="stat-value positive" id="delta-buy">--</div>
                                 <div>Buy Volume</div>
                             </div>
                             <div class="col-6">
-                                <div id="delta-sell" class="stat-value negative">--</div>
+                                <div class="stat-value negative" id="delta-sell">--</div>
                                 <div>Sell Volume</div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header">Timeframe Closing Deltas</div>
+                    <div class="card-body">
+                        <div class="timeframe-stats" id="5m-stats">
+                            <h6>5 Minute Window</h6>
+                            <div>Closing Delta: <span id="5m-close">--</span></div>
+                            <div>Max Delta: <span id="5m-max">--</span> at <span id="5m-max-time">--</span></div>
+                            <div>Min Delta: <span id="5m-min">--</span> at <span id="5m-min-time">--</span></div>
+                        </div>
+                        <div class="timeframe-stats" id="15m-stats">
+                            <h6>15 Minute Window</h6>
+                            <div>Closing Delta: <span id="15m-close">--</span></div>
+                            <div>Max Delta: <span id="15m-max">--</span> at <span id="15m-max-time">--</span></div>
+                            <div>Min Delta: <span id="15m-min">--</span> at <span id="15m-min-time">--</span></div>
+                        </div>
+                        <div class="timeframe-stats" id="1h-stats">
+                            <h6>1 Hour Window</h6>
+                            <div>Closing Delta: <span id="1h-close">--</span></div>
+                            <div>Max Delta: <span id="1h-max">--</span> at <span id="1h-max-time">--</span></div>
+                            <div>Min Delta: <span id="1h-min">--</span> at <span id="1h-min-time">--</span></div>
+                        </div>
+                        <div class="timeframe-stats" id="4h-stats">
+                            <h6>4 Hour Window</h6>
+                            <div>Closing Delta: <span id="4h-close">--</span></div>
+                            <div>Max Delta: <span id="4h-max">--</span> at <span id="4h-max-time">--</span></div>
+                            <div>Min Delta: <span id="4h-min">--</span> at <span id="4h-min-time">--</span></div>
                         </div>
                     </div>
                 </div>
@@ -73,441 +186,527 @@
             
             <div class="col-md-6">
                 <div class="card">
-                    <div class="card-header">Current Window</div>
+                    <div class="card-header">Current Window Extremes</div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-6 text-center">
-                                <div id="max-delta" class="stat-value positive">--</div>
+                                <div class="stat-value positive" id="max-delta">--</div>
                                 <div>Max Delta</div>
+                                <small class="text-muted" id="time-max">--</small>
                             </div>
                             <div class="col-6 text-center">
-                                <div id="min-delta" class="stat-value negative">--</div>
+                                <div class="stat-value negative" id="min-delta">--</div>
                                 <div>Min Delta</div>
+                                <small class="text-muted" id="time-min">--</small>
                             </div>
+                        </div>
+                        <div class="mt-3">
+                            <canvas id="deltaChart" height="300"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <div class="card mt-4">
-            <div class="card-header">Timeframe Candles</div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h5>5 Minute</h5>
-                        <div class="candle-chart-container">
-                            <canvas id="5mChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h5>15 Minute</h5>
-                        <div class="candle-chart-container">
-                            <canvas id="15mChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h5>1 Hour</h5>
-                        <div class="candle-chart-container">
-                            <canvas id="1hChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h5>4 Hour</h5>
-                        <div class="candle-chart-container">
-                            <canvas id="4hChart"></canvas>
-                        </div>
-                    </div>
-                </div>
+        <div class="text-end mt-3 text-muted" id="last-updated">
+            Last updated: --
+        </div>
+        
+        <div class="text-center mt-4" id="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
+            <p>Connecting to Binance...</p>
         </div>
         
         <div id="connection-status" class="disconnected">Disconnected</div>
     </div>
 
-    <!-- Load scripts from CDN with fallbacks -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-financial@1.0.0/dist/chartjs-plugin-financial.min.js"></script>
-    
     <script>
         // Configuration
-        const CONFIG = {
-            symbol: 'btcusdt',
-            endpoints: {
-                spot: [
-                    'wss://stream.binance.com:9443/ws/btcusdt@aggTrade',
-                    'wss://stream.binance.com:443/ws/btcusdt@aggTrade'
-                ],
-                futures: [
-                    'wss://fstream.binance.com/ws/btcusdt@aggTrade',
-                    'wss://fstream.binance.com:443/ws/btcusdt@aggTrade'
-                ]
-            },
-            timeframes: {
-                '5m': 5 * 60 * 1000,
-                '15m': 15 * 60 * 1000,
-                '1h': 60 * 60 * 1000,
-                '4h': 4 * 60 * 60 * 1000
-            }
+        let currentMarket = 'spot';
+        let currentTimeframe = '5m';
+        let tradeData = [];
+        let websocket = null;
+        let isWebSocketConnected = false;
+        let deltaChart = null;
+        
+        // Track closing deltas for each timeframe
+        let timeframeStats = {
+            '5m': { closingDeltas: [], maxDelta: null, minDelta: null, maxTime: null, minTime: null },
+            '15m': { closingDeltas: [], maxDelta: null, minDelta: null, maxTime: null, minTime: null },
+            '1h': { closingDeltas: [], maxDelta: null, minDelta: null, maxTime: null, minTime: null },
+            '4h': { closingDeltas: [], maxDelta: null, minDelta: null, maxTime: null, minTime: null }
         };
-
-        // Application State
-        const state = {
-            market: 'spot',
-            websocket: null,
-            trades: [],
-            candles: {},
-            currentStats: {},
-            charts: {},
-            reconnectAttempts: 0,
-            maxReconnectAttempts: 5,
-            pingInterval: null
+        
+        // Track current window boundaries
+        let windowBoundaries = {
+            '5m': null,
+            '15m': null,
+            '1h': null,
+            '4h': null
         };
-
-        // Initialize the application
+        
+        // DOM Elements
+        const marketBtns = document.querySelectorAll('.market-btn');
+        const timeframeBtns = document.querySelectorAll('.timeframe-btn');
+        const currentDeltaEl = document.getElementById('current-delta');
+        const deltaBuyEl = document.getElementById('delta-buy');
+        const deltaSellEl = document.getElementById('delta-sell');
+        const maxDeltaEl = document.getElementById('max-delta');
+        const minDeltaEl = document.getElementById('min-delta');
+        const timeMaxEl = document.getElementById('time-max');
+        const timeMinEl = document.getElementById('time-min');
+        const lastUpdatedEl = document.getElementById('last-updated');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const connectionStatusEl = document.getElementById('connection-status');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const currentTimeEl = document.getElementById('current-time');
+        const deltaChartCtx = document.getElementById('deltaChart').getContext('2d');
+        
+        // Initialize
+        init();
+        
         function init() {
-            console.log("Initializing application...");
-            
-            // Initialize data structures
-            Object.keys(CONFIG.timeframes).forEach(tf => {
-                state.candles[tf] = [];
-                state.currentStats[tf] = createNewWindowStats();
-            });
-
-            // Setup UI elements
             setupEventListeners();
-            setupCharts();
+            setupChart();
             connectWebSocket();
-            
-            // Start ping interval
-            state.pingInterval = setInterval(sendPing, 30000);
+            startClock();
+            setInterval(checkWindowBoundaries, 1000); // Check every second for window boundaries
         }
-
-        function createNewWindowStats() {
-            return {
-                windowStart: null,
-                buy: 0,
-                sell: 0,
-                max: -Infinity,
-                min: Infinity,
-                lastTradeTime: null
-            };
-        }
-
-        // WebSocket Management
-        function connectWebSocket() {
-            console.log("Attempting WebSocket connection...");
-            
-            // Close existing connection
-            if (state.websocket) {
-                state.websocket.close();
-            }
-
-            updateStatus('Connecting...', 'reconnecting');
-            
-            const endpoint = CONFIG.endpoints[state.market][0];
-            state.websocket = new WebSocket(endpoint);
-
-            state.websocket.onopen = () => {
-                console.log('WebSocket connected to:', endpoint);
-                updateStatus('Connected', 'connected');
-                state.reconnectAttempts = 0;
-            };
-
-            state.websocket.onmessage = (event) => {
-                try {
-                    const trade = JSON.parse(event.data);
-                    processTrade(trade);
-                } catch (e) {
-                    console.error('Error processing trade:', e);
-                }
-            };
-
-            state.websocket.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                tryFallback();
-            };
-
-            state.websocket.onclose = () => {
-                console.log('WebSocket closed');
-                if (state.reconnectAttempts < state.maxReconnectAttempts) {
-                    updateStatus('Reconnecting...', 'reconnecting');
-                    state.reconnectAttempts++;
-                    setTimeout(connectWebSocket, 3000);
-                } else {
-                    updateStatus('Disconnected', 'disconnected');
-                }
-            };
-        }
-
-        function tryFallback() {
-            console.log("Trying fallback endpoint...");
-            updateStatus('Trying fallback...', 'reconnecting');
-            const fallbackUrl = CONFIG.endpoints[state.market][1];
-            
-            state.websocket = new WebSocket(fallbackUrl);
-            
-            state.websocket.onopen = () => {
-                console.log('Connected to fallback endpoint:', fallbackUrl);
-                updateStatus('Connected (fallback)', 'connected');
-                state.reconnectAttempts = 0;
-            };
-            
-            state.websocket.onerror = () => {
-                console.log('Fallback connection failed');
-                setTimeout(connectWebSocket, 5000);
-            };
-        }
-
-        function sendPing() {
-            if (state.websocket && state.websocket.readyState === WebSocket.OPEN) {
-                try {
-                    state.websocket.send(JSON.stringify({ ping: Date.now() }));
-                } catch (e) {
-                    console.log('Ping failed, reconnecting...');
+        
+        function setupEventListeners() {
+            marketBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    marketBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentMarket = btn.dataset.market;
+                    resetData();
                     connectWebSocket();
-                }
-            }
-        }
-
-        // Trade Processing
-        function processTrade(trade) {
-            const tradeData = {
-                timestamp: new Date(trade.T),
-                value: parseFloat(trade.q) * parseFloat(trade.p),
-                isBuy: !trade.m
-            };
-            state.trades.push(tradeData);
-
-            // Update all timeframes
-            Object.keys(CONFIG.timeframes).forEach(tf => {
-                updateTimeframeStats(tf, tradeData);
+                });
             });
-
-            updateUI();
-        }
-
-        function updateTimeframeStats(timeframe, trade) {
-            const windowSize = CONFIG.timeframes[timeframe];
-            const windowStart = new Date(Math.floor(trade.timestamp / windowSize) * windowSize);
-            const stats = state.currentStats[timeframe];
-
-            // Check if we're in a new window
-            if (!stats.windowStart || windowStart > stats.windowStart) {
-                // If we had previous data, create a candle
-                if (stats.windowStart) {
-                    createCandle(timeframe);
-                }
-                
-                // Reset stats for new window
-                state.currentStats[timeframe] = createNewWindowStats();
-                state.currentStats[timeframe].windowStart = windowStart;
-            }
-
-            // Update volumes
-            if (trade.isBuy) {
-                state.currentStats[timeframe].buy += trade.value;
-            } else {
-                state.currentStats[timeframe].sell += trade.value;
-            }
-
-            // Update min/max delta
-            const delta = state.currentStats[timeframe].buy - state.currentStats[timeframe].sell;
-            state.currentStats[timeframe].max = Math.max(delta, state.currentStats[timeframe].max);
-            state.currentStats[timeframe].min = Math.min(delta, state.currentStats[timeframe].min);
-            state.currentStats[timeframe].lastTradeTime = trade.timestamp;
-        }
-
-        function createCandle(timeframe) {
-            const stats = state.currentStats[timeframe];
-            const delta = stats.buy - stats.sell;
-
-            const newCandle = {
-                x: stats.windowStart.getTime(),
-                o: delta,
-                h: stats.max,
-                l: stats.min,
-                c: delta,
-                s: delta >= 0 ? 'rgba(40, 167, 69, 0.8)' : 'rgba(220, 53, 69, 0.8)'
-            };
-
-            state.candles[timeframe].push(newCandle);
-
-            // Keep only last 20 candles
-            if (state.candles[timeframe].length > 20) {
-                state.candles[timeframe].shift();
-            }
-
-            updateChart(timeframe);
-        }
-
-        // Chart Management
-        function setupCharts() {
-            console.log("Setting up charts...");
             
-            // Register the financial plugin
-            Chart.register(Chart.Financial);
-
-            Object.keys(CONFIG.timeframes).forEach(tf => {
-                const ctx = document.getElementById(`${tf}Chart`).getContext('2d');
-                
-                // Destroy existing chart if it exists
-                if (state.charts[tf]) {
-                    state.charts[tf].destroy();
+            timeframeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    timeframeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentTimeframe = btn.dataset.timeframe;
+                    processTradeData();
+                });
+            });
+            
+            darkModeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const isDark = document.body.classList.contains('dark-mode');
+                darkModeToggle.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+                if (deltaChart) {
+                    updateChartTheme();
                 }
-                
-                state.charts[tf] = new Chart(ctx, {
-                    type: 'candlestick',
-                    data: {
-                        datasets: [{
-                            label: tf,
-                            data: []
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                ticks: {
-                                    callback: function(value) {
-                                        return formatCurrency(value, true);
-                                    }
-                                }
+            });
+        }
+        
+        function setupChart() {
+            deltaChart = new Chart(deltaChartCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Taker Delta (USD)',
+                        data: [],
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
                             },
-                            x: {
-                                type: 'time',
-                                time: {
-                                    unit: 'minute',
-                                    displayFormats: {
-                                        minute: 'HH:mm'
-                                    }
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value, true);
                                 }
                             }
                         },
-                        plugins: {
-                            legend: {
+                        x: {
+                            grid: {
                                 display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const data = context.raw;
-                                        return [
-                                            `Open: ${formatCurrency(data.o, false)}`,
-                                            `High: ${formatCurrency(data.h, false)}`,
-                                            `Low: ${formatCurrency(data.l, false)}`,
-                                            `Close: ${formatCurrency(data.c, false)}`
-                                        ];
-                                    }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return formatCurrency(context.parsed.y, false);
                                 }
                             }
                         }
                     }
-                });
+                }
             });
-        }
-
-        function updateChart(timeframe) {
-            if (state.charts[timeframe]) {
-                state.charts[timeframe].data.datasets[0].data = state.candles[timeframe];
-                state.charts[timeframe].update();
-            }
-        }
-
-        // UI Updates
-        function updateUI() {
-            // Get latest trade window (5m)
-            const stats = state.currentStats['5m'];
-            const delta = stats.buy - stats.sell;
-
-            // Update current values
-            document.getElementById('current-delta').textContent = formatCurrency(delta);
-            document.getElementById('current-delta').className = `delta-value ${delta >= 0 ? 'positive' : 'negative'}`;
-            document.getElementById('delta-buy').textContent = formatCurrency(stats.buy);
-            document.getElementById('delta-sell').textContent = formatCurrency(stats.sell);
             
-            // Update min/max
-            document.getElementById('max-delta').textContent = formatCurrency(stats.max);
-            document.getElementById('min-delta').textContent = formatCurrency(stats.min);
+            updateChartTheme();
         }
-
-        function updateStatus(text, status = 'disconnected') {
-            const el = document.getElementById('connection-status');
-            el.textContent = text;
-            el.className = status;
+        
+        function updateChartTheme() {
+            const isDark = document.body.classList.contains('dark-mode');
+            const textColor = isDark ? '#ecf0f1' : '#666';
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+            
+            deltaChart.options.scales.y.grid.color = gridColor;
+            deltaChart.options.scales.y.ticks.color = textColor;
+            deltaChart.options.scales.x.ticks.color = textColor;
+            deltaChart.update();
         }
-
-        // Helper Functions
-        function formatCurrency(value, short = false) {
-            if (value === undefined || value === null) return '--';
-            if (value === Infinity || value === -Infinity) return '--';
-            if (short) {
-                if (Math.abs(value) >= 1000000) return '$' + (value/1000000).toFixed(1) + 'M';
-                if (Math.abs(value) >= 1000) return '$' + (value/1000).toFixed(1) + 'K';
+        
+        function connectWebSocket() {
+            loadingSpinner.style.display = 'block';
+            
+            // Close existing connection if any
+            if (websocket) {
+                websocket.close();
             }
-            return '$' + Math.round(value);
+            
+            const symbol = 'btcusdt';
+            const streamName = `${symbol}@aggTrade`;
+            
+            const wsUrl = currentMarket === 'spot'
+                ? `wss://stream.binance.com:9443/ws/${streamName}`
+                : `wss://fstream.binance.com/ws/${streamName}`;
+            
+            websocket = new WebSocket(wsUrl);
+            
+            websocket.onopen = () => {
+                console.log('WebSocket connected');
+                isWebSocketConnected = true;
+                updateConnectionStatus('Connected', true);
+                loadingSpinner.style.display = 'none';
+            };
+            
+            websocket.onmessage = (event) => {
+                const trade = JSON.parse(event.data);
+                handleNewTrade(trade);
+            };
+            
+            websocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                isWebSocketConnected = false;
+                updateConnectionStatus('Connection Error', false);
+                loadingSpinner.style.display = 'none';
+                setTimeout(connectWebSocket, 5000);
+            };
+            
+            websocket.onclose = () => {
+                console.log('WebSocket disconnected');
+                isWebSocketConnected = false;
+                updateConnectionStatus('Disconnected', false);
+                setTimeout(connectWebSocket, 5000);
+            };
         }
-
-        // Event Listeners
-        function setupEventListeners() {
-            document.getElementById('spot-btn').addEventListener('click', () => {
-                if (state.market !== 'spot') {
-                    state.market = 'spot';
-                    document.getElementById('spot-btn').classList.add('active');
-                    document.getElementById('futures-btn').classList.remove('active');
-                    resetData();
-                    connectWebSocket();
+        
+        function handleNewTrade(trade) {
+            const tradeObj = {
+                timestamp: new Date(trade.T),
+                isBuyerMaker: trade.m,
+                quantity: parseFloat(trade.q),
+                price: parseFloat(trade.p),
+                value: parseFloat(trade.q) * parseFloat(trade.p)
+            };
+            
+            tradeData.push(tradeObj);
+            processTradeData();
+            checkWindowBoundaries();
+            updateLastUpdatedTime();
+        }
+        
+        function checkWindowBoundaries() {
+            const now = new Date();
+            
+            // Check all timeframes for window boundaries
+            Object.keys(timeframeStats).forEach(timeframe => {
+                const minutes = parseInt(timeframe);
+                const windowSizeMs = minutes * 60 * 1000;
+                
+                // Initialize window boundary if not set
+                if (!windowBoundaries[timeframe]) {
+                    windowBoundaries[timeframe] = new Date(Math.floor(now.getTime() / windowSizeMs) * windowSizeMs);
+                }
+                
+                // Check if we've crossed into a new window
+                const nextBoundary = new Date(windowBoundaries[timeframe].getTime() + windowSizeMs);
+                if (now >= nextBoundary) {
+                    // Save closing delta for previous window
+                    saveClosingDelta(timeframe);
+                    // Update window boundary
+                    windowBoundaries[timeframe] = nextBoundary;
                 }
             });
-
-            document.getElementById('futures-btn').addEventListener('click', () => {
-                if (state.market !== 'futures') {
-                    state.market = 'futures';
-                    document.getElementById('futures-btn').classList.add('active');
-                    document.getElementById('spot-btn').classList.remove('active');
-                    resetData();
-                    connectWebSocket();
+        }
+        
+        function saveClosingDelta(timeframe) {
+            const now = new Date();
+            let cutoffTime = new Date(now);
+            
+            // Set cutoff time based on timeframe
+            switch(timeframe) {
+                case '5m': cutoffTime.setMinutes(now.getMinutes() - 5); break;
+                case '15m': cutoffTime.setMinutes(now.getMinutes() - 15); break;
+                case '1h': cutoffTime.setHours(now.getHours() - 1); break;
+                case '4h': cutoffTime.setHours(now.getHours() - 4); break;
+            }
+            
+            // Filter trades within timeframe
+            const relevantTrades = tradeData.filter(trade => trade.timestamp >= cutoffTime);
+            
+            // Calculate volumes and delta
+            let buyVolume = 0;
+            let sellVolume = 0;
+            
+            relevantTrades.forEach(trade => {
+                if (trade.isBuyerMaker) {
+                    sellVolume += trade.value;
+                } else {
+                    buyVolume += trade.value;
                 }
             });
+            
+            const delta = buyVolume - sellVolume;
+            const deltaObj = {
+                value: delta,
+                timestamp: new Date(cutoffTime.getTime())
+            };
+            
+            // Save closing delta
+            timeframeStats[timeframe].closingDeltas.push(deltaObj);
+            
+            // Update max/min deltas
+            if (timeframeStats[timeframe].maxDelta === null || delta > timeframeStats[timeframe].maxDelta.value) {
+                timeframeStats[timeframe].maxDelta = deltaObj;
+            }
+            if (timeframeStats[timeframe].minDelta === null || delta < timeframeStats[timeframe].minDelta.value) {
+                timeframeStats[timeframe].minDelta = deltaObj;
+            }
+            
+            // Update UI for this timeframe
+            updateTimeframeStatsUI(timeframe);
         }
-
+        
+        function processTradeData() {
+            const now = new Date();
+            let cutoffTime = new Date(now);
+            
+            // Set cutoff time based on timeframe
+            switch(currentTimeframe) {
+                case '5m': cutoffTime.setMinutes(now.getMinutes() - 5); break;
+                case '15m': cutoffTime.setMinutes(now.getMinutes() - 15); break;
+                case '1h': cutoffTime.setHours(now.getHours() - 1); break;
+                case '4h': cutoffTime.setHours(now.getHours() - 4); break;
+            }
+            
+            // Filter trades within timeframe
+            const relevantTrades = tradeData.filter(trade => trade.timestamp >= cutoffTime);
+            
+            // Calculate volumes and delta history
+            let buyVolume = 0;
+            let sellVolume = 0;
+            const deltaHistory = [];
+            const chartData = [];
+            const chartLabels = [];
+            
+            relevantTrades.forEach((trade, index) => {
+                if (trade.isBuyerMaker) {
+                    sellVolume += trade.value;
+                } else {
+                    buyVolume += trade.value;
+                }
+                
+                const delta = buyVolume - sellVolume;
+                
+                deltaHistory.push({
+                    timestamp: trade.timestamp,
+                    delta: delta,
+                    buyVolume: buyVolume,
+                    sellVolume: sellVolume
+                });
+                
+                // Sample data points for chart (every 10th trade or so)
+                if (index % Math.max(1, Math.floor(relevantTrades.length / 20)) === 0 || index === relevantTrades.length - 1) {
+                    chartData.push(delta);
+                    chartLabels.push(trade.timestamp.toLocaleTimeString());
+                }
+            });
+            
+            // Get current values
+            const current = deltaHistory.length > 0 
+                ? deltaHistory[deltaHistory.length - 1] 
+                : { delta: 0, buyVolume: 0, sellVolume: 0, timestamp: now };
+            
+            // Calculate min/max delta
+            let minDelta = current.delta;
+            let maxDelta = current.delta;
+            let timeMin = current.timestamp;
+            let timeMax = current.timestamp;
+            
+            deltaHistory.forEach(item => {
+                if (item.delta < minDelta) {
+                    minDelta = item.delta;
+                    timeMin = item.timestamp;
+                }
+                if (item.delta > maxDelta) {
+                    maxDelta = item.delta;
+                    timeMax = item.timestamp;
+                }
+            });
+            
+            // Update UI
+            updateUI({
+                current: current,
+                extremes: {
+                    minDelta: minDelta,
+                    maxDelta: maxDelta,
+                    timeMin: timeMin,
+                    timeMax: timeMax
+                }
+            });
+            
+            // Update chart
+            updateChart(chartLabels, chartData);
+        }
+        
+        function updateUI(data) {
+            // Current delta
+            currentDeltaEl.textContent = formatCurrency(data.current.delta, false);
+            currentDeltaEl.className = `delta-value ${getDeltaClass(data.current.delta)}`;
+            
+            // Buy/sell volumes
+            deltaBuyEl.textContent = formatCurrency(data.current.buyVolume, false);
+            deltaSellEl.textContent = formatCurrency(data.current.sellVolume, false);
+            
+            // Extremes
+            maxDeltaEl.textContent = formatCurrency(data.extremes.maxDelta, false);
+            minDeltaEl.textContent = formatCurrency(data.extremes.minDelta, false);
+            
+            // Times
+            timeMaxEl.textContent = formatTime(data.extremes.timeMax);
+            timeMinEl.textContent = formatTime(data.extremes.timeMin);
+            
+            // Current trade time
+            currentTimeEl.textContent = formatTime(data.current.timestamp);
+        }
+        
+        function updateTimeframeStatsUI(timeframe) {
+            const stats = timeframeStats[timeframe];
+            const closingDelta = stats.closingDeltas.length > 0 
+                ? stats.closingDeltas[stats.closingDeltas.length - 1] 
+                : { value: 0, timestamp: new Date() };
+            
+            document.getElementById(`${timeframe}-close`).textContent = formatCurrency(closingDelta.value, false);
+            document.getElementById(`${timeframe}-close`).className = getDeltaClass(closingDelta.value);
+            
+            if (stats.maxDelta) {
+                document.getElementById(`${timeframe}-max`).textContent = formatCurrency(stats.maxDelta.value, false);
+                document.getElementById(`${timeframe}-max`).className = getDeltaClass(stats.maxDelta.value);
+                document.getElementById(`${timeframe}-max-time`).textContent = formatTime(stats.maxDelta.timestamp);
+            }
+            
+            if (stats.minDelta) {
+                document.getElementById(`${timeframe}-min`).textContent = formatCurrency(stats.minDelta.value, false);
+                document.getElementById(`${timeframe}-min`).className = getDeltaClass(stats.minDelta.value);
+                document.getElementById(`${timeframe}-min-time`).textContent = formatTime(stats.minDelta.timestamp);
+            }
+        }
+        
+        function updateChart(labels, data) {
+            deltaChart.data.labels = labels;
+            deltaChart.data.datasets[0].data = data;
+            deltaChart.update();
+        }
+        
         function resetData() {
-            console.log("Resetting data for market change...");
-            state.trades = [];
-            Object.keys(CONFIG.timeframes).forEach(tf => {
-                state.candles[tf] = [];
-                state.currentStats[tf] = createNewWindowStats();
-                if (state.charts[tf]) {
-                    state.charts[tf].data.datasets[0].data = [];
-                    state.charts[tf].update();
-                }
+            tradeData = [];
+            currentDeltaEl.textContent = '--';
+            deltaBuyEl.textContent = '--';
+            deltaSellEl.textContent = '--';
+            maxDeltaEl.textContent = '--';
+            minDeltaEl.textContent = '--';
+            timeMaxEl.textContent = '--';
+            timeMinEl.textContent = '--';
+            lastUpdatedEl.textContent = 'Last updated: --';
+            currentTimeEl.textContent = '--:--:--';
+            
+            // Reset chart
+            deltaChart.data.labels = [];
+            deltaChart.data.datasets[0].data = [];
+            deltaChart.update();
+            
+            // Reset timeframe stats
+            Object.keys(timeframeStats).forEach(timeframe => {
+                timeframeStats[timeframe] = { closingDeltas: [], maxDelta: null, minDelta: null, maxTime: null, minTime: null };
+                updateTimeframeStatsUI(timeframe);
+            });
+            
+            // Reset window boundaries
+            const now = new Date();
+            Object.keys(windowBoundaries).forEach(timeframe => {
+                const minutes = parseInt(timeframe);
+                const windowSizeMs = minutes * 60 * 1000;
+                windowBoundaries[timeframe] = new Date(Math.floor(now.getTime() / windowSizeMs) * windowSizeMs);
             });
         }
-
-        // Start the application when everything is loaded
-        document.addEventListener('DOMContentLoaded', () => {
-            // Verify all scripts are loaded
-            if (typeof Chart !== 'undefined' && typeof Chart.Financial !== 'undefined') {
-                init();
-            } else {
-                console.error("Required libraries not loaded!");
-                updateStatus("Error loading charts", "disconnected");
-                // Try reloading as last resort
-                setTimeout(() => location.reload(), 3000);
+        
+        function updateLastUpdatedTime() {
+            const now = new Date();
+            lastUpdatedEl.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        }
+        
+        function updateConnectionStatus(status, isConnected) {
+            connectionStatusEl.textContent = status;
+            connectionStatusEl.className = isConnected ? 'connected' : 'disconnected';
+        }
+        
+        function startClock() {
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+        
+        function updateClock() {
+            const now = new Date();
+            currentTimeEl.textContent = now.toLocaleTimeString();
+        }
+        
+        // Formatting functions
+        function formatCurrency(value, short) {
+            if (value === null || value === undefined) return '--';
+            if (short) {
+                if (Math.abs(value) >= 1000000) return '$' + (value / 1000000).toFixed(1) + 'M';
+                if (Math.abs(value) >= 1000) return '$' + (value / 1000).toFixed(1) + 'K';
             }
-        });
-
-        // Clean up on page unload
-        window.addEventListener('beforeunload', () => {
-            if (state.websocket) {
-                state.websocket.close();
-            }
-            if (state.pingInterval) {
-                clearInterval(state.pingInterval);
-            }
-        });
+            return '$' + value.toFixed(0);
+        }
+        
+        function formatTime(date) {
+            if (!date) return '--';
+            return date.toLocaleTimeString();
+        }
+        
+        function getDeltaClass(delta) {
+            if (delta > 0) return 'positive';
+            if (delta < 0) return 'negative';
+            return '';
+        }
     </script>
 </body>
 </html>
