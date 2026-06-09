@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Options Strategies · Greeks & Market Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #100a1f;
+      --bg2: #1b1430;
+      --panel: #1d1733;
+      --panel2: #27213f;
+      --line: rgba(255, 255, 255, 0.08);
+      --txt: #f4eeff;
+      --muted: #a99ec9;
+      --dim: #6a5f8c;
+      --acc: #1FC7D4;
+      --acc2: #7645D9;
+      --up: #31D0AA;
+      --dn: #ED5B7D;
+      --gold: #FFB237;
+      --pink: #ED4B9E;
+      --r: 20px;
+      --font: "Kanit", system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scrollbar-color: #26304a transparent;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #222b40;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+
+    body {
+      background: radial-gradient(1100px 600px at 85% -10%, rgba(31, 199, 212, 0.14), transparent 60%),
+        radial-gradient(950px 620px at -8% 0%, rgba(118, 69, 217, 0.18), transparent 55%),
+        radial-gradient(800px 500px at 50% 100%, rgba(49, 208, 170, 0.08), transparent 60%),
+        linear-gradient(to bottom, #100a1f, #1a0e2e);
+      background-attachment: fixed;
+      color: var(--txt);
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    a {
+      color: var(--acc);
+      text-decoration: none;
+    }
+
+    a:hover {
+      color: var(--acc2);
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo .mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--acc), var(--acc2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #06121f;
+      font-size: 18px;
+    }
+
+    .logo h1 {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      background: linear-gradient(90deg, #1fc7d4, #ed4b9e);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .logo p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: -4px;
+      letter-spacing: 0.01em;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .control-group label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    select,
+    input {
+      font-family: var(--mono);
+      padding: 7px 12px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: rgba(20, 16, 50, 0.5);
+      color: var(--txt);
+      font-size: 12px;
+    }
+
+    select:hover,
+    input:hover,
+    select:focus,
+    input:focus {
+      border-color: var(--acc);
+      outline: none;
+    }
+
+    button {
+      padding: 7px 14px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(31, 199, 212, 0.18), rgba(31, 199, 212, 0.08));
+      color: var(--txt);
+      cursor: pointer;
+      font-family: var(--font);
+      font-weight: 600;
+      font-size: 12px;
+      transition: all 0.16s;
+    }
+
+    button:hover {
+      border-color: var(--acc);
+      background: linear-gradient(180deg, rgba(31, 199, 212, 0.25), rgba(31, 199, 212, 0.12));
+      transform: translateY(-1px);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    /* Card */
+    .card {
+      background: linear-gradient(180deg, rgba(20, 26, 40, 0.86), rgba(12, 16, 26, 0.92));
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+    }
+
+    .card-head h3 {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      color: #8ea0c2;
+      text-transform: uppercase;
+    }
+
+    .card-body {
+      padding: 16px;
+    }
+
+    /* Greeks Display */
+    .greeks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .greek-item {
+      background: rgba(20, 16, 50, 0.4);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .greek-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .greek-value {
+      font-size: 16px;
+      font-weight: 800;
+      font-family: var(--mono);
+      color: var(--txt);
+      transition: all 0.2s;
+    }
+
+    .greek-value.positive {
+      color: var(--up);
+    }
+
+    .greek-value.negative {
+      color: var(--dn);
+    }
+
+    .greek-subtitle {
+      font-size: 9px;
+      color: var(--dim);
+      margin-top: 4px;
+    }
+
+    /* Strategy Grid */
+    .strategies-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .strategy-card {
+      background: linear-gradient(180deg, rgba(20, 26, 40, 0.86), rgba(12, 16, 26, 0.92));
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      padding: 16px;
+      transition: all 0.2s;
+    }
+
+    .strategy-card:hover {
+      border-color: var(--acc);
+      background: linear-gradient(180deg, rgba(31, 199, 212, 0.08), rgba(12, 16, 26, 0.96));
+    }
+
+    .strategy-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .strategy-name {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--txt);
+    }
+
+    .strategy-score {
+      background: rgba(31, 199, 212, 0.15);
+      color: var(--acc);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--mono);
+    }
+
+    .strategy-desc {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .strategy-conditions {
+      background: rgba(20, 16, 50, 0.4);
+      border-left: 3px solid var(--acc);
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 10px;
+      color: var(--dim);
+      line-height: 1.5;
+      margin-bottom: 12px;
+      max-height: 80px;
+      overflow-y: auto;
+    }
+
+    .condition {
+      margin: 4px 0;
+    }
+
+    .condition-label {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .strategy-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .strategy-actions button {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+
+    /* Table */
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th {
+      background: rgba(20, 16, 50, 0.4);
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--dim);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--line);
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    tr:hover {
+      background: rgba(31, 199, 212, 0.03);
+    }
+
+    .symbol-col {
+      font-family: var(--mono);
+      font-weight: 700;
+      color: var(--txt);
+    }
+
+    .number {
+      font-family: var(--mono);
+      text-align: right;
+    }
+
+    .up {
+      color: var(--up);
+    }
+
+    .dn {
+      color: var(--dn);
+    }
+
+    /* Status Bar */
+    .status-bar {
+      background: rgba(20, 16, 50, 0.4);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--up);
+      box-shadow: 0 0 8px var(--up);
+      animation: pulse 1.4s infinite;
+    }
+
+    .status-dot.idle {
+      background: var(--dim);
+      box-shadow: none;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.35;
+      }
+    }
+
+    .toast {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast-item {
+      background: rgba(14, 19, 32, 0.96);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--acc);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--txt);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Sections */
+    .section {
+      margin-bottom: 32px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      margin-bottom: 16px;
+      color: var(--txt);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 20px;
+      background: linear-gradient(180deg, var(--acc), var(--acc2));
+      border-radius: 2px;
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 30px;
+      color: var(--muted);
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--acc);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Responsiveness */
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .controls {
+        width: 100%;
+      }
+
+      .greeks-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      }
+
+      body {
+        padding: 12px;
+      }
+
+      .greek-value {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">
+        <div class="mark">📈</div>
+        <div>
+          <h1>Options Strategies</h1>
+          <p>Greeks · Market Analysis · Binance</p>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="control-group">
+          <label for="symbol-select">Symbol</label>
+          <select id="symbol-select">
+            <option value="BTCUSDT">BTC/USDT</option>
+            <option value="ETHUSDT">ETH/USDT</option>
+            <option value="BNBUSDT">BNB/USDT</option>
+            <option value="SOLUSDT">SOL/USDT</option>
+            <option value="XRPUSDT">XRP/USDT</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="expiry-select">Expiry</label>
+          <select id="expiry-select">
+            <option value="10m">10min</option>
+            <option value="1h">1 Hour</option>
+            <option value="7d">7 Days</option>
+            <option value="30d">30 Days</option>
+          </select>
+        </div>
+        <button id="refresh-btn">↻ Refresh Data</button>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-item">
+        <div class="status-dot" id="live-dot"></div>
+        <span id="status-text">Loading market data...</span>
+      </div>
+      <div class="status-item">
+        <span id="last-update">—</span>
+      </div>
+    </div>
+
+    <!-- Market Overview Section -->
+    <div class="section">
+      <h2 class="section-title">Market Overview</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-head">
+            <h3>Current Price</h3>
+            <span id="refresh-countdown" style="font-size: 10px; color: var(--dim)"></span>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 28px; font-weight: 800; font-family: var(--mono); color: var(--txt); margin-bottom: 8px" id="current-price">—</div>
+            <div style="font-size: 12px; color: var(--muted)" id="price-change">—</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Market Sentiment</h3>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 20px; font-weight: 800; margin-bottom: 8px" id="sentiment-indicator">—</div>
+            <div style="font-size: 11px; color: var(--muted)" id="sentiment-detail">Analyzing volatility...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Volatility Regime</h3>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 20px; font-weight: 800; margin-bottom: 8px" id="volatility-regime">—</div>
+            <div style="font-size: 11px; color: var(--muted)" id="volatility-level">IV: —</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Greeks Section -->
+    <div class="section">
+      <h2 class="section-title">Greeks at Current Market Price</h2>
+      <div class="card">
+        <div class="card-body">
+          <div class="greeks-grid">
+            <div class="greek-item">
+              <div class="greek-label">IV (Implied Vol)</div>
+              <div class="greek-value" id="greek-iv">—</div>
+              <div class="greek-subtitle">Overall vol %</div>
+            </div>
+            <div class="greek-item">
+              <div class="greek-label">Delta (Δ)</div>
+              <div class="greek-value" id="greek-delta">—</div>
+              <div class="greek-subtitle">Price sensitivity</div>
+            </div>
+            <div class="greek-item">
+              <div class="greek-label">Gamma (Γ)</div>
+              <div class="greek-value" id="greek-gamma">—</div>
+              <div class="greek-subtitle">Delta acceleration</div>
+            </div>
+            <div class="greek-item">
+              <div class="greek-label">Vega (ν)</div>
+              <div class="greek-value" id="greek-vega">—</div>
+              <div class="greek-subtitle">IV sensitivity</div>
+            </div>
+            <div class="greek-item">
+              <div class="greek-label">Theta (Θ)</div>
+              <div class="greek-value" id="greek-theta">—</div>
+              <div class="greek-subtitle">Time decay/day</div>
+            </div>
+            <div class="greek-item">
+              <div class="greek-label">Rho (ρ)</div>
+              <div class="greek-value" id="greek-rho">—</div>
+              <div class="greek-subtitle">Rate sensitivity</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recommended Strategies Section -->
+    <div class="section">
+      <h2 class="section-title">Recommended Strategies for Current Conditions</h2>
+      <div class="strategies-grid" id="strategies-container">
+        <div class="loading">
+          <div class="spinner"></div>
+          <span>Analyzing market conditions...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Greeks Explanation Section -->
+    <div class="section">
+      <h2 class="section-title">Understanding the Greeks</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-head">
+            <h3>Delta (Δ)</h3>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 11px; color: var(--muted); line-height: 1.6">
+              <strong>Range:</strong> 0 to 1 (for calls), -1 to 0 (for puts)<br />
+              <strong>Meaning:</strong> Expected price change for $1 move in underlying<br />
+              <strong>Use:</strong> Gauge directional exposure & probability ITM
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Gamma (Γ)</h3>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 11px; color: var(--muted); line-height: 1.6">
+              <strong>Range:</strong> 0 to 1<br />
+              <strong>Meaning:</strong> Rate of change of delta<br />
+              <strong>Use:</strong> High gamma = fast delta changes (risky around expiry)
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Vega (ν)</h3>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 11px; color: var(--muted); line-height: 1.6">
+              <strong>Range:</strong> Typically 0 to 0.50<br />
+              <strong>Meaning:</strong> Price change for 1% change in IV<br />
+              <strong>Use:</strong> Profit from volatility expansions/contractions
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Theta (Θ)</h3>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 11px; color: var(--muted); line-height: 1.6">
+              <strong>Range:</strong> Negative for long calls/puts, Positive for shorts<br />
+              <strong>Meaning:</strong> Daily profit/loss from time decay<br />
+              <strong>Use:</strong> Premium sellers benefit; long options lose to decay
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Implied Volatility (IV)</h3>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 11px; color: var(--muted); line-height: 1.6">
+              <strong>Range:</strong> % annualized<br />
+              <strong>Meaning:</strong> Market's expectation of future volatility<br />
+              <strong>Use:</strong> High IV = expensive premiums; Low IV = cheap premiums
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Rho (ρ)</h3>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 11px; color: var(--muted); line-height: 1.6">
+              <strong>Range:</strong> Typically small<br />
+              <strong>Meaning:</strong> Price change per 1% change in interest rate<br />
+              <strong>Use:</strong> Less relevant for crypto; mainly for longer-dated options
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Strategy Details Table -->
+    <div class="section">
+      <h2 class="section-title">Strategy Comparison</h2>
+      <div class="card">
+        <div class="table-wrap">
+          <table id="strategy-table">
+            <thead>
+              <tr>
+                <th>Strategy</th>
+                <th>Market View</th>
+                <th>Max Profit</th>
+                <th>Max Loss</th>
+                <th>Breakeven(s)</th>
+                <th>Greeks Focus</th>
+              </tr>
+            </thead>
+            <tbody id="strategy-tbody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast" id="toast-container"></div>
+
+  <script>
+    // ═══════════ STATE & CONFIG ═══════════
+    let currentSymbol = "BTCUSDT";
+    let currentExpiry = "10m";
+    let currentPrice = 0;
+    let marketData = {
+      price: 0,
+      iv: 0,
+      delta: 0.5,
+      gamma: 0.02,
+      vega: 0.15,
+      theta: -0.05,
+      rho: 0.001,
+      priceChange: 0,
+      priceChangePercent: 0,
+    };
+    let refreshInterval = null;
+    let countdownInterval = null;
+    let countdownSeconds = 30;
+
+    // ═══════════ UTILITY FUNCTIONS ═══════════
+    function formatPrice(v) {
+      if (v >= 1000) return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (v >= 1) return v.toFixed(4);
+      return v.toFixed(6);
+    }
+
+    function formatPercent(v) {
+      return (v * 100).toFixed(2) + "%";
+    }
+
+    function showToast(msg) {
+      const container = document.getElementById("toast-container");
+      const item = document.createElement("div");
+      item.className = "toast-item";
+      item.textContent = msg;
+      container.appendChild(item);
+      setTimeout(() => {
+        item.style.opacity = "0";
+        item.style.transition = "opacity 0.3s";
+        setTimeout(() => item.remove(), 300);
+      }, 3000);
+    }
+
+    function updateTimestamp() {
+      const now = new Date();
+      const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
+      document.getElementById("last-update").textContent = "Last update: " + time;
+    }
+
+    // ═══════════ MARKET DATA FETCH ═══════════
+    async function fetchMarketData() {
+      try {
+        // Fetch real price from Binance
+        const priceRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${currentSymbol}`);
+        const priceData = await priceRes.json();
+        currentPrice = parseFloat(priceData.price);
+
+        // Fetch 24h stats for change
+        const statsRes = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${currentSymbol}`);
+        const statsData = await statsRes.json();
+
+        const priceChange = parseFloat(statsData.priceChange);
+        const priceChangePercent = parseFloat(statsData.priceChangePercent);
+
+        // Simulate Greeks (in real scenario, these would come from options data)
+        // Greeks are estimated based on ATM options
+        const baseIV = 30 + Math.random() * 50; // 30-80% IV range
+        const atm = currentPrice;
+
+        marketData = {
+          price: currentPrice,
+          priceChange: priceChange,
+          priceChangePercent: priceChangePercent,
+          iv: baseIV + Math.random() * 5,
+          delta: 0.4 + Math.random() * 0.2,
+          gamma: 0.01 + Math.random() * 0.04,
+          vega: 0.1 + Math.random() * 0.2,
+          theta: -0.08 + Math.random() * 0.04,
+          rho: 0.0005 + Math.random() * 0.001,
+        };
+
+        document.getElementById("live-dot").className = "status-dot";
+        document.getElementById("status-text").textContent = "Market data live · " + currentSymbol;
+        updateUI();
+        updateTimestamp();
+      } catch (err) {
+        console.error("Fetch error:", err);
+        document.getElementById("live-dot").className = "status-dot idle";
+        document.getElementById("status-text").textContent = "Error loading data";
+      }
+    }
+
+    // ═══════════ UI UPDATES ═══════════
+    function updateUI() {
+      // Price display
+      document.getElementById("current-price").textContent = "$" + formatPrice(marketData.price);
+      const changeClass = marketData.priceChange >= 0 ? "up" : "dn";
+      const changeSign = marketData.priceChange >= 0 ? "+" : "";
+      document.getElementById("price-change").textContent =
+        changeSign + formatPrice(marketData.priceChange) + " (" + changeSign + marketData.priceChangePercent.toFixed(2) + "%)";
+      document.getElementById("price-change").className = changeClass;
+
+      // Greeks
+      document.getElementById("greek-iv").textContent = marketData.iv.toFixed(1) + "%";
+      document.getElementById("greek-delta").textContent = marketData.delta.toFixed(3);
+      document.getElementById("greek-gamma").textContent = marketData.gamma.toFixed(4);
+      document.getElementById("greek-vega").textContent = marketData.vega.toFixed(3);
+      const thetaClass = marketData.theta < 0 ? "negative" : "positive";
+      document.getElementById("greek-theta").innerHTML = '<span class="' + thetaClass + '">' + marketData.theta.toFixed(3) + "</span>";
+      document.getElementById("greek-rho").textContent = marketData.rho.toFixed(4);
+
+      // Sentiment
+      updateSentiment();
+
+      // Recommended strategies
+      updateStrategies();
+
+      // Strategy comparison table
+      updateStrategyTable();
+    }
+
+    function updateSentiment() {
+      let sentiment = "Neutral";
+      let detail = "Balanced";
+      let emoji = "→";
+
+      if (marketData.priceChange > 0 && marketData.priceChangePercent > 1) {
+        sentiment = "Bullish";
+        detail = "Strong uptrend";
+        emoji = "▲";
+      } else if (marketData.priceChange > 0) {
+        sentiment = "Mildly Bullish";
+        detail = "Upward momentum";
+        emoji = "↗";
+      } else if (marketData.priceChange < 0 && marketData.priceChangePercent < -1) {
+        sentiment = "Bearish";
+        detail = "Strong downtrend";
+        emoji = "▼";
+      } else if (marketData.priceChange < 0) {
+        sentiment = "Mildly Bearish";
+        detail = "Downward momentum";
+        emoji = "↘";
+      }
+
+      document.getElementById("sentiment-indicator").textContent = emoji + " " + sentiment;
+      document.getElementById("sentiment-detail").textContent = detail;
+    }
+
+    function getVolatilityRegime() {
+      const iv = marketData.iv;
+      if (iv < 20) return { regime: "Low Vol", level: "IV: " + iv.toFixed(1) + "% (Expensive premiums)" };
+      if (iv < 40) return { regime: "Normal Vol", level: "IV: " + iv.toFixed(1) + "% (Fair pricing)" };
+      if (iv < 60) return { regime: "Elevated Vol", level: "IV: " + iv.toFixed(1) + "% (Opportunities)" };
+      return { regime: "High Vol", level: "IV: " + iv.toFixed(1) + "% (Crash/spike risk)" };
+    }
+
+    function updateStrategies() {
+      const { regime } = getVolatilityRegime();
+      document.getElementById("volatility-regime").textContent = regime;
+      document.getElementById("volatility-level").textContent = "IV: " + marketData.iv.toFixed(1) + "%";
+
+      const strategies = selectStrategies();
+      const container = document.getElementById("strategies-container");
+      container.innerHTML = "";
+
+      strategies.forEach((strat) => {
+        const card = document.createElement("div");
+        card.className = "strategy-card";
+        card.innerHTML = `
+          <div class="strategy-header">
+            <div class="strategy-name">${strat.name}</div>
+            <div class="strategy-score">${strat.score}%</div>
+          </div>
+          <div class="strategy-desc">${strat.description}</div>
+          <div class="strategy-conditions">
+            ${strat.conditions.map((c) => `<div class="condition"><span class="condition-label">${c}</span></div>`).join("")}
+          </div>
+          <div class="strategy-actions">
+            <button onclick="copyStrategy('${strat.name}')">Copy Setup</button>
+            <button onclick="showDetails('${strat.name}')">Details</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function selectStrategies() {
+      const iv = marketData.iv;
+      const isBullish = marketData.priceChange > 0;
+      const isBearish = marketData.priceChange < 0;
+      const isNeutral = Math.abs(marketData.priceChange) < 0.5;
+      const highVega = marketData.vega > 0.15;
+      const highTheta = Math.abs(marketData.theta) > 0.06;
+
+      const strategies = [
+        {
+          name: "Long Call",
+          score: isBullish ? 85 : 45,
+          description: "Buy call, profit if price rises. High delta exposure.",
+          conditions: ["✓ Best for bullish outlook", "✗ High theta decay", "✓ Limited loss (premium paid)"],
+          greeks: "High delta, positive vega, negative theta",
+        },
+        {
+          name: "Long Put",
+          score: isBearish ? 85 : 40,
+          description: "Buy put, profit if price falls. Downside protection.",
+          conditions: ["✓ Best for bearish outlook", "✗ High theta decay", "✓ Limited loss (premium paid)"],
+          greeks: "Negative delta, positive vega, negative theta",
+        },
+        {
+          name: "Bull Call Spread",
+          score: isBullish && highTheta ? 90 : 50,
+          description: "Buy call, sell call higher. Debit spread with limited profit.",
+          conditions: ["✓ Reduces theta drag", "✓ Lower capital required", "✓ Defined risk/reward"],
+          greeks: "Moderate delta, reduced vega, lower theta loss",
+        },
+        {
+          name: "Bear Call Spread",
+          score: isBearish && iv > 40 ? 88 : 50,
+          description: "Sell call, buy call higher. Credit spread, profit from decay.",
+          conditions: ["✓ Theta works in your favor", `✓ High IV (${iv.toFixed(1)}%) ideal`, "✓ Defined risk"],
+          greeks: "Negative delta, vega hedge, positive theta",
+        },
+        {
+          name: "Straddle",
+          score: iv < 35 ? 80 : 40,
+          description: "Buy call & put at same strike. Profit from large move.",
+          conditions: ["✓ Best in low IV (cheap premiums)", "✗ Theta decays both sides", "✓ Unlimited profit potential"],
+          greeks: "Delta neutral, high positive vega, negative theta",
+        },
+        {
+          name: "Iron Condor",
+          score: isNeutral && highTheta ? 85 : 50,
+          description: "4-leg spread, profit from time decay in sideways market.",
+          conditions: ["✓ Theta acceleration as expiry nears", "✓ Lower margin", "✓ IV neutral to negative"],
+          greeks: "Near delta neutral, vega negative, high positive theta",
+        },
+        {
+          name: "Vertical Spread",
+          score: iv > 50 ? 75 : 60,
+          description: "Defined risk/reward, lower margin than naked options.",
+          conditions: ["✓ High IV for better credit", "✓ Reduced exposure", "✓ Clear max P&L"],
+          greeks: "Directional delta, vega hedge, moderate theta",
+        },
+        {
+          name: "Calendar Spread",
+          score: highTheta && iv > 40 ? 80 : 45,
+          description: "Sell near-term, buy far-term. Exploit volatility term structure.",
+          conditions: ["✓ Positive theta as near expires", "✓ Benefits from IV crush", "✓ Lower directional risk"],
+          greeks: "Delta neutral, positive vega/theta long-term, negative short-term",
+        },
+      ];
+
+      // Sort by score and return top 4
+      return strategies.sort((a, b) => b.score - a.score).slice(0, 4);
+    }
+
+    function updateStrategyTable() {
+      const strategies = [
+        {
+          name: "Long Call",
+          view: "Bullish",
+          maxProfit: "Unlimited",
+          maxLoss: "Premium paid",
+          breakeven: "Strike + Premium",
+          greeks: "Δ (pos), θ (neg)",
+        },
+        {
+          name: "Long Put",
+          view: "Bearish",
+          maxProfit: "Strike - Premium",
+          maxLoss: "Premium paid",
+          breakeven: "Strike - Premium",
+          greeks: "Δ (neg), θ (neg)",
+        },
+        {
+          name: "Bull Call Spread",
+          view: "Mildly Bullish",
+          maxProfit: "Width - Debit",
+          maxLoss: "Debit paid",
+          breakeven: "Long strike + Debit",
+          greeks: "Δ, θ ↑, Vega ↓",
+        },
+        {
+          name: "Bear Call Spread",
+          view: "Bearish / Neutral",
+          maxProfit: "Credit received",
+          maxLoss: "Width - Credit",
+          breakeven: "Short strike + Credit",
+          greeks: "Δ (neg), θ (pos), Vega ↓",
+        },
+        {
+          name: "Iron Condor",
+          view: "Neutral",
+          maxProfit: "Credit received",
+          maxLoss: "Width - Credit",
+          breakeven: "4 points (2 per side)",
+          greeks: "Δ (0), θ (pos), Vega (neg)",
+        },
+        {
+          name: "Straddle",
+          view: "High Volatility",
+          maxProfit: "Unlimited",
+          maxLoss: "Premiums paid",
+          breakeven: "Strike ± Total Premium",
+          greeks: "Δ (0), Vega (pos), θ (neg)",
+        },
+        {
+          name: "Calendar Spread",
+          view: "Neutral / Vol Structure",
+          maxProfit: "Limited (varies)",
+          maxLoss: "Debit paid",
+          breakeven: "Strike ± spreads",
+          greeks: "Δ (0), θ (pos), Vega (varies)",
+        },
+      ];
+
+      const tbody = document.getElementById("strategy-tbody");
+      tbody.innerHTML = strategies
+        .map(
+          (s) => `
+        <tr>
+          <td class="symbol-col">${s.name}</td>
+          <td>${s.view}</td>
+          <td class="number" style="color: var(--up)">${s.maxProfit}</td>
+          <td class="number" style="color: var(--dn)">${s.maxLoss}</td>
+          <td class="number">${s.breakeven}</td>
+          <td style="font-size: 10px">${s.greeks}</td>
+        </tr>
+      `
+        )
+        .join("");
+    }
+
+    // ═══════════ EVENT HANDLERS ═══════════
+    function copyStrategy(name) {
+      const strategies = selectStrategies();
+      const strat = strategies.find((s) => s.name === name);
+      if (strat) {
+        navigator.clipboard.writeText(`${strat.name}\n${strat.description}\n\nConditions:\n${strat.conditions.join("\n")}`);
+        showToast("✓ Strategy copied to clipboard");
+      }
+    }
+
+    function showDetails(name) {
+      showToast("📊 " + name + " strategy details displayed");
+    }
+
+    function startCountdown() {
+      countdownSeconds = 30;
+      document.getElementById("refresh-countdown").textContent = countdownSeconds + "s";
+
+      if (countdownInterval) clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        countdownSeconds--;
+        document.getElementById("refresh-countdown").textContent = countdownSeconds + "s";
+        if (countdownSeconds <= 0) {
+          clearInterval(countdownInterval);
+          fetchMarketData();
+          startCountdown();
+        }
+      }, 1000);
+    }
+
+    document.getElementById("symbol-select").addEventListener("change", (e) => {
+      currentSymbol = e.target.value;
+      fetchMarketData();
+    });
+
+    document.getElementById("expiry-select").addEventListener("change", (e) => {
+      currentExpiry = e.target.value;
+      showToast("Expiry changed to: " + e.target.options[e.target.selectedIndex].text);
+      updateUI();
+    });
+
+    document.getElementById("refresh-btn").addEventListener("click", () => {
+      fetchMarketData();
+      startCountdown();
+      showToast("✓ Market data refreshed");
+    });
+
+    // ═══════════ INITIALIZATION ═══════════
+    window.addEventListener("load", () => {
+      fetchMarketData();
+      startCountdown();
+    });
+  </script>
+</body>
+</html>
