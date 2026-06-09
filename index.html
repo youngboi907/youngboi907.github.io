@@ -1223,7 +1223,7 @@ function obHeatDrawFeed(ctx,W,xT,yP,feed,isFut,xRight,maxW){const H=feed.heatHis
   const bids=snap.b||[],asks=snap.a||[];
   let mx=1;for(const l of bids)if(l[1]>mx)mx=l[1];for(const l of asks)if(l[1]>mx)mx=l[1];
   const drawSide=(levels,isBid)=>{for(const lv of levels){const price=lv[0],usd=lv[1];const y=yP(price);if(y==null||!isFinite(y))continue;
-    const t=Math.min(1,usd/mx);const bw=Math.max(1.5,t*maxW);const a=0.22+t*0.65;const h=2;
+    const t=Math.min(1,usd/mx);const bw=Math.max(1.5,t*maxW);const a=0.22+t*0.65;const h=4;
     // spot: green bids / red asks · futures: yellow bids / blue asks
     ctx.fillStyle=isBid?(isFut?`rgba(245,205,40,${a})`:`rgba(60,210,110,${a})`):(isFut?`rgba(70,140,250,${a})`:`rgba(240,75,75,${a})`);
     ctx.fillRect(xRight-bw,Math.round(y-h/2),bw,h);}};
