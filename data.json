@@ -1,0 +1,108 @@
+{
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "timeframes": [
+    { "label": "15m", "interval": "15m" },
+    { "label": "1H", "interval": "1h" },
+    { "label": "4H", "interval": "4h" },
+    { "label": "1D", "interval": "1d" }
+  ],
+  "settings": {
+    "rsiLimit": 1000,
+    "period": 13,
+    "bullLevel": 61.8,
+    "bearLevel": 38.2,
+    "retainMs": 259200000,
+    "defaultHistoryLength": 3000,
+    "defaultRefreshSecs": 30,
+    "obLookback": 1000,
+    "nuplCfg": {
+      "lookback": 150,
+      "smooth": 5,
+      "maLen": 90,
+      "maType": "ema"
+    },
+    "rrsiCfg": {
+      "targets": [30, 50, 70]
+    },
+    "obHeatCfg": {
+      "threshold": 50000,
+      "book": "both"
+    },
+    "candlePresets": [
+      { "name": "Pancake", "up": "#31D0AA", "down": "#ED5B7D" },
+      { "name": "Classic", "up": "#22c55e", "down": "#ef4444" },
+      { "name": "Ocean", "up": "#22d3ee", "down": "#f59e0b" },
+      { "name": "Mono", "up": "#e2e8f0", "down": "#64748b" },
+      { "name": "Neon", "up": "#a3e635", "down": "#f97316" }
+    ]
+  },
+  "colors": {
+    "bg": "#100a1f",
+    "bg2": "#1b1430",
+    "panel": "#1d1733",
+    "panel2": "#27213f",
+    "line": "rgba(255,255,255,0.08)",
+    "txt": "#f4eeff",
+    "muted": "#a99ec9",
+    "dim": "#6a5f8c",
+    "acc": "#1FC7D4",
+    "acc2": "#7645D9",
+    "up": "#31D0AA",
+    "down": "#ED5B7D",
+    "gold": "#FFB237",
+    "pink": "#ED4B9E"
+  },
+  "fonts": {
+    "primary": "'Kanit', system-ui, sans-serif",
+    "mono": "'JetBrains Mono', ui-monospace, monospace"
+  },
+  "drawTools": [
+    { "key": "cursor", "label": "⤢", "title": "Cursor" },
+    { "key": "trend", "label": "╱", "title": "Trend line" },
+    { "key": "ray", "label": "➶", "title": "Ray" },
+    { "key": "hline", "label": "―", "title": "Horizontal line" },
+    { "key": "vline", "label": "∣", "title": "Vertical line" },
+    { "key": "rect", "label": "▭", "title": "Rectangle" },
+    { "key": "circle", "label": "◯", "title": "Circle" },
+    { "key": "xray", "label": "⟷", "title": "Extended line" },
+    { "key": "arrow", "label": "→", "title": "Arrow" }
+  ],
+  "swatches": [
+    "#f0b90b",
+    "#e2e8f0",
+    "#22d3ee",
+    "#ED5B7D",
+    "#31D0AA"
+  ],
+  "timeframeSeconds": {
+    "1m": 60,
+    "3m": 180,
+    "5m": 300,
+    "15m": 900,
+    "30m": 1800,
+    "1h": 3600,
+    "2h": 7200,
+    "3h": 10800,
+    "4h": 14400,
+    "6h": 21600,
+    "8h": 28800,
+    "12h": 43200,
+    "1d": 86400,
+    "2d": 172800,
+    "3d": 259200,
+    "5d": 432000,
+    "1w": 604800,
+    "1M": 2592000
+  },
+  "panes": [
+    { "key": "macd", "label": "MACD" },
+    { "key": "rrsi", "label": "RSI" },
+    { "key": "ttrend", "label": "Trend" },
+    { "key": "trendilo", "label": "Trendilo" },
+    { "key": "stoch", "label": "STOCH" },
+    { "key": "emadist", "label": "Δ EMA21" },
+    { "key": "cvd", "label": "CVD" },
+    { "key": "nupl", "label": "STH-NUPL" },
+    { "key": "custom", "label": "Custom" }
+  ]
+}
