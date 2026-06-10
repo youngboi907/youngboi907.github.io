@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BTC Drawdown Statistics</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#100a1f;--panel:#15112a;--panel2:#1a1435;--line:rgba(255,255,255,0.07);--txt:#e8e6f5;--muted:#8a82a8;--acc:#1FC7D4;--acc2:#7645D9;--up:#31D0AA;--dn:#ED5B7D;--gold:#FFB237;--r:18px}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 700px at 70% -10%,rgba(118,69,217,0.18),transparent),var(--bg);color:var(--txt);font-family:Kanit,system-ui,sans-serif;padding:22px;min-height:100vh}
+a{color:var(--acc)}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+h1{font-size:24px;font-weight:800;margin:0;letter-spacing:-0.5px}
+h1 .b{color:var(--gold)}
+.back{font-size:13px;text-decoration:none;color:var(--muted);border:1px solid var(--line);padding:7px 13px;border-radius:11px;transition:all .15s}
+.back:hover{color:var(--txt);border-color:var(--acc)}
+.sub{color:var(--muted);font-size:13px;margin:4px 0 18px}
+.bar{height:8px;border-radius:6px;background:var(--panel2);overflow:hidden;margin:18px 0;border:1px solid var(--line)}
+.bar>div{height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .3s}
+.status{font-size:13px;color:var(--muted);font-family:JetBrains Mono,monospace}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:20px;box-shadow:0 10px 40px rgba(0,0,0,0.3)}
+.card h2{font-size:15px;font-weight:700;margin:0 0 14px;display:flex;align-items:center;gap:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px}
+td{font-family:JetBrains Mono,monospace}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.tf{font-family:Kanit;font-weight:700;color:var(--acc)}
+.worst{color:var(--dn);font-weight:700}
+.pos{color:var(--up)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px}
+.chartbox{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.chartbox h3{font-size:13px;font-weight:700;margin:0 0 4px}
+.chartbox .cap{font-size:11px;color:var(--muted);margin:0 0 10px;font-family:JetBrains Mono,monospace}
+.cv{position:relative;height:200px}
+.note{font-size:11px;color:var(--muted);font-style:italic;margin-top:6px}
+.refresh{font-size:12px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);padding:7px 12px;border-radius:10px;cursor:pointer;font-family:Kanit}
+.refresh:hover{color:var(--txt);border-color:var(--acc)}
+.legend-row{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px;font-family:JetBrains Mono,monospace}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>📉 <span class="b">BTC</span> Drawdown Statistics</h1>
+  <a class="back" href="crypto_mtf_dashboard.html">← Back to dashboard</a>
+  <button class="refresh" id="refreshBtn">↻ Refresh data</button>
+</div>
+<div class="sub" id="rangeInfo">Loading BTC history from Binance…</div>
+<div class="bar"><div id="prog"></div></div>
+<div class="status" id="status">Starting…</div>
+
+<div id="content" style="display:none">
+  <div class="card">
+    <h2>📊 Drop statistics by timeframe</h2>
+    <table id="statTable">
+      <thead><tr>
+        <th>Timeframe</th><th>Periods</th><th>% that fell</th>
+        <th>Avg drop</th><th>Median drop</th><th>Worst drop</th>
+        <th>≥5%</th><th>≥10%</th><th>≥20%</th>
+      </tr></thead>
+      <tbody id="statBody"></tbody>
+    </table>
+    <div class="note" id="defNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>📈 Drop frequency — how often a drop of each size occurs</h2>
+    <div class="grid" id="histGrid"></div>
+  </div>
+</div>
+
+<script>
+const TFS=[
+  {key:'1h',label:'1 Hour',bars:1},
+  {key:'4h',label:'4 Hours',bars:4},
+  {key:'1d',label:'1 Day',bars:24},
+  {key:'3d',label:'3 Days',bars:72},
+  {key:'1w',label:'1 Week',bars:168},
+  {key:'1mo',label:'1 Month',bars:720},
+];
+const DROP_BUCKETS=[1,2,3,5,7,10,15,20,30,50]; // % thresholds for histogram
+const SYMBOL='BTCUSDT', INTERVAL='1h';
+const $=id=>document.getElementById(id);
+const setStatus=t=>$('status').textContent=t;
+const setProg=p=>$('prog').style.width=(p*100).toFixed(1)+'%';
+
+/* ---------- IndexedDB cache ---------- */
+const DB='btc_dd_db', STORE='klines';
+function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE);};r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e);});}
+async function idbGet(k){try{const db=await idbOpen();return await new Promise(res=>{const tx=db.transaction(STORE,'readonly');const rq=tx.objectStore(STORE).get(k);rq.onsuccess=()=>res(rq.result||null);rq.onerror=()=>res(null);});}catch(e){return null;}}
+async function idbPut(k,v){try{const db=await idbOpen();return await new Promise(res=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(v,k);tx.oncomplete=()=>res(true);tx.onerror=()=>res(false);});}catch(e){return false;}}
+
+/* ---------- fetch full hourly history (paginated) ---------- */
+async function fetchAllHourly(onProgress){
+  const start=Date.UTC(2017,7,17); // Binance BTCUSDT spot history begins ~2017-08-17
+  const now=Date.now();
+  const out=[]; let from=start;
+  const totalSpan=now-start;
+  while(from<now){
+    const url=`https://api.binance.com/api/v3/klines?symbol=${SYMBOL}&interval=${INTERVAL}&startTime=${from}&limit=1000`;
+    let data;
+    try{const r=await fetch(url);data=await r.json();}catch(e){await new Promise(r=>setTimeout(r,1500));continue;}
+    if(!Array.isArray(data)||!data.length)break;
+    for(const k of data)out.push([k[0],+k[4]]); // [openTime, close]
+    from=data[data.length-1][0]+3600000;
+    onProgress(Math.min(0.99,(from-start)/totalSpan));
+    if(data.length<1000)break;
+    await new Promise(r=>setTimeout(r,120)); // be gentle on the API
+  }
+  return out;
+}
+
+async function loadData(forceRefresh){
+  let cached=forceRefresh?null:await idbGet('hourly');
+  let series;
+  if(cached&&cached.data&&cached.data.length&&(Date.now()-cached.savedAt<6*3600*1000)){
+    series=cached.data; setStatus('Loaded '+series.length.toLocaleString()+' hourly candles from cache'); setProg(1);
+  }else{
+    setStatus('Fetching BTC hourly history from Binance (first load takes ~20–40s, then cached)…');
+    series=await fetchAllHourly(p=>{setProg(p);setStatus('Downloading… '+Math.round(p*100)+'%');});
+    await idbPut('hourly',{savedAt:Date.now(),data:series});
+    setProg(1);
+  }
+  return series;
+}
+
+/* ---------- compute rolling % declines per timeframe ---------- */
+function computeStats(closes){
+  const res={};
+  for(const tf of TFS){
+    const W=tf.bars; const drops=[]; let total=0;
+    for(let i=W;i<closes.length;i++){
+      const ret=(closes[i]-closes[i-W])/closes[i-W]*100; // % change over the window
+      total++;
+      if(ret<0)drops.push(-ret); // store magnitude of the drop (positive number)
+    }
+    drops.sort((a,b)=>a-b);
+    const n=drops.length;
+    const sum=drops.reduce((a,b)=>a+b,0);
+    const median=n?drops[Math.floor(n/2)]:0;
+    const worst=n?drops[n-1]:0;
+    const avg=n?sum/n:0;
+    const ge=x=>drops.filter(d=>d>=x).length;
+    // histogram counts per bucket (>= threshold)
+    const hist=DROP_BUCKETS.map(t=>({t,count:ge(t),pct:total?ge(t)/total*100:0}));
+    res[tf.key]={tf,total,n,avg,median,worst,pctFell:total?n/total*100:0,ge5:ge(5),ge10:ge(10),ge20:ge(20),hist};
+  }
+  return res;
+}
+
+/* ---------- render ---------- */
+function fmtPct(v){return v.toFixed(2)+'%';}
+function renderTable(stats){
+  const body=$('statBody'); body.innerHTML='';
+  for(const tf of TFS){const s=stats[tf.key];
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="tf">${tf.label}</td>
+      <td>${s.total.toLocaleString()}</td>
+      <td>${fmtPct(s.pctFell)}</td>
+      <td class="worst">−${fmtPct(s.avg)}</td>
+      <td class="worst">−${fmtPct(s.median)}</td>
+      <td class="worst">−${fmtPct(s.worst)}</td>
+      <td>${s.ge5.toLocaleString()}</td>
+      <td>${s.ge10.toLocaleString()}</td>
+      <td>${s.ge20.toLocaleString()}</td>`;
+    body.appendChild(tr);
+  }
+  $('defNote').textContent='“Drop” = a negative rolling close-to-close return measured over each timeframe window (overlapping, at hourly resolution). Avg/Median/Worst are magnitudes of the negative moves only. ≥5/10/20% columns count how many such periods fell at least that much.';
+}
+
+function renderHists(stats){
+  const grid=$('histGrid'); grid.innerHTML='';
+  for(const tf of TFS){const s=stats[tf.key];
+    const box=document.createElement('div'); box.className='chartbox';
+    box.innerHTML=`<h3>${tf.label}</h3><div class="cap">${s.n.toLocaleString()} drops · worst −${fmtPct(s.worst)}</div><div class="cv"><canvas id="cv_${tf.key}"></canvas></div>`;
+    grid.appendChild(box);
+    new Chart(box.querySelector('canvas'),{
+      type:'bar',
+      data:{labels:s.hist.map(h=>'≥'+h.t+'%'),datasets:[{data:s.hist.map(h=>h.pct),backgroundColor:s.hist.map(h=>h.t>=20?'#ED5B7D':h.t>=10?'#FFB237':'#1FC7D4'),borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const h=s.hist[c.dataIndex];return [h.pct.toFixed(2)+'% of periods',h.count.toLocaleString()+' occurrences'];}}}},
+        scales:{x:{ticks:{color:'#8a82a8',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#8a82a8',font:{size:9},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'},title:{display:true,text:'% of periods',color:'#8a82a8',font:{size:10}}}}}
+    });
+  }
+}
+
+async function run(forceRefresh){
+  $('content').style.display='none';
+  const series=await loadData(forceRefresh);
+  if(!series||series.length<800){setStatus('Could not load enough data. Check your connection and click Refresh.');return;}
+  const closes=series.map(s=>s[1]);
+  const startD=new Date(series[0][0]), endD=new Date(series[series.length-1][0]);
+  const fmt=d=>d.toISOString().slice(0,10);
+  $('rangeInfo').innerHTML=`BTC/USDT hourly · <b>${fmt(startD)}</b> → <b>${fmt(endD)}</b> · ${series.length.toLocaleString()} candles &nbsp;<span style="color:var(--muted)">(Binance spot history begins Aug 2017 — earlier data isn't available from this source)</span>`;
+  setStatus('Computing drawdown statistics…');
+  const stats=computeStats(closes);
+  renderTable(stats); renderHists(stats);
+  $('content').style.display='block';
+  setStatus('Done · '+series.length.toLocaleString()+' candles analysed');
+}
+
+$('refreshBtn').onclick=()=>run(true);
+run(false);
+</script>
+</body>
+</html>
