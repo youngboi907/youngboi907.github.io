@@ -19,7 +19,28 @@
   --r:20px;--font:'Kanit',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{scrollbar-color:#26304a transparent}
+html{scrollbar-color:#26304a transparent;scroll-behavior:smooth}
+/* smooth + touch-optimised scrolling everywhere */
+*{-webkit-overflow-scrolling:touch}
+#board,.panel-body,.tvbox,#ddOverlay{will-change:transform}
+/* ---- responsive: phone / tablet ---- */
+body.dev-tablet{padding:12px 12px 50px}
+body.dev-phone{padding:8px 8px 40px}
+body.dev-phone .header-controls,body.dev-phone .right{flex-wrap:wrap;gap:6px}
+body.dev-phone .ctrl-btn{font-size:11px;padding:5px 8px}
+body.dev-phone #mtfScore{gap:5px}
+body.dev-phone #mtfCells>div{min-width:64px!important;padding:6px 6px!important}
+body.dev-phone .leftBar,body.dev-phone #leftBar{transform:scale(0.92);transform-origin:left center}
+body.dev-phone h1{font-size:18px}
+@media(max-width:820px){
+  .right{flex-wrap:wrap}
+  #obdApp .wrap{flex-direction:column}
+  .price-bar,.ohlcv{flex-wrap:wrap}
+}
+@media(max-width:520px){
+  .ctrl-btn{font-size:10px;padding:4px 7px}
+  #mtfCells>div{min-width:60px}
+}
 ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#222b40;border-radius:8px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{background:#2e3a56;background-clip:padding-box}
 body{background:radial-gradient(1100px 600px at 85% -10%,rgba(31,199,212,0.14),transparent 60%),radial-gradient(950px 620px at -8% 0%,rgba(118,69,217,0.18),transparent 55%),radial-gradient(800px 520px at 50% 118%,rgba(237,75,158,0.12),transparent 60%),var(--bg);color:var(--txt);font-family:var(--font);padding:16px 16px 60px;min-height:100vh;-webkit-font-smoothing:antialiased}
 .tabnum{font-variant-numeric:tabular-nums;font-family:var(--mono)}
@@ -295,6 +316,10 @@ body.light .tvfield select{background:#f3f3fb;color:#2a2547}
 </style>
 </head>
 <body>
+<div id="mtfScore" style="display:flex;align-items:stretch;gap:8px;margin:0 0 12px;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.5px;padding:0 6px">MTF<br>BIAS</div>
+  <div id="mtfCells" style="display:flex;gap:8px;flex:1;flex-wrap:wrap"></div>
+</div>
 <div id="board">
   <div class="panel main-panel" id="panel_main">
     <div class="panel-head" id="mainHead">
@@ -366,10 +391,6 @@ body.light .tvfield select{background:#f3f3fb;color:#2a2547}
 <div class="price-bar" style="display:none">
   <span class="sym-lbl" id="symLbl">BTCUSDT</span><span class="cur-price" id="curPrice">—</span><span class="chg-badge pos" id="chgBadge">—</span>
   <div class="ohlcv"><span>O <b id="sO">—</b></span><span>H <b id="sH">—</b></span><span>L <b id="sL">—</b></span><span>C <b id="sC">—</b></span><span>Vol <b id="sV">—</b></span><span>RSI <b id="sR">—</b></span></div>
-</div>
-<div id="mtfScore" style="display:flex;align-items:stretch;gap:8px;margin:10px 0;flex-wrap:wrap">
-  <div style="display:flex;align-items:center;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.5px;padding:0 6px">MTF<br>BIAS</div>
-  <div id="mtfCells" style="display:flex;gap:8px;flex:1;flex-wrap:wrap"></div>
 </div>
 <div class="update-bar" id="updateBar"><span class="upd-dot" id="updDot"></span><span id="updTime">—</span></div>
 <div id="obdApp"><div class="wrap">
@@ -489,10 +510,24 @@ body.light .tvfield select{background:#f3f3fb;color:#2a2547}
       <div style="font-size:11px;color:#8a82a8;margin:0 0 14px">Rolling standard deviation of period returns over time. The line is the historical reference; the dashed line marks the current level. Caption shows current vol, annualized, and average move.</div>
       <div id="dd_vol" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px"></div>
     </div>
+    <div style="background:linear-gradient(180deg,#1a1435,#15112a);border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px;margin:18px 0">
+      <h2 style="font-size:15px;font-weight:700;margin:0 0 6px">🐋 CVD by trade size <span id="dd_cvdsym" style="color:#FFB237"></span> — recent window</h2>
+      <div style="font-size:11px;color:#8a82a8;margin:0 0 12px">Cumulative volume delta (aggressive buys − sells, in USD) split by trade-size tier, using real per-trade data from Binance aggTrades. This shows whether large players vs retail are net buying or selling. Historical depth is limited to a recent window (years of per-trade data isn't available from the API) — the actual time span is shown after loading.</div>
+      <button class="ctrl-btn" id="dd_cvdLoad" style="margin-bottom:8px">⬇ Load size-bucketed CVD</button>
+      <div id="dd_cvdStatus" style="font-size:12px;color:#8a82a8;font-family:'JetBrains Mono',monospace;margin-bottom:10px"></div>
+      <div id="dd_cvdWrap" style="display:none">
+        <div id="dd_cvdSummary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div>
+        <div style="position:relative;height:300px"><canvas id="dd_cvdChart"></canvas></div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
+/* ═══════════ DEVICE DETECTION (phone / tablet / pc) ═══════════ */
+function detectDevice(){const w=window.innerWidth;const touch=('ontouchstart'in window)||navigator.maxTouchPoints>0;let cls='dev-pc';if(w<=600)cls='dev-phone';else if(w<=1024&&touch)cls='dev-tablet';else if(w<=1024)cls='dev-tablet';document.body.classList.remove('dev-phone','dev-tablet','dev-pc');document.body.classList.add(cls);document.body.dataset.device=cls.slice(4);return cls;}
+window.addEventListener('DOMContentLoaded',detectDevice);
+let _devT=null;window.addEventListener('resize',()=>{clearTimeout(_devT);_devT=setTimeout(detectDevice,150);});
 /* ═══════════ CONSTANTS ═══════════ */
 const SYMBOLS=['BTCUSDT','ETHUSDT'];
 const TIMEFRAMES=[{label:'15m',interval:'15m'},{label:'1H',interval:'1h'},{label:'4H',interval:'4h'},{label:'1D',interval:'1d'}];
@@ -772,11 +807,13 @@ function computeVP(){vpBins=null;if(!indicators.vp||!curKlines||!curKlines.lengt
 let paneOrder=PANES.map(p=>p.key); /* user-reorderable pane order */
 function activePanes(){const act=PANES.filter(p=>indicators[p.key]);return act.slice().sort((a,b)=>paneOrder.indexOf(a.key)-paneOrder.indexOf(b.key));}
 function movePane(key,dir){const act=activePanes().map(p=>p.key);const i=act.indexOf(key);const j=i+dir;if(i<0||j<0||j>=act.length)return;const A=act[i],B=act[j];const oi=paneOrder.indexOf(A),oj=paneOrder.indexOf(B);paneOrder[oi]=B;paneOrder[oj]=A;_lastPaneCount=-1;layoutPanes();applyPaneScales();redrawOverlay();try{saveState();}catch(e){}renderLegend();}
-const PANE_FRAC=0.15; // each indicator pane = 15% of the chart container height
-function paneTotalFrac(){const n=activePanes().length;return Math.min(0.75,n*PANE_FRAC);}
-function computePaneRects(){const act=activePanes();const per=PANE_FRAC;const total=Math.min(0.75,act.length*per);const regionTop=1-total;const rects=[];let cum=regionTop;act.forEach(p=>{rects.push({key:p.key,top:cum,frac:per*(total/(act.length*per||1))});cum+=rects[rects.length-1].frac;});return{regionTop,total,rects};}
+const PANE_FRAC=0.15; // base pane height; shrinks toward PANE_MIN when many open
+const PANE_MIN=0.10, PANE_CAP=0.62;
+function paneFracFor(n){if(n<=0)return 0;return Math.max(PANE_MIN,Math.min(PANE_FRAC,PANE_CAP/n));}
+function paneTotalFrac(){const n=activePanes().length;return Math.min(0.85,n*paneFracFor(n));}
+function computePaneRects(){const act=activePanes();const per=paneFracFor(act.length);const total=Math.min(0.85,act.length*per);const regionTop=1-total;const rects=[];let cum=regionTop;act.forEach(p=>{rects.push({key:p.key,top:cum,frac:per});cum+=per;});return{regionTop,total,rects};}
 /* container height so that price area stays ≈ screen-fill while each pane is 15% */
-function containerHeight(){const n=activePanes().length;const frac=Math.min(0.75,n*PANE_FRAC);return Math.round(computeMainH()/(1-frac));}
+function containerHeight(){const n=activePanes().length;const frac=Math.min(0.85,n*paneFracFor(n));return Math.round(computeMainH()/(1-frac));}
 function applyPaneScales(){if(!lwChart)return;const act=activePanes(),n=act.length;const RS=o=>lwChart.priceScale('right').applyOptions({scaleMargins:o});const VS=o=>lwChart.priceScale('vol').applyOptions({scaleMargins:o});
   PANES.forEach(p=>{const ps=paneSeries[p.key];if(ps){['hist','line','signal','k','d','ma','base','pos','neg','lUp','lDn','lNt'].forEach(f=>{if(ps[f]){try{ps[f].applyOptions({visible:false});}catch(e){}}});if(ps.lines)ps.lines.forEach(s=>{try{s.applyOptions({visible:false});}catch(e){}});}});
   if(n===0){RS({top:0.06,bottom:0.22});VS({top:0.82,bottom:0});return;}
@@ -1949,11 +1986,55 @@ const DDmod=(function(){
       ch.data.datasets.push({data:data.map(()=>s.cur),borderColor:'rgba(237,91,125,0.7)',borderWidth:1,borderDash:[5,4],pointRadius:0,fill:false});ch.update('none');
       charts.push(ch);});}
 
-  return{openOverlay(){g('ddOverlay').style.display='block';document.body.style.overflow='hidden';if(!loaded)run(false);},close(){g('ddOverlay').style.display='none';document.body.style.overflow='';},refresh(){run(true);}};
+  /* ───── size-bucketed CVD (recent window, real aggTrades) ───── */
+  const CVD_TIERS=[{key:'t1',label:'0–10k',min:0,max:1e4,col:'#1FC7D4'},{key:'t2',label:'10k–100k',min:1e4,max:1e5,col:'#31D0AA'},{key:'t3',label:'100k–1M',min:1e5,max:1e6,col:'#FFB237'},{key:'t4',label:'1M–10M',min:1e6,max:1e7,col:'#ED9B40'},{key:'t5',label:'10M+',min:1e7,max:Infinity,col:'#ED5B7D'}];
+  let cvdChart=null,cvdBusy=false;
+  function tierOf(usd){for(const t of CVD_TIERS)if(usd>=t.min&&usd<t.max)return t;return CVD_TIERS[CVD_TIERS.length-1];}
+  async function loadCVD(){if(cvdBusy)return;cvdBusy=true;const sym=(typeof curSym!=='undefined'?curSym:'BTCUSDT');
+    g('dd_cvdsym').textContent='· '+sym;const st=t=>{g('dd_cvdStatus').textContent=t;};
+    const MAX_REQ=120; // ~120k aggTrades cap
+    let endTime=Date.now();const all=[];
+    try{
+      for(let r=0;r<MAX_REQ;r++){
+        const url=`https://api.binance.com/api/v3/aggTrades?symbol=${sym}&endTime=${endTime}&limit=1000`;
+        let data;try{const resp=await fetch(url);data=await resp.json();}catch(e){await new Promise(z=>setTimeout(z,800));continue;}
+        if(!Array.isArray(data)||!data.length)break;
+        for(const a of data)all.push(a);
+        endTime=data[0].T-1; // step backward
+        st('Fetching trades… '+all.length.toLocaleString()+' so far');
+        if(data.length<1000)break;
+        await new Promise(z=>setTimeout(z,90));
+      }
+    }catch(e){}
+    if(!all.length){st('Could not load trades — try again.');cvdBusy=false;return;}
+    all.sort((a,b)=>a.T-b.T); // chronological
+    // cumulative delta per tier
+    const cum={};CVD_TIERS.forEach(t=>cum[t.key]=0);const net={};CVD_TIERS.forEach(t=>net[t.key]=0);
+    const series={};CVD_TIERS.forEach(t=>series[t.key]=[]);const tsArr=[];
+    const step=Math.max(1,Math.ceil(all.length/400));
+    all.forEach((a,i)=>{const price=+a.p,qty=+a.q,usd=price*qty;const buy=a.m===false; // m=true → buyer is maker → aggressive SELL
+      const t=tierOf(usd);const d=buy?usd:-usd;cum[t.key]+=d;net[t.key]+=d;
+      if(i%step===0){tsArr.push(a.T);CVD_TIERS.forEach(tt=>series[tt.key].push(cum[tt.key]));}
+    });
+    // final point
+    tsArr.push(all[all.length-1].T);CVD_TIERS.forEach(tt=>series[tt.key].push(cum[tt.key]));
+    const spanH=((all[all.length-1].T-all[0].T)/3600000).toFixed(1);
+    const fmtT=ms=>new Date(ms).toISOString().slice(5,16).replace('T',' ');
+    st(`${all.length.toLocaleString()} trades · ${fmtT(all[0].T)} → ${fmtT(all[all.length-1].T)} UTC (${spanH}h)`);
+    const fUSD=v=>{const s=v<0?'−':'+';v=Math.abs(v);if(v>=1e9)return s+'$'+(v/1e9).toFixed(2)+'B';if(v>=1e6)return s+'$'+(v/1e6).toFixed(2)+'M';if(v>=1e3)return s+'$'+(v/1e3).toFixed(1)+'k';return s+'$'+v.toFixed(0);};
+    g('dd_cvdSummary').innerHTML=CVD_TIERS.map(t=>`<div style="flex:1;min-width:110px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:8px 10px"><div style="font-size:10px;color:#8a82a8">${t.label}</div><div style="font-size:14px;font-weight:700;color:${net[t.key]>=0?'#31D0AA':'#ED5B7D'};font-family:'JetBrains Mono',monospace">${fUSD(net[t.key])}</div></div>`).join('');
+    const labels=tsArr.map(fmtT);
+    if(cvdChart){try{cvdChart.destroy();}catch(e){}}
+    cvdChart=new Chart(g('dd_cvdChart'),{type:'line',data:{labels,datasets:CVD_TIERS.map(t=>({label:t.label,data:series[t.key],borderColor:t.col,backgroundColor:'transparent',borderWidth:1.6,pointRadius:0,tension:0.2}))},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#aeb9d4',font:{size:10},boxWidth:12}},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+fUSD(c.parsed.y);}}}},scales:{x:{ticks:{color:'#8a82a8',font:{size:8},maxTicksLimit:8,maxRotation:0},grid:{display:false}},y:{ticks:{color:'#8a82a8',font:{size:9},callback:function(v){return fUSD(v);}},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+    charts.push(cvdChart);
+    g('dd_cvdWrap').style.display='block';cvdBusy=false;
+  }
+  return{openOverlay(){g('ddOverlay').style.display='block';document.body.style.overflow='hidden';if(!loaded)run(false);},close(){g('ddOverlay').style.display='none';document.body.style.overflow='';},refresh(){run(true);},loadCVD};
 })();
 function openDrawdowns(){DDmod.openOverlay();}
 function closeDrawdowns(){DDmod.close();}
 document.getElementById('dd_refresh').onclick=()=>DDmod.refresh();
+document.getElementById('dd_cvdLoad').onclick=()=>DDmod.loadCVD();
 </script>
 </body>
 </html>
