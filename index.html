@@ -367,6 +367,10 @@ body.light .tvfield select{background:#f3f3fb;color:#2a2547}
   <span class="sym-lbl" id="symLbl">BTCUSDT</span><span class="cur-price" id="curPrice">—</span><span class="chg-badge pos" id="chgBadge">—</span>
   <div class="ohlcv"><span>O <b id="sO">—</b></span><span>H <b id="sH">—</b></span><span>L <b id="sL">—</b></span><span>C <b id="sC">—</b></span><span>Vol <b id="sV">—</b></span><span>RSI <b id="sR">—</b></span></div>
 </div>
+<div id="mtfScore" style="display:flex;align-items:stretch;gap:8px;margin:10px 0;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.5px;padding:0 6px">MTF<br>BIAS</div>
+  <div id="mtfCells" style="display:flex;gap:8px;flex:1;flex-wrap:wrap"></div>
+</div>
 <div class="update-bar" id="updateBar"><span class="upd-dot" id="updDot"></span><span id="updTime">—</span></div>
 <div id="obdApp"><div class="wrap">
   <header>
@@ -1088,6 +1092,7 @@ async function loadAll(sym,tf,silent=false){
     ...TIMEFRAMES.map(tfr=>getKlines(sym,tfr.interval,RSI_LIMIT).then(k=>renderRSIPane(tfr,k,silent)).catch(e=>{const o=document.getElementById(`ro_${tfr.label}`);if(o)o.innerHTML=`<p style="color:#ED5B7D">${e.message}</p>`;}))
   ];
   await Promise.all(tasks);
+  try{MTFScore.update();}catch(e){}
   const now=new Date();document.getElementById('updateBar').style.display='flex';document.getElementById('updTime').textContent='Updated: '+now.toLocaleTimeString('en-US',{hour12:false})+' · '+(curKlines?curKlines.length:0)+' bars cached';const dot=document.getElementById('updDot');dot.style.background='#31D0AA';setTimeout(()=>{dot.style.background='#2e3449';},1500);saveState();
 }
 async function onMainTfChange(){curTf=document.getElementById('mainTfSelect').value;await loadAll(curSym,curTf);scheduleRefresh();}
@@ -1844,6 +1849,53 @@ function tog(id,key){ const on=!S.show[key]; S.show[key]=on; $(id).classList.tog
 })();
 })();
 /* ═══════════ BTC DRAWDOWNS (in-page overlay) ═══════════ */
+/* ═══════════ MULTI-TIMEFRAME BULL/BEAR SCORE ═══════════ */
+const MTFScore=(function(){
+  let busy=false;
+  function emaArr(c,p){return (typeof calcEMA==='function')?calcEMA(c,p):null;}
+  function lastNonNull(a){for(let i=a.length-1;i>=0;i--)if(a[i]!=null)return a[i];return null;}
+  // returns a sub-score in [-1,+1] for one timeframe's klines
+  function scoreTF(k){
+    if(!k||k.length<60)return null;
+    const c=k.map(x=>x.c);const last=c[c.length-1];const sigs=[];
+    // ---- TREND ----
+    const e50=emaArr(c,50),e200=emaArr(c,200);
+    if(e50){const v=lastNonNull(e50);if(v!=null)sigs.push(last>v?1:-1);}            // price vs EMA50
+    if(e200){const v=lastNonNull(e200);if(v!=null)sigs.push(last>v?1:-1);}          // price vs EMA200
+    if(e50&&e200){const a=lastNonNull(e50),b=lastNonNull(e200);if(a!=null&&b!=null)sigs.push(a>b?1:-1);} // EMA cross
+    const mac=calcMACD(c);const mh=lastNonNull(mac.hist);if(mh!=null)sigs.push(mh>0?1:-1); // MACD histogram
+    const adx=calcADX(k,14);const pdi=lastNonNull(adx.plusDI),mdi=lastNonNull(adx.minusDI),ax=lastNonNull(adx.adx)||0;
+    if(pdi!=null&&mdi!=null){const dir=pdi>=mdi?1:-1;const strength=Math.min(1,ax/40);sigs.push(dir*strength);} // DI direction weighted by ADX
+    // ---- OSCILLATORS ----
+    const rsi=calcRSI(c);const lr=lastNonNull(rsi);if(lr!=null)sigs.push(Math.max(-1,Math.min(1,(lr-50)/25))); // RSI distance from 50
+    const st=calcStoch(k);const lk=lastNonNull(st.k);if(lk!=null)sigs.push(Math.max(-1,Math.min(1,(lk-50)/35))); // Stoch
+    if(!sigs.length)return null;
+    return sigs.reduce((a,b)=>a+b,0)/sigs.length;
+  }
+  // order-book depth imbalance → [-1,+1] (same for all TFs; it's a single live snapshot)
+  function depthScore(){try{const f=OBD.feeds&&OBD.feeds();if(!f)return null;const ms=[f.spot&&f.spot.lastMetrics,f.futures&&f.futures.lastMetrics].filter(Boolean);if(!ms.length)return null;
+    let bid=0,ask=0;ms.forEach(m=>{for(const key in m.bands){bid+=m.bands[key].bidNotional||0;ask+=m.bands[key].askNotional||0;}});const tot=bid+ask;if(tot<=0)return null;return Math.max(-1,Math.min(1,(bid-ask)/tot*2));}catch(e){return null;}}
+  function colorFor(score){ // score in [-1,1] → bright green (bull) ... dim ... bright red (bear)
+    const a=Math.min(1,Math.abs(score));const alpha=(0.15+a*0.85).toFixed(2);
+    if(score>=0)return `rgba(49,208,170,${alpha})`;return `rgba(237,91,125,${alpha})`;}
+  function render(scores){const host=document.getElementById('mtfCells');if(!host)return;host.innerHTML='';
+    const depth=depthScore();
+    scores.forEach(s=>{
+      // blend timeframe score with depth (depth gets a smaller weight)
+      let blended=s.score;if(depth!=null)blended=(s.score*0.8+depth*0.2);
+      const pct=Math.round(blended*100);const bg=colorFor(blended);
+      const label=blended>0.45?'STRONG BULL':blended>0.12?'BULLISH':blended>-0.12?'NEUTRAL':blended>-0.45?'BEARISH':'STRONG BEAR';
+      const cell=document.createElement('div');cell.title=`${s.tf} bias ${pct>0?'+':''}${pct}`+(depth!=null?` (incl. order-book depth)`:'');
+      cell.style.cssText=`flex:1;min-width:92px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:${bg};display:flex;flex-direction:column;gap:2px;transition:background .4s`;
+      cell.innerHTML=`<div style="font-size:12px;font-weight:800;color:#0c1118">${s.tf}</div><div style="font-size:9px;font-weight:700;color:#0c1118;opacity:0.85">${label}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:#0c1118">${pct>0?'+':''}${pct}</div>`;
+      host.appendChild(cell);
+    });}
+  async function update(){if(busy)return;busy=true;try{
+    const out=[];for(const tf of TIMEFRAMES){let k=null;try{k=await getKlines(curSym,tf.interval,400);}catch(e){}const sc=k?scoreTF(k):null;out.push({tf:tf.label,score:sc==null?0:sc});}
+    render(out);
+  }finally{busy=false;}}
+  return{update};
+})();
 const DDmod=(function(){
   const TFS=[{key:'1h',label:'1 Hour',bars:1},{key:'4h',label:'4 Hours',bars:4},{key:'1d',label:'1 Day',bars:24},{key:'3d',label:'3 Days',bars:72},{key:'1w',label:'1 Week',bars:168},{key:'1mo',label:'1 Month',bars:720}];
   const BUCKETS=[1,2,3,5,7,10,15,20,30,50];
