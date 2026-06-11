@@ -1434,6 +1434,11 @@ function renderOBDLadder(){const panel=document.getElementById('obLadderPanel');
 
 /* ═══════════ INIT ═══════════ */
 loadState();loadCustom();applyLockUI();
+/* On slower (networked) loads — e.g. GitHub Pages — fonts/CDN/chart finish AFTER first layout,
+   so recompute pane positions once everything has actually settled to avoid misplaced/overlapping panes. */
+function relayoutAll(){try{_lastPaneCount=-1;ensureLayout();applyLayout();if(lwChart){const d=document.getElementById('mainChartDiv');if(d)lwChart.applyOptions({height:d.clientHeight,width:d.clientWidth});}layoutPanes();applyPaneScales();packLayout();sizeDrawCanvas();redrawOverlay();}catch(e){}}
+window.addEventListener('load',()=>{setTimeout(relayoutAll,60);setTimeout(relayoutAll,400);setTimeout(relayoutAll,1200);});
+if(document.fonts&&document.fonts.ready){document.fonts.ready.then(()=>setTimeout(relayoutAll,50));}
 (function(){const sel=document.getElementById('mainTfSelect');if(curTf&&![...sel.options].some(o=>o.value===curTf)){if(!TF_SEC[curTf]){const s=parseTfSec(curTf);if(s)TF_SEC[curTf]=s;}const o=document.createElement('option');o.value=curTf;o.textContent=curTf.toUpperCase();sel.appendChild(o);}})();
 document.getElementById('mainTfSelect').value=curTf;document.getElementById('refreshSel').value=String(refreshSecs);document.getElementById('histSel').value=String(histLen);
 setZoneBtnUI();setRefreshBtnUI();
@@ -2069,4 +2074,6 @@ document.getElementById('dd_refresh').onclick=()=>DDmod.refresh();
 </script>
 </body>
 </html>
-////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////////
